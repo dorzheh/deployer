@@ -38,6 +38,24 @@ func (d *Driver) StartDomain(name string) error {
 	return nil
 }
 
+func (d *Driver) DestroyDomain(name string) error {
+	d.Lock()
+	defer d.Unlock()
+	if _, err := d.run("virsh destroy " + name); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (d *Driver) UndefineDomain(name string) error {
+	d.Lock()
+	defer d.Unlock()
+	if _, err := d.run("virsh undefine " + name); err != nil {
+		return err
+	}
+	return nil
+}
+
 // Define is responsible for creating a new domain acording to provided XML template
 func (d *Driver) SetAutostart(name string) error {
 	d.Lock()
