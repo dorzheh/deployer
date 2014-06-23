@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"os/exec"
-	"strings"
 	"text/template"
 	"time"
 
@@ -26,15 +25,14 @@ func RunFunc(config *ssh.Config) func(string) (string, error) {
 		return func(command string) (string, error) {
 			var stderr bytes.Buffer
 			var stdout bytes.Buffer
-			cmd := strings.Fields(command)
-			c := exec.Command(cmd[0], cmd[1:]...)
+			c := exec.Command("/bin/bash", "-c", command)
 			c.Stderr = &stderr
 			c.Stdout = &stdout
 			if err := c.Start(); err != nil {
 				return "", err
 			}
 			if err := c.Wait(); err != nil {
-				return "", fmt.Errorf("executing %s  : %s [%s]", cmd, stderr.String(), err)
+				return "", fmt.Errorf("executing %s  : %s [%s]", command, stderr.String(), err)
 			}
 			return stdout.String(), nil
 		}
