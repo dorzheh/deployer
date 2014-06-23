@@ -9,6 +9,64 @@ import (
 
 const tmpFile = "/tmp/lshw_cache"
 
+func TestCpuInfoLocal(t *testing.T) {
+	i, err := NewHwInfoParser(tmpFile, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile)
+
+	// get HW info and write the info file
+	fmt.Println("===> executing lshw locally,writing info file")
+	if err := i.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = i.CpuInfo()
+	fmt.Println("===> parsing info file #1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// read info file, do not run lshw
+	fmt.Println("===> parsing info file #2")
+	_, err = i.CpuInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestCpuInfoRemote(t *testing.T) {
+	conf := &ssh.Config{
+		Host:   "127.0.0.1",
+		Port:   "22",
+		User:   "root",
+		Passwd: "<root_password>",
+	}
+	i, err := NewHwInfoParser(tmpFile, "", conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile)
+
+	// get HW info and write the info file
+	fmt.Println("===> executing lshw locally,writing info file")
+	if err := i.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = i.CpuInfo()
+	fmt.Println("===> parsing info file #1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// read info file, do not run lshw
+	fmt.Println("===> parsing info file #2")
+	_, err = i.CpuInfo()
+	if err != nil {
+		t.Fatal(err)
+	}
+}
+
 func TestNicsInfoLocal(t *testing.T) {
 	i, err := NewHwInfoParser(tmpFile, "", nil)
 	if err != nil {
@@ -34,7 +92,7 @@ func TestNicsInfoLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	printOut(info)
+	printNicInfo(info)
 }
 
 func TestNicsInfoRemote(t *testing.T) {
@@ -68,10 +126,10 @@ func TestNicsInfoRemote(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	printOut(info)
+	printNicInfo(info)
 }
 
-func printOut(info map[NicType][]*NicInfo) {
+func printNicInfo(info map[NicType][]*NicInfo) {
 	fmt.Println("==== Map Content ======")
 	for k, v := range info {
 		for _, n := range v {

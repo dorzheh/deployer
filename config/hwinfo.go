@@ -11,6 +11,11 @@ import (
 	"github.com/dorzheh/mxj"
 )
 
+type CpuInfo struct {
+	Desc map[string]interface{}
+	Cap  map[string]interface{}
+}
+
 type NicType string
 
 const (
@@ -50,6 +55,38 @@ func (i *HwInfo) Parse() error {
 		return err
 	}
 	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
+}
+
+func (i *HwInfo) CpuInfo() (*CpuInfo, error) {
+	if _, err := os.Stat(i.cacheFile); err != nil {
+		if err = i.Parse(); err != nil {
+			return nil, err
+		}
+	}
+	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
+	if err != nil {
+		return nil, err
+	}
+	c := new(CpuInfo)
+	c.Desc = make(map[string]interface{})
+	c.Cap = make(map[string]interface{})
+	for _, s := range out {
+		r, _ := s.ValuesForPath("children.children")
+		for _, n := range r {
+			ch := n.(map[string]interface{})
+			if ch["id"] == "cpu:0" {
+				for k, v := range ch {
+					if k != "capabilities" {
+						c.Desc[k] = v
+					}
+				}
+				for k, v := range ch["capabilities"].(map[string]interface{}) {
+					c.Cap[k] = v
+				}
+			}
+		}
+	}
+	return c, nil
 }
 
 func (i *HwInfo) NicsInfo() (map[NicType][]*NicInfo, error) {
