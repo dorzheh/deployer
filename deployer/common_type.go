@@ -1,6 +1,6 @@
 package deployer
 
-import ui "github.com/dorzheh/ui/dialog-ui"
+import ui "github.com/dorzheh/deployer/ui/dialog_ui"
 
 type FlowCreator interface {
 	CreateConfig(*CommonData) error
