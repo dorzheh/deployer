@@ -6,8 +6,8 @@ import (
 	"os"
 	"os/exec"
 
+	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/infra/comm/ssh"
-	"github.com/dorzheh/infra/image"
 	"github.com/dorzheh/infra/utils"
 )
 

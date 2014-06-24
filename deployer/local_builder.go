@@ -8,7 +8,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/dorzheh/infra/image"
+	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/infra/utils"
 )
 
