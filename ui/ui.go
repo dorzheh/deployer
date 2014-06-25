@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"bytes"
 	"fmt"
 	"os"
 	"strconv"
@@ -93,4 +94,10 @@ func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*config.NicInf
 		newMap[net] = info[ifaceNumInt]
 	}
 	return newMap, nil
+}
+
+func UiConfirmation(ui *gui.DialogUi, buf *bytes.Buffer, height int) {
+	buf.WriteString("\n\nPress <OK> to proceed or <CTRL+C> to exit")
+	ui.SetSize(height, 100)
+	ui.Msgbox(buf.String())
 }
