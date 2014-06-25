@@ -129,13 +129,11 @@ func TestNicsInfoRemote(t *testing.T) {
 	printNicInfo(info)
 }
 
-func printNicInfo(info map[NicType][]*NicInfo) {
+func printNicInfo(info map[int]*NicInfo) {
 	fmt.Println("==== Map Content ======")
 	for k, v := range info {
-		for _, n := range v {
-			fmt.Printf("NIC type => %v\nNIC name => %v\nNIC desc => %v\nNIC driver => %v\n",
-				k, n.Name, n.Desc, n.Driver)
-			fmt.Println("==================")
-		}
+		fmt.Printf("Index: %d\nNIC type => %v\nNIC name => %v\nNIC desc => %v\nNIC driver => %v\n",
+			k, string(v.Type), v.Name, v.Desc, v.Driver)
+		fmt.Println("==================")
 	}
 }

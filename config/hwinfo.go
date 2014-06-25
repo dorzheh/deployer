@@ -28,6 +28,7 @@ type NicInfo struct {
 	Name   string
 	Driver string
 	Desc   string
+	Type   NicType
 }
 
 type HwInfo struct {
@@ -89,7 +90,7 @@ func (i *HwInfo) CpuInfo() (*CpuInfo, error) {
 	return c, nil
 }
 
-func (i *HwInfo) NicsInfo() (map[NicType][]*NicInfo, error) {
+func (i *HwInfo) NicsInfo() (map[int]*NicInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err
@@ -100,10 +101,8 @@ func (i *HwInfo) NicsInfo() (map[NicType][]*NicInfo, error) {
 		return nil, err
 	}
 
-	nicsMap := make(map[NicType][]*NicInfo)
-	phys := make([]*NicInfo, 0)
-	ovs := make([]*NicInfo, 0)
-
+	nicsMap := make(map[int]*NicInfo)
+	index := 0
 	deep := []string{"children.children.children.children", "children"}
 	for _, m := range out {
 		for _, d := range deep {
@@ -116,20 +115,19 @@ func (i *HwInfo) NicsInfo() (map[NicType][]*NicInfo, error) {
 					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
 					switch driver {
 					case "openvswitch":
-						nic.Driver = driver
 						nic.Desc = "Open vSwitch interface"
-						ovs = append(ovs, nic)
-						nicsMap[NicTypeOVS] = ovs
+						nic.Type = NicTypeOVS
 					default:
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							nic.Driver = driver
 							nic.Desc = vendor + " " + prod
-							phys = append(phys, nic)
-							nicsMap[NicTypePhys] = phys
+							nic.Type = NicTypePhys
 						}
 					}
+					nic.Driver = driver
+					nicsMap[index] = nic
+					index++
 				}
 			}
 		}
@@ -140,16 +138,16 @@ func (i *HwInfo) NicsInfo() (map[NicType][]*NicInfo, error) {
 	if err != nil {
 		return nil, err
 	}
-	bridges := make([]*NicInfo, 0)
 	if res != "" {
 		for _, n := range strings.Split(res, " ") {
 			br := &NicInfo{
 				Name:   n,
 				Driver: "bridge",
 				Desc:   "Bridge interface",
+				Type:   NicTypeBridge,
 			}
-			bridges = append(bridges, br)
-			nicsMap[NicTypeBridge] = bridges
+			nicsMap[index] = br
+			index++
 		}
 	}
 	return nicsMap, nil

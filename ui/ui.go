@@ -1,9 +1,11 @@
 package ui
 
 import (
+	"fmt"
 	"os"
+	"strconv"
 
-	//"github.com/dorzheh/deployer/config"
+	"github.com/dorzheh/deployer/config"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/infra/utils"
 )
@@ -64,4 +66,31 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string) {
 		}
 	}
 	return ip, user, passwd, keyFile
+}
+
+func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*config.NicInfo) (map[string]*config.NicInfo, error) {
+	newMap := make(map[string]*config.NicInfo)
+	var temp []string
+	for _, n := range info {
+		temp = append(temp, fmt.Sprintf("%s (driver type %s, %s)", n.Name, n.Driver, n.Desc))
+	}
+
+	sliceLength := len(temp)
+	for _, net := range networks {
+		var ifaceNumStr string
+		for {
+			ui.SetSize(10+sliceLength, 55)
+			ui.SetLabel(fmt.Sprintf("Choose appropriate interface for \"%s\" network:", net))
+			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
+			if ifaceNumStr != "" {
+				break
+			}
+		}
+		ifaceNumInt, err := strconv.Atoi(ifaceNumStr)
+		if err != nil {
+			return nil, err
+		}
+		newMap[net] = info[ifaceNumInt]
+	}
+	return newMap, nil
 }
