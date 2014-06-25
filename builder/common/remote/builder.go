@@ -7,11 +7,12 @@ import (
 	"os/exec"
 
 	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/infra/comm/ssh"
 	"github.com/dorzheh/infra/utils"
 )
 
-type RemoteImageBuilder struct {
+type ImageBuilder struct {
 	ConnFunc    func() (*ssh.SshConn, error)
 	SshConfig   *ssh.Config
 	ImagePath   string
@@ -20,7 +21,7 @@ type RemoteImageBuilder struct {
 	Filler      image.Rootfs
 }
 
-func (b *RemoteImageBuilder) Run() (Artifact, error) {
+func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	sshfs, err := exec.LookPath("sshfs")
 	if err != nil {
 		return nil, err
@@ -38,12 +39,12 @@ func (b *RemoteImageBuilder) Run() (Artifact, error) {
 	}
 	defer conn.ConnClose()
 
-	s, err := ProcessTemplate(hddBuildScript, b.ImageConfig)
+	s, err := deployer.ProcessTemplate(hddBuildScript, b.ImageConfig)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd := fmt.Sprintf("echo %s > /tmp/run_script;bash -x /tmp/run_script", s)
+	cmd := fmt.Sprintf("echo %s > /tmp/run_script;sudo bash -x /tmp/run_script", s)
 	if _, stderr, err := conn.Run(cmd); err != nil {
 		return nil, fmt.Errorf("%s [%s]", stderr, err)
 	}
@@ -83,10 +84,10 @@ func (b *RemoteImageBuilder) Run() (Artifact, error) {
 			return nil, err
 		}
 	}
-	return &RemoteArtifact{
+	return &deployer.RemoteArtifact{
 		Name: b.ImageConfig.Name,
 		Path: b.ImagePath,
-		Type: ImageArtifact,
+		Type: deployer.ImageArtifact,
 	}, nil
 }
 
@@ -112,19 +113,19 @@ var hddBuildScript = `
   mkswap -L SWAP /dev/mapper/$loop_swap_partition
 `
 
-type RemoteMetadataBuilder struct {
+type MetadataBuilder struct {
 	ConnFunc func() (*ssh.SshConn, error)
 	Source   string
 	Dest     string
 	UserData interface{}
 }
 
-func (b *RemoteMetadataBuilder) Run() (Artifact, error) {
+func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	f, err := ioutil.ReadFile(b.Source)
 	if err != nil {
 		return nil, err
 	}
-	data, err := ProcessTemplate(string(f), b.UserData)
+	data, err := deployer.ProcessTemplate(string(f), b.UserData)
 	if err != nil {
 		return nil, err
 	}
@@ -136,10 +137,10 @@ func (b *RemoteMetadataBuilder) Run() (Artifact, error) {
 	if _, stderr, err := conn.Run(cmd); err != nil {
 		return nil, fmt.Errorf("%s [%s]", stderr, err)
 	}
-	return &RemoteArtifact{
+	return &deployer.RemoteArtifact{
 		Name: "",
 		Path: b.Dest,
-		Type: MetadataArtifact,
+		Type: deployer.MetadataArtifact,
 	}, nil
 }
 

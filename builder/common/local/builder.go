@@ -9,12 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/infra/utils"
 )
-
-type Builder interface {
-	Run() (Artifact, error)
-}
 
 type ImageBuilder struct {
 	ImagePath   string
@@ -24,7 +21,7 @@ type ImageBuilder struct {
 	Compress    bool
 }
 
-func (b *ImageBuilder) Run() (Artifact, error) {
+func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	if err := utils.CreateDirRecursively(b.RootfsMp, 0755, 0, 0, false); err != nil {
 		return nil, err
 	}
@@ -67,10 +64,10 @@ func (b *ImageBuilder) Run() (Artifact, error) {
 		}
 		b.ImagePath = newImagePath
 	}
-	return &LocalArtifact{
+	return &deployer.LocalArtifact{
 		Name: origName,
 		Path: b.ImagePath,
-		Type: ImageArtifact,
+		Type: deployer.ImageArtifact,
 	}, nil
 }
 
@@ -81,12 +78,12 @@ type MetadataBuilder struct {
 	Compress bool
 }
 
-func (b *MetadataBuilder) Run() (Artifact, error) {
+func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	f, err := ioutil.ReadFile(b.Source)
 	if err != nil {
 		return nil, err
 	}
-	data, err := ProcessTemplate(string(f), b.UserData)
+	data, err := deployer.ProcessTemplate(string(f), b.UserData)
 	if err != nil {
 		return nil, err
 	}
@@ -105,10 +102,10 @@ func (b *MetadataBuilder) Run() (Artifact, error) {
 		}
 		b.Dest = newDest
 	}
-	return &LocalArtifact{
+	return &deployer.LocalArtifact{
 		Name: origName,
 		Path: b.Dest,
-		Type: MetadataArtifact,
+		Type: deployer.MetadataArtifact,
 	}, nil
 }
 
@@ -116,7 +113,7 @@ type LocalInstanceBuilder struct {
 	Filler image.Rootfs
 }
 
-func (b *LocalInstanceBuilder) Run() (a Artifact, err error) {
+func (b *LocalInstanceBuilder) Run() (a deployer.Artifact, err error) {
 	if err = b.Filler.MakeRootfs("/"); err != nil {
 		return
 	}

@@ -35,9 +35,11 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 		name := ui.Inputbox(defaultName)
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
-			if driver.DomainExists(name) {
-				ui.Output(gui.Warning, "domain "+name+" exists.Press <OK> and choose another name", 8, 12)
-				continue
+			if driver != nil {
+				if driver.DomainExists(name) {
+					ui.Output(gui.Warning, "domain "+name+" exists.Press <OK> and choose another name", 8, 12)
+					continue
+				}
 			}
 			break
 		}
@@ -69,7 +71,7 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 
 func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string) {
 	ip := ui.GetIpFromInput("Remote server IP:")
-	user := ui.GetFromInput(ip+" superuser:", "root")
+	user := ui.GetFromInput(ip+" user:", "root")
 	var passwd string
 	var keyFile string
 	answer := ui.Menu(2, "1", "Password", "2", "Private key")
