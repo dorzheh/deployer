@@ -75,7 +75,7 @@ func (d *Driver) DomainExists(name string) bool {
 	return true
 }
 
-func (d *Driver) KVMEmulator() (string, error) {
+func (d *Driver) Emulator() (string, error) {
 	d.Lock()
 	defer d.Unlock()
 	out, err := d.run("virsh capabilities")

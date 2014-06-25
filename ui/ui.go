@@ -5,8 +5,10 @@ import (
 	"fmt"
 	"os"
 	"strconv"
+	"strings"
 
 	"github.com/dorzheh/deployer/config"
+	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/infra/utils"
 )
@@ -23,6 +25,24 @@ func UiHostName(ui *gui.DialogUi) (hostname string) {
 		break
 	}
 	return
+}
+
+func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Driver) string {
+	var name string
+	for {
+		ui.SetSize(8, 30)
+		ui.SetLabel("Appliance name: ")
+		name := ui.Inputbox(defaultName)
+		if name != "" {
+			name = strings.Replace(name, ".", "-", -1)
+			if driver.DomainExists(name) {
+				ui.Output(gui.Warning, "domain "+name+" exists.Press <OK> and choose another name", 8, 12)
+				continue
+			}
+			break
+		}
+	}
+	return name
 }
 
 // setImageLocation method sets location for the VA image
