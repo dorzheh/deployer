@@ -2,11 +2,15 @@ package deployer
 
 import "time"
 
-func PostProcessProgress(c *CommonData, p PostProcessor, a []Artifact) error {
+func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) error {
+	if c.Ui == nil {
+		return p.PostProcess(artifacts)
+	}
+
 	errChan := make(chan error)
 	defer close(errChan)
 	go func() {
-		if err := p.Process(a); err != nil {
+		if err := p.PostProcess(artifacts); err != nil {
 			errChan <- err
 			return
 		}

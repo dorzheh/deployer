@@ -6,6 +6,9 @@ import (
 )
 
 func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err error) {
+	if c.Ui == nil {
+		return Build(builders)
+	}
 	errChan := make(chan error)
 	defer close(errChan)
 	go func() {

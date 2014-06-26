@@ -3,6 +3,10 @@ package deployer
 import "time"
 
 func ProvisionProgress(c *CommonData, p Provisioner, artifacts []Artifact) (artfcts []Artifact, err error) {
+	if c.Ui == nil {
+		return p.Provision(artifacts)
+	}
+
 	errChan := make(chan error)
 	defer close(errChan)
 	go func() {

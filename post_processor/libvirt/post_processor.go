@@ -10,7 +10,7 @@ type PostProcessor struct {
 	StartDomain bool
 }
 
-func (p *PostProcessor) Process(artifacts []deployer.Artifact) error {
+func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 	for _, a := range artifacts {
 		if a.GetType() == deployer.MetadataArtifact {
 			if err := p.Driver.DefineDomain(a.GetPath()); err != nil {
