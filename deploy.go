@@ -8,7 +8,6 @@ func Deploy(c *deployer.CommonData, f deployer.FlowCreator) error {
 	if err := f.CreateConfig(c); err != nil {
 		return err
 	}
-
 	builders, err := f.CreateBuilders()
 	if err != nil {
 		return err
