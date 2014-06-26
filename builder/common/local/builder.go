@@ -1,4 +1,4 @@
-package deployer
+package local
 
 import (
 	"bytes"
@@ -109,11 +109,11 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	}, nil
 }
 
-type LocalInstanceBuilder struct {
+type InstanceBuilder struct {
 	Filler image.Rootfs
 }
 
-func (b *LocalInstanceBuilder) Run() (a deployer.Artifact, err error) {
+func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {
 	if err = b.Filler.MakeRootfs("/"); err != nil {
 		return
 	}
