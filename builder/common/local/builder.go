@@ -16,6 +16,7 @@ import (
 type ImageBuilder struct {
 	ImagePath   string
 	RootfsMp    string
+	GrubPath    string
 	ImageConfig *image.Topology
 	Filler      image.Rootfs
 	Compress    bool
@@ -40,6 +41,11 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	defer func() {
 		if err := img.Release(); err != nil {
 			panic(err)
+		}
+		if b.ImageConfig.Bootable {
+			if err := img.MakeBootable(b.GrubPath); err != nil {
+				panic(err)
+			}
 		}
 	}()
 	// create and customize rootfs

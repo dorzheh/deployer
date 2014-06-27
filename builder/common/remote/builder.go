@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
@@ -13,12 +14,14 @@ import (
 )
 
 type ImageBuilder struct {
-	ConnFunc    func() (*ssh.SshConn, error)
-	SshConfig   *ssh.Config
-	ImagePath   string
-	RootfsMp    string
-	ImageConfig *image.Topology
-	Filler      image.Rootfs
+	ConnFunc            func(*ssh.Config) (*ssh.SshConn, error)
+	SshConfig           *ssh.Config
+	ImagePath           string
+	BuildScriptPath     string
+	RootfsMp            string
+	BuildScriptUserData interface{}
+	ImageConfig         *image.Topology
+	Filler              image.Rootfs
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
@@ -33,18 +36,22 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 
 	println(sshfs, fusermount)
 
-	conn, err := b.ConnFunc()
+	conn, err := b.ConnFunc(b.SshConfig)
 	if err != nil {
 		return nil, err
 	}
 	defer conn.ConnClose()
 
-	s, err := deployer.ProcessTemplate(hddBuildScript, b.ImageConfig)
+	f, err := ioutil.ReadFile(b.BuildScriptPath)
+	if err != nil {
+		return nil, err
+	}
+	script, err := deployer.ProcessTemplate(string(f), b.BuildScriptUserData)
 	if err != nil {
 		return nil, err
 	}
 
-	cmd := fmt.Sprintf("echo %s > /tmp/run_script;sudo bash -x /tmp/run_script", s)
+	cmd := fmt.Sprintf("echo %s > /tmp/run_script;sudo bash -x /tmp/run_script;rm -f  /tmp/run_script", script)
 	if _, stderr, err := conn.Run(cmd); err != nil {
 		return nil, fmt.Errorf("%s [%s]", stderr, err)
 	}
@@ -59,20 +66,10 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	//if out, err := exec.Command("sshfs", strings.Fields(argsPat)...).CombinedOutput(); err != nil {
 	//	return fmt.Errorf("%s:%s", out, err)
 	//}
+	//if out, err := exec.Command("fusermount", "-u", sh.MountPoint).CombinedOutput(); err != nil {
+	//                     return fmt.Errorf("%s:%s", out, err)
+	//             }
 
-	//img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig)
-	//if err != nil {
-	//	return nil, err
-	//}
-	//if err := img.Parse(); err != nil {
-	//	return nil, err
-	//}
-	// interrupt handler
-	//img.ReleaseOnInterrupt()
-	//defer func() {
-	//	if err := img.Release(); err != nil {
-	//		panic(err)
-	//	}
 	//}()
 	// create and customize rootfs
 	if b.Filler != nil {
@@ -91,33 +88,12 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}, nil
 }
 
-var hddBuildScript = `
-  dd if=/dev/zero of={{ .ImagePath}} bs=1 count=1 seek={{ .HddSize }}
-  loop_device=$(losetup -f)
-  losetup $loop_device {{ .ImagePath }}
-  echo -e $ | fdisk $loop_device || true
-  kpartx -av $loop_device
-
-  loop_name=${loop_device##/dev/}
-  loop_root_partition=${free_loop_name}p1
-  local loop_swap_partition=${free_loop_name}p2
-
-  [ ! -e /dev/mapper/$loop_root_partition ] && {
-   echo "FATAL: loop device doesn't have any partitons"
-   return 1
-  }
-
-  mkfs.ext4 /dev/mapper/$loop_root_partition
-  e2fsck -y -f /dev/mapper/$loop_root_partition
-  e2label /dev/mapper/$loop_root_partition SLASH
-  mkswap -L SWAP /dev/mapper/$loop_swap_partition
-`
-
 type MetadataBuilder struct {
-	ConnFunc func() (*ssh.SshConn, error)
-	Source   string
-	Dest     string
-	UserData interface{}
+	ConnFunc  func(*ssh.Config) (*ssh.SshConn, error)
+	SshConfig *ssh.Config
+	Source    string
+	Dest      string
+	UserData  interface{}
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
@@ -129,7 +105,7 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := b.ConnFunc()
+	conn, err := b.ConnFunc(b.SshConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -138,7 +114,7 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 		return nil, fmt.Errorf("%s [%s]", stderr, err)
 	}
 	return &deployer.RemoteArtifact{
-		Name: "",
+		Name: filepath.Base(b.Dest),
 		Path: b.Dest,
 		Type: deployer.MetadataArtifact,
 	}, nil

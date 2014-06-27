@@ -11,37 +11,34 @@ import (
 	"github.com/dorzheh/deployer/utils"
 )
 
-type CommonInputData struct {
+type InputData struct {
 	Networks []string
 	LshwPath string
 }
 
-type UserMetaData struct {
+type commonOutputData struct {
 	DomainName   string
-	AmountOfRam  string
-	Cpus         string
 	EmulatorPath string
 	ImagePath    string
-	Interfaces   string
 }
 
 type Config struct {
 	Common   *deployer.CommonConfig
 	Networks map[string]*utils.NicInfo
+	Data     *commonOutputData
 }
 
 type Configurator struct {
 	Config *Config
 	Driver deployer.Driver
-	Data   *UserMetaData
 }
 
-func (c *Configurator) Create(d *deployer.CommonData, i *CommonInputData) (*Configurator, error) {
+func (c *Configurator) Create(d *deployer.CommonData, i *InputData) (*Configurator, error) {
 	var err error
 
 	c.Config.Common = common.CreateConfig(d)
 	c.Driver = libvirt.NewDriver(c.Config.Common.SshConfig)
-	if c.Data.EmulatorPath, err = c.Driver.Emulator(); err != nil {
+	if c.Config.Data.EmulatorPath, err = c.Driver.Emulator(); err != nil {
 		return nil, err
 	}
 	if i.LshwPath == "" {
@@ -54,7 +51,7 @@ func (c *Configurator) Create(d *deployer.CommonData, i *CommonInputData) (*Conf
 	go info.Parse()
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, c.Driver)
-	c.Data.DomainName = d.VaName
+	c.Config.Data.DomainName = d.VaName
 	ni, err := info.NicsInfo()
 	if err != nil {
 		return nil, err

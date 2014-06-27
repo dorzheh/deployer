@@ -11,8 +11,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/dorzheh/pipe"
 	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/pipe"
 )
 
 // the structure represents a mapper device
@@ -129,6 +129,19 @@ func (i *image) Release() error {
 	// unbind the image
 	if err := exec.Command("losetup", "-d", i.loopDevice.name).Run(); err != nil {
 		return errors.New("losetup -d " + i.loopDevice.name)
+	}
+	return nil
+}
+
+// MakeBootable is responsible for making RAW disk bootable
+func (i *image) MakeBootable(pathToGrubBin string) error {
+	p := pipe.Line(
+		pipe.Printf("device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n", i.imgpath),
+		pipe.Exec(pathToGrubBin),
+	)
+	output, err := pipe.CombinedOutput(p)
+	if err != nil {
+		return fmt.Errorf("%s [%v]", output, err)
 	}
 	return nil
 }
@@ -275,20 +288,6 @@ func (i *image) validatePconf(amountOfMappers int) error {
 	if amountOfMappers != len(i.conf.Partitions) {
 		return fmt.Errorf("amount of partitions defined = %v, actual amount is %v",
 			len(i.conf.Partitions), amountOfMappers)
-	}
-	return nil
-}
-
-// MakeBootable is responsible for making RAW disk bootable
-func MakeBootable(pathToGrubBin, pathToImage string) error {
-	p := pipe.Line(
-		pipe.Printf("device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n", pathToImage),
-		pipe.Exec(pathToGrubBin),
-	)
-	output, err := pipe.CombinedOutput(p)
-	//fmt.Printf("%s", output)
-	if err != nil {
-		return fmt.Errorf("%s [%v]", output, err)
 	}
 	return nil
 }

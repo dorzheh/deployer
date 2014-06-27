@@ -1,4 +1,4 @@
-// Parses platform configuration file (XML)
+// Parses image configuration file (XML)
 
 // Configuration example:
 //
@@ -7,9 +7,8 @@
 //  <Platform>
 //    <Name>Test</Name>
 //    <Type>1</Type>
-//	<Cpus>2</Cpus>
-//	<RamSizeGb>3</RamSizeGb>
 //	<HddSizeGb>5</HddSizeGb>
+//  <Bootable>true</Bootable>
 //	<FdiskCmd>n\np\n1\n\n+%vM\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
 //    <Description>Topology for release xxxx</Description>
 //    <Partition>
@@ -48,9 +47,8 @@ type Platforms struct {
 type Topology struct {
 	Name        string      `xml:"Name"`
 	Type        string      `xml:"Type"`
-	Cpus        int         `xml:"Cpus"`
-	RamSizeMb   int         `xml:"RamSizeMb"`
 	HddSizeGb   int         `xml:"HddSizeGb"`
+	Bootable    bool        `xml:"Bootable"`
 	Description string      `xml:"Description"`
 	FdiskCmd    string      `xml: "FdiskCmd"`
 	Partitions  []Partition `xml:"Partition"`
