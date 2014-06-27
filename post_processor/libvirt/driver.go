@@ -4,7 +4,7 @@ import (
 	"sync"
 
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/infra/comm/ssh"
+	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/mxj"
 )
 

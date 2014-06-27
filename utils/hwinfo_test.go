@@ -2,7 +2,7 @@ package utils
 
 import (
 	"fmt"
-	"github.com/dorzheh/infra/comm/ssh"
+	ssh "github.com/dorzheh/infra/comm/common"
 	"os"
 	"testing"
 )
@@ -37,10 +37,10 @@ func TestCpuInfoLocal(t *testing.T) {
 
 func TestCpuInfoRemote(t *testing.T) {
 	conf := &ssh.Config{
-		Host:   "127.0.0.1",
-		Port:   "22",
-		User:   "root",
-		Passwd: "<root_password>",
+		Host:     "127.0.0.1",
+		Port:     "22",
+		User:     "root",
+		Password: "<root_password>",
 	}
 	i, err := NewHwInfoParser(tmpFile, "", conf)
 	if err != nil {
@@ -97,10 +97,10 @@ func TestNicsInfoLocal(t *testing.T) {
 
 func TestNicsInfoRemote(t *testing.T) {
 	conf := &ssh.Config{
-		Host:   "127.0.0.1",
-		Port:   "22",
-		User:   "root",
-		Passwd: "<root_password>",
+		Host:     "127.0.0.1",
+		Port:     "22",
+		User:     "root",
+		Password: "<root_password>",
 	}
 	i, err := NewHwInfoParser(tmpFile, "", conf)
 	if err != nil {

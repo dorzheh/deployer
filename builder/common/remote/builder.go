@@ -4,17 +4,17 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/infra/comm/ssh"
+	ssh "github.com/dorzheh/infra/comm/common"
+	"github.com/dorzheh/infra/comm/gssh/sshfs"
 	"github.com/dorzheh/infra/utils"
 )
 
 type ImageBuilder struct {
-	ConnFunc            func(*ssh.Config) (*ssh.SshConn, error)
+	ConnFunc            deployer.ConnFuncAlias
 	SshConfig           *ssh.Config
 	ImagePath           string
 	BuildScriptPath     string
@@ -25,17 +25,6 @@ type ImageBuilder struct {
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
-	sshfs, err := exec.LookPath("sshfs")
-	if err != nil {
-		return nil, err
-	}
-	fusermount, err := exec.LookPath("fusermount")
-	if err != nil {
-		return nil, err
-	}
-
-	println(sshfs, fusermount)
-
 	conn, err := b.ConnFunc(b.SshConfig)
 	if err != nil {
 		return nil, err
@@ -61,17 +50,21 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}
 	defer os.RemoveAll(b.RootfsMp)
 
-	//argsPat := fmt.Sprintf("%s@%s:%s %s -o %s,idmap=user,compression=no,nonempty,Ciphers=arcfour",
-	//	s.account.name, s.ip, remoteShare, localMount, mo)
-	//if out, err := exec.Command("sshfs", strings.Fields(argsPat)...).CombinedOutput(); err != nil {
-	//	return fmt.Errorf("%s:%s", out, err)
-	//}
-	//if out, err := exec.Command("fusermount", "-u", sh.MountPoint).CombinedOutput(); err != nil {
-	//                     return fmt.Errorf("%s:%s", out, err)
-	//             }
+	conf := &sshfs.Config{
+		Common:      b.SshConfig,
+		SshfsPath:   "",
+		FusrmntPath: "",
+	}
 
-	//}()
-	// create and customize rootfs
+	s, err := sshfs.NewClient(conf)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.Attach("/dummy", b.RootfsMp); err != nil {
+		return nil, err
+	}
+	defer s.Detach(b.RootfsMp)
+
 	if b.Filler != nil {
 		if err := b.Filler.MakeRootfs(b.RootfsMp); err != nil {
 			return nil, err
@@ -89,7 +82,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 type MetadataBuilder struct {
-	ConnFunc  func(*ssh.Config) (*ssh.SshConn, error)
+	ConnFunc  deployer.ConnFuncAlias
 	SshConfig *ssh.Config
 	Source    string
 	Dest      string
@@ -119,5 +112,3 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 		Type: deployer.MetadataArtifact,
 	}, nil
 }
-
-// sshfs me@x.x.x.x:/remote/path /local/path/ -o IdentityFile=/path/to/key

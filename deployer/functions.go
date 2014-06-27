@@ -7,10 +7,13 @@ import (
 	"text/template"
 	"time"
 
+	sshconf "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/comm/ssh"
 )
 
-func ConnFunc(config *ssh.Config) func() (*ssh.SshConn, error) {
+type ConnFuncAlias func(*sshconf.Config) (*ssh.SshConn, error)
+
+func ConnFunc(config *sshconf.Config) func() (*ssh.SshConn, error) {
 	return func() (*ssh.SshConn, error) {
 		c, err := ssh.NewSshConn(config)
 		if err != nil {
@@ -20,7 +23,7 @@ func ConnFunc(config *ssh.Config) func() (*ssh.SshConn, error) {
 	}
 }
 
-func RunFunc(config *ssh.Config) func(string) (string, error) {
+func RunFunc(config *sshconf.Config) func(string) (string, error) {
 	if config == nil {
 		return func(command string) (string, error) {
 			var stderr bytes.Buffer

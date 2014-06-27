@@ -6,7 +6,7 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/infra/comm/ssh"
+	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/utils/lshw"
 	"github.com/dorzheh/mxj"
 )

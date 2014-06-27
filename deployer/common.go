@@ -2,7 +2,7 @@ package deployer
 
 import (
 	ui "github.com/dorzheh/deployer/ui/dialog_ui"
-	"github.com/dorzheh/infra/comm/ssh"
+	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 type CommonData struct {

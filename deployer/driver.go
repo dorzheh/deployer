@@ -1,7 +1,5 @@
 package deployer
 
-//import "github.com/dorzheh/infra/comm/ssh"
-
 type Driver interface {
 	DefineDomain(string) error
 	StartDomain(string) error
