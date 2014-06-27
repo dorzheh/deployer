@@ -42,6 +42,7 @@ func Build(builders []Builder) (artifacts []Artifact, err error) {
 				errCh <- err
 			}
 			artifacts = append(artifacts, artifact)
+			errCh <- nil
 		}()
 	}
 	if err = WaitForResult(errCh, len(builders)); err != nil {

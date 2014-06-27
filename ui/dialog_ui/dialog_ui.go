@@ -8,7 +8,7 @@ import (
 	"strings"
 	"time"
 
-	dialog "github.com/dorzheh/go-dialog"
+	. "github.com/dorzheh/go-dialog"
 )
 
 const (
@@ -19,11 +19,11 @@ const (
 )
 
 type DialogUi struct {
-	*dialog.Dialog
+	*Dialog
 }
 
-func NewDialogUi(environment string, parentId int) *DialogUi {
-	return &DialogUi{dialog.New(environment, parentId)}
+func NewDialogUi() *DialogUi {
+	return &DialogUi{New(CONSOLE, 0)}
 }
 
 ///// Functions providing verification services /////

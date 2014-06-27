@@ -12,7 +12,7 @@ const (
 	ACTION_START   = "start"
 	ACTION_STOP    = "stop"
 	ACTION_RESTART = "restart"
-	ACTION_RELOAD  = "rload"
+	ACTION_RELOAD  = "reload"
 	ACTION_APPEND  = "append"
 	ACTION_REPLACE = "replace"
 	ACTION_INSTALL = "install"

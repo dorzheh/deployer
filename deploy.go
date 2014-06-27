@@ -31,9 +31,7 @@ func Deploy(c *deployer.CommonData, f deployer.FlowCreator) error {
 		return err
 	}
 	if post != nil {
-		if err := deployer.PostProcessProgress(c, post, provisionArtifacts); err != nil {
-			return err
-		}
+		return deployer.PostProcessProgress(c, post, provisionArtifacts)
 	}
 	return nil
 }

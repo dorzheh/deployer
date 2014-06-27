@@ -7,18 +7,40 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/dorzheh/deployer/config"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
-	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/deployer/utils"
+	infra "github.com/dorzheh/infra/utils"
 )
+
+func UiNewSession() *gui.DialogUi {
+	return gui.NewDialogUi()
+}
+
+func UiValidateUser(ui *gui.DialogUi, user string) {
+	if err := infra.ValidateUser("root"); err != nil {
+		ui.ErrorOutput(err.Error(), 6, 14)
+	}
+}
+
+func UiWelcomeMsg(ui *gui.DialogUi, name string) {
+	ui.SetSize(6, 49)
+	ui.Msgbox("Welcome to the " + name + " Deployment Procedure!")
+}
+
+func UiDeploymentResult(ui *gui.DialogUi, err error) {
+	if err != nil {
+		ui.ErrorOutput(err.Error(), 8, 14)
+	}
+	ui.Output(gui.Success, "deployment process completed.", 6, 14)
+}
 
 func UiHostName(ui *gui.DialogUi) (hostname string) {
 	for {
 		ui.SetSize(8, 30)
 		ui.SetLabel("New hostname: ")
 		hostname = ui.Inputbox("")
-		if err := utils.SetHostname(hostname); err != nil {
+		if err := infra.SetHostname(hostname); err != nil {
 			ui.Output(gui.Warning, err.Error()+".Press <OK> to proceed", 8, 12)
 			continue
 		}
@@ -69,9 +91,10 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 	return true
 }
 
-func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string) {
+func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 	ip := ui.GetIpFromInput("Remote server IP:")
 	user := ui.GetFromInput(ip+" user:", "root")
+	var port string
 	var passwd string
 	var keyFile string
 	answer := ui.Menu(2, "1", "Password", "2", "Private key")
@@ -88,11 +111,11 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string) {
 			break
 		}
 	}
-	return ip, user, passwd, keyFile
+	return ip, port, user, passwd, keyFile
 }
 
-func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*config.NicInfo) (map[string]*config.NicInfo, error) {
-	newMap := make(map[string]*config.NicInfo)
+func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo) (map[string]*utils.NicInfo, error) {
+	newMap := make(map[string]*utils.NicInfo)
 	var temp []string
 	for _, n := range info {
 		temp = append(temp, fmt.Sprintf("%s (driver type %s, %s)", n.Name, n.Driver, n.Desc))
