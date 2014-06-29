@@ -14,7 +14,6 @@ import (
 )
 
 type ImageBuilder struct {
-	ConnFunc            deployer.ConnFuncAlias
 	SshConfig           *ssh.Config
 	ImagePath           string
 	BuildScriptPath     string
@@ -25,12 +24,6 @@ type ImageBuilder struct {
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
-	conn, err := b.ConnFunc(b.SshConfig)
-	if err != nil {
-		return nil, err
-	}
-	defer conn.ConnClose()
-
 	f, err := ioutil.ReadFile(b.BuildScriptPath)
 	if err != nil {
 		return nil, err
@@ -40,9 +33,10 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		return nil, err
 	}
 
+	run := deployer.RunFunc(b.SshConfig)
 	cmd := fmt.Sprintf("echo %s > /tmp/run_script;sudo bash -x /tmp/run_script;rm -f  /tmp/run_script", script)
-	if _, stderr, err := conn.Run(cmd); err != nil {
-		return nil, fmt.Errorf("%s [%s]", stderr, err)
+	if _, err := run(cmd); err != nil {
+		return nil, err
 	}
 
 	if err := utils.CreateDirRecursively(b.RootfsMp, 0755, 0, 0, false); err != nil {
@@ -82,7 +76,6 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 type MetadataBuilder struct {
-	ConnFunc  deployer.ConnFuncAlias
 	SshConfig *ssh.Config
 	Source    string
 	Dest      string
@@ -98,13 +91,11 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
-	conn, err := b.ConnFunc(b.SshConfig)
-	if err != nil {
-		return nil, err
-	}
+
+	run := deployer.RunFunc(b.SshConfig)
 	cmd := fmt.Sprintf("echo %s > %s", data, b.Dest)
-	if _, stderr, err := conn.Run(cmd); err != nil {
-		return nil, fmt.Errorf("%s [%s]", stderr, err)
+	if _, err := run(cmd); err != nil {
+		return nil, err
 	}
 	return &deployer.RemoteArtifact{
 		Name: filepath.Base(b.Dest),

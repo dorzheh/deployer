@@ -5,19 +5,19 @@ import (
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/deployer"
-	ssh "github.com/dorzheh/infra/comm/common"
+	sshconf "github.com/dorzheh/infra/comm/common"
+	"github.com/dorzheh/infra/comm/ssh"
 )
 
 type Provisioner struct {
-	ConnFunc  deployer.ConnFuncAlias
-	SshConfig *ssh.Config
+	SshConfig *sshconf.Config
 	DstDir    string
 }
 
 func (p *Provisioner) Provision(artifacts []deployer.Artifact) (artfcts []deployer.Artifact, err error) {
-	conn, err := p.ConnFunc(p.SshConfig)
+	conn, err := ssh.NewSshConn(p.SshConfig)
 	if err != nil {
-		return
+		return nil, err
 	}
 	defer conn.ConnClose()
 
