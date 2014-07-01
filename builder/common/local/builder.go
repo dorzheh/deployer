@@ -75,7 +75,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 type MetadataBuilder struct {
-	*deployer.MetadataBulderData
+	*deployer.MetadataBuilderData
 	Compress bool
 }
 

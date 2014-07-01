@@ -16,17 +16,17 @@ type InputData struct {
 	LshwPath string
 }
 
-type commonOutputData struct {
+type metadata struct {
 	DomainName   string
 	EmulatorPath string
 	ImagePath    string
 }
 
 type Config struct {
-	Common   *deployer.CommonConfig
-	Networks map[string]*utils.NicInfo
+	Common       *deployer.CommonConfig
+	Networks     map[string]*utils.NicInfo
 	MetadataPath string
-	Data     *commonOutputData
+	Data         *metadata
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
@@ -49,8 +49,8 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Data.DomainName = d.VaName
-	c.Data.ImagePath = filepath.Join(c.Common.ExportDir,c.Data.DomainName)
-	c.MetadataPath = filepath.Join(c.Common.ExportDir,c.Data.DomainName,".xml")
+	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
+	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName, ".xml")
 
 	ni, err := info.NicsInfo()
 	if err != nil {
