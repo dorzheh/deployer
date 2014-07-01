@@ -14,12 +14,9 @@ import (
 )
 
 type ImageBuilder struct {
-	ImagePath   string
-	RootfsMp    string
-	GrubPath    string
-	ImageConfig *image.Topology
-	Filler      image.Rootfs
-	Compress    bool
+	*deployer.ImageBuilderData
+	GrubPath string
+	Compress bool
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
@@ -78,9 +75,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 type MetadataBuilder struct {
-	Source   string
-	Dest     string
-	UserData interface{}
+	*deployer.MetadataBulderData
 	Compress bool
 }
 

@@ -9,6 +9,7 @@ type CommonData struct {
 	RootDir  string
 	RootfsMp string
 	VaName   string
+	Arch	string
 	Ui       *ui.DialogUi
 }
 
@@ -16,4 +17,5 @@ type CommonConfig struct {
 	RemoteMode bool
 	ExportDir  string
 	SshConfig  *ssh.Config
+	Data *CommonData
 }

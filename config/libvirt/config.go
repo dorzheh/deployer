@@ -25,6 +25,7 @@ type commonOutputData struct {
 type Config struct {
 	Common   *deployer.CommonConfig
 	Networks map[string]*utils.NicInfo
+	MetadataPath string
 	Data     *commonOutputData
 }
 
@@ -48,6 +49,9 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Data.DomainName = d.VaName
+	c.Data.ImagePath = filepath.Join(c.Common.ExportDir,c.Data.DomainName)
+	c.MetadataPath = filepath.Join(c.Common.ExportDir,c.Data.DomainName,".xml")
+
 	ni, err := info.NicsInfo()
 	if err != nil {
 		return nil, err

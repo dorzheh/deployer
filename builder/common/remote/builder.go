@@ -6,7 +6,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/comm/gssh/sshfs"
@@ -14,13 +13,10 @@ import (
 )
 
 type ImageBuilder struct {
+	*deployer.ImageBuilderData
 	SshConfig           *ssh.Config
-	ImagePath           string
 	BuildScriptPath     string
-	RootfsMp            string
 	BuildScriptUserData interface{}
-	ImageConfig         *image.Topology
-	Filler              image.Rootfs
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
@@ -77,9 +73,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 
 type MetadataBuilder struct {
 	SshConfig *ssh.Config
-	Source    string
-	Dest      string
-	UserData  interface{}
+	*deployer.MetadataBuilderData
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
