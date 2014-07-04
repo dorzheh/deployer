@@ -19,7 +19,6 @@ func NewDriver(config *ssh.Config) *Driver {
 	return d
 }
 
-// Define is responsible for creating a new domain acording to provided XML template
 func (d *Driver) DefineDomain(domainConfig string) error {
 	d.Lock()
 	defer d.Unlock()
