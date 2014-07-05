@@ -55,7 +55,6 @@ func (d *Driver) UndefineDomain(name string) error {
 	return nil
 }
 
-// Define is responsible for creating a new domain acording to provided XML template
 func (d *Driver) SetAutostart(name string) error {
 	d.Lock()
 	defer d.Unlock()
