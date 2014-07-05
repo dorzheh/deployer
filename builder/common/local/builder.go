@@ -19,6 +19,10 @@ type ImageBuilder struct {
 	Compress bool
 }
 
+func (b *ImageBuilder) Id() string {
+	return "LocalImageBuilder"
+}
+
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	if err := utils.CreateDirRecursively(b.RootfsMp, 0755, 0, 0, false); err != nil {
 		return nil, err
@@ -77,6 +81,10 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 type MetadataBuilder struct {
 	*deployer.MetadataBuilderData
 	Compress bool
+}
+
+func (b *MetadataBuilder) Id() string {
+	return "LocalMetadataBuilder"
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {

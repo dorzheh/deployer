@@ -1,5 +1,5 @@
 // Customizing rootfs
-//
+
 package image
 
 import (

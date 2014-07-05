@@ -5,7 +5,7 @@ import (
 )
 
 type PostProcessor struct {
-	Driver      Driver
+	Driver      *Driver
 	DomName     string
 	StartDomain bool
 }

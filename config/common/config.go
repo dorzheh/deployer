@@ -14,6 +14,7 @@ func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
 		c.SshConfig.Host, c.SshConfig.Port, c.SshConfig.User, c.SshConfig.Password, c.SshConfig.PrvtKeyFile = gui.UiRemoteParams(d.Ui)
 	}
 	c.ExportDir = gui.UiImagePath(d.Ui, d.RootDir)
+	c.Data = new(deployer.CommonData)
 	c.Data = d
 	return c
 }

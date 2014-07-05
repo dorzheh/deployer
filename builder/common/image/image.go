@@ -122,7 +122,7 @@ func (i *image) Release() error {
 	if err := utils.RemoveIfExists(true, i.slashpath); err != nil {
 		return err
 	}
-	// "unmap" the image
+	// unbind mappers
 	if err := exec.Command("kpartx", "-d", i.loopDevice.name).Run(); err != nil {
 		return errors.New("kpartx" + " -d " + i.loopDevice.name)
 	}

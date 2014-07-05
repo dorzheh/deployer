@@ -19,6 +19,10 @@ type ImageBuilder struct {
 	BuildScriptUserData interface{}
 }
 
+func (b *ImageBuilder) Id() string {
+	return "RemoteImageBuilder"
+}
+
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	f, err := ioutil.ReadFile(b.BuildScriptPath)
 	if err != nil {
@@ -72,8 +76,12 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 type MetadataBuilder struct {
-	SshConfig *ssh.Config
 	*deployer.MetadataBuilderData
+	SshConfig *ssh.Config
+}
+
+func (b *MetadataBuilder) Id() string {
+	return "RemoteMetadataBuilder"
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {

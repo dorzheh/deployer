@@ -17,8 +17,8 @@ func UiNewSession() *gui.DialogUi {
 	return gui.NewDialogUi()
 }
 
-func UiValidateUser(ui *gui.DialogUi, user string) {
-	if err := infra.ValidateUser("root"); err != nil {
+func UiValidateUser(ui *gui.DialogUi, userId int) {
+	if err := infra.ValidateUserID(userId); err != nil {
 		ui.ErrorOutput(err.Error(), 6, 14)
 	}
 }
@@ -73,7 +73,7 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 func UiImagePath(ui *gui.DialogUi, defaultLocation string) (location string) {
 	for {
 		ui.SetSize(6, 64)
-		ui.Msgbox("Choose VA image location.\n\tPress <Ok> to proceed")
+		ui.Msgbox("The next step allows to choose a location for the image.\n\tPress <Ok> to proceed")
 		location = ui.Dselect(defaultLocation)
 		if _, err := os.Stat(location); err != nil {
 			continue
@@ -117,15 +117,17 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo) (map[string]*utils.NicInfo, error) {
 	newMap := make(map[string]*utils.NicInfo)
 	var temp []string
+	index := 0
 	for _, n := range info {
-		temp = append(temp, fmt.Sprintf("%s (driver type %s, %s)", n.Name, n.Driver, n.Desc))
+		index += 1
+		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
 	}
 
 	sliceLength := len(temp)
 	for _, net := range networks {
 		var ifaceNumStr string
 		for {
-			ui.SetSize(10+sliceLength, 55)
+			ui.SetSize(sliceLength, 95)
 			ui.SetLabel(fmt.Sprintf("Choose appropriate interface for \"%s\" network:", net))
 			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
 			if ifaceNumStr != "" {
@@ -136,7 +138,7 @@ func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo
 		if err != nil {
 			return nil, err
 		}
-		newMap[net] = info[ifaceNumInt]
+		newMap[net] = info[ifaceNumInt-1]
 	}
 	return newMap, nil
 }

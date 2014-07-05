@@ -4,7 +4,7 @@
 //
 //<?xml version="1.0" encoding="UTF-8"?>
 //<Platforms>
-//  <Platform>
+//  <Topology>
 //    <Name>Test</Name>
 //    <Type>1</Type>
 //	<HddSizeGb>5</HddSizeGb>
@@ -27,7 +27,7 @@
 //      <FileSystem>swap</FileSystem>
 //	  <FileSystemArgs></FileSystemArgs>
 //	</Partition>
-//  </Platform>
+//  </Topology>
 //</Platforms>`
 
 package image
@@ -35,6 +35,7 @@ package image
 import (
 	"bytes"
 	"encoding/xml"
+	"fmt"
 	"io/ioutil"
 )
 
@@ -49,8 +50,8 @@ type Topology struct {
 	Type        string      `xml:"Type"`
 	HddSizeGb   int         `xml:"HddSizeGb"`
 	Bootable    bool        `xml:"Bootable"`
-	Description string      `xml:"Description"`
 	FdiskCmd    string      `xml: "FdiskCmd"`
+	Description string      `xml:"Description"`
 	Partitions  []Partition `xml:"Partition"`
 }
 
@@ -84,6 +85,10 @@ func ParseConfig(fb []byte) (*Platforms, error) {
 }
 
 // TypToTopology returns a topology configuration related to a type
-func (p *Platforms) TypeToTopology(topotype TopologyType) *Topology {
-	return &p.Platforms[topotype]
+func (p *Platforms) TypeToTopology(topotype TopologyType) (*Topology, error) {
+	t := &p.Platforms[topotype]
+	if t == nil {
+		return nil, fmt.Errorf("no topology found for type %d", topotype)
+	}
+	return t, nil
 }

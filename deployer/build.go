@@ -24,7 +24,7 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	if err != nil {
 		return
 	}
-	progressBarTitle := c.VaName + " deployment progress"
+	progressBarTitle := c.VaName + " artifacts building progress"
 	progressBarMsg := "\n\nPlease wait..."
 	err = c.Ui.Progress(progressBarTitle, progressBarMsg, duration, 15, errChan)
 	return
