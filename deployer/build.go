@@ -30,35 +30,32 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	return
 }
 
-func Build(builders []Builder) (artifacts []Artifact, err error) {
-	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
-	errCh := make(chan error, runtime.NumCPU())
-	defer close(errCh)
-
-	var artifact Artifact
-	for _, b := range builders {
-		go func() {
-			if artifact, err = b.Run(); err != nil {
-				errCh <- err
-			}
-			artifacts = append(artifacts, artifact)
-			errCh <- nil
-		}()
-	}
-	if err = WaitForResult(errCh, len(builders)); err != nil {
-		return
-	}
-	return
+type buildResult struct {
+	artifact Artifact
+	err      error
 }
 
-func WaitForResult(ch <-chan error, num int) error {
-	for i := 0; i < num; i++ {
+func Build(builders []Builder) ([]Artifact, error) {
+	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
+
+	var artifacts []Artifact
+	ch := make(chan *buildResult, len(builders))
+	defer close(ch)
+
+	for _, b := range builders {
+		go func(b Builder) {
+			artifact, err := b.Run()
+			ch <- &buildResult{artifact, err}
+		}(b)
+	}
+	for i := 0; i < len(builders); i++ {
 		select {
 		case result := <-ch:
-			if result != nil {
-				return result
+			if result.err != nil {
+				return nil, result.err
 			}
+			artifacts = append(artifacts, result.artifact)
 		}
 	}
-	return nil
+	return artifacts, nil
 }

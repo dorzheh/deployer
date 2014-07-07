@@ -54,7 +54,7 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 	for {
 		ui.SetSize(8, 30)
 		ui.SetLabel("Appliance name: ")
-		name := ui.Inputbox(defaultName)
+		name = ui.Inputbox(defaultName)
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
 			if driver != nil {

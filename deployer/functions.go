@@ -66,3 +66,15 @@ func ProcessTemplate(str string, userData interface{}) ([]byte, error) {
 	}
 	return buf.Bytes(), nil
 }
+
+func WaitForResult(ch <-chan error, num int) error {
+	for i := 0; i < num; i++ {
+		select {
+		case result := <-ch:
+			if result != nil {
+				return result
+			}
+		}
+	}
+	return nil
+}

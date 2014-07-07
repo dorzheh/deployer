@@ -16,7 +16,7 @@ type InputData struct {
 	LshwPath string
 }
 
-type metadata struct {
+type CommonMetadata struct {
 	DomainName   string
 	EmulatorPath string
 	ImagePath    string
@@ -26,7 +26,7 @@ type Config struct {
 	Common       *deployer.CommonConfig
 	Networks     map[string]*utils.NicInfo
 	MetadataPath string
-	Data         *metadata
+	Data         *CommonMetadata
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
@@ -35,7 +35,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c := new(Config)
 	c.Common = common.CreateConfig(d)
 	driver := libvirt.NewDriver(c.Common.SshConfig)
-	c.Data = new(metadata)
+	c.Data = new(CommonMetadata)
 	if c.Data.EmulatorPath, err = driver.Emulator(); err != nil {
 		return nil, err
 	}
@@ -55,7 +55,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Data.DomainName = d.VaName
 	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
-	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName, ".xml")
+	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
 
 	ni, err := info.NicsInfo()
 	if err != nil {

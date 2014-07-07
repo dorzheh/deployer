@@ -1,6 +1,8 @@
 package deployer
 
-import "github.com/dorzheh/deployer/builder/common/image"
+import (
+	"github.com/dorzheh/deployer/builder/common/image"
+)
 
 type Builder interface {
 	Id() string

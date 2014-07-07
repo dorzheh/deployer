@@ -28,7 +28,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		return nil, err
 	}
 	defer os.RemoveAll(b.RootfsMp)
-	// create new image object
+	// create new image artifact
 	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig)
 	if err != nil {
 		return nil, err

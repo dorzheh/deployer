@@ -9,7 +9,7 @@
 //    <Type>1</Type>
 //	<HddSizeGb>5</HddSizeGb>
 //  <Bootable>true</Bootable>
-//	<FdiskCmd>n\np\n1\n\n+%vM\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
+//	<FdiskCmd>n\np\n1\n\n+3045M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
 //    <Description>Topology for release xxxx</Description>
 //    <Partition>
 //	  <Sequence>1</Sequence>
