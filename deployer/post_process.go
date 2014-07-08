@@ -10,11 +10,7 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 	errChan := make(chan error)
 	defer close(errChan)
 	go func() {
-		if err := p.PostProcess(artifacts); err != nil {
-			errChan <- err
-			return
-		}
-		errChan <- nil
+		errChan <- p.PostProcess(artifacts)
 	}()
 	duration, err := time.ParseDuration("10s")
 	if err != nil {

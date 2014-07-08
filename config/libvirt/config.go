@@ -31,6 +31,7 @@ type Config struct {
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	var err error
+	d.DefaultExportDir = "/var/lib/libvirt/image"
 
 	c := new(Config)
 	c.Common = common.CreateConfig(d)

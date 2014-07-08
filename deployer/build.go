@@ -5,6 +5,8 @@ import (
 	"time"
 )
 
+// BuildProgress is responsible for running appropriate builders
+// and representing a progress bar providing information about the build progress
 func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err error) {
 	if c.Ui == nil {
 		return Build(builders)
@@ -30,6 +32,7 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	return
 }
 
+// buildResult
 type buildResult struct {
 	artifact Artifact
 	err      error
