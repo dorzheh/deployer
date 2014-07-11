@@ -13,6 +13,7 @@ import (
 	"github.com/dorzheh/infra/utils"
 )
 
+// ImageBuilder represents
 type ImageBuilder struct {
 	*deployer.ImageBuilderData
 	GrubPath string

@@ -69,7 +69,6 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 	return name
 }
 
-// setImageLocation method sets location for the VA image
 func UiImagePath(ui *gui.DialogUi, defaultLocation string) (location string) {
 	for {
 		ui.SetSize(6, 64)

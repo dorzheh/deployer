@@ -11,6 +11,7 @@ import (
 	"github.com/dorzheh/mxj"
 )
 
+// CpuInfo contains CPU description and properties
 type CpuInfo struct {
 	Desc map[string]interface{}
 	Cap  map[string]interface{}
@@ -31,26 +32,26 @@ type NicInfo struct {
 	Type   NicType
 }
 
-type HwInfo struct {
+type HwInfoParser struct {
 	run       func(string) (string, error)
 	cacheFile string
 	cmd       string
 }
 
-func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfo, error) {
+func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoParser, error) {
 	lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
 	l, err := lshw.New(lshwpath, lshwconf)
 	if err != nil {
 		return nil, err
 	}
-	i := new(HwInfo)
+	i := new(HwInfoParser)
 	i.run = deployer.RunFunc(sshconf)
 	i.cmd = l.Cmd()
 	i.cacheFile = cacheFile
 	return i, nil
 }
 
-func (i *HwInfo) Parse() error {
+func (i *HwInfoParser) Parse() error {
 	out, err := i.run(i.cmd)
 	if err != nil {
 		return err
@@ -58,7 +59,7 @@ func (i *HwInfo) Parse() error {
 	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
 }
 
-func (i *HwInfo) CpuInfo() (*CpuInfo, error) {
+func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err
@@ -90,7 +91,7 @@ func (i *HwInfo) CpuInfo() (*CpuInfo, error) {
 	return c, nil
 }
 
-func (i *HwInfo) NicsInfo() (map[int]*NicInfo, error) {
+func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err

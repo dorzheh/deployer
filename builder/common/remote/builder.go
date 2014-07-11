@@ -105,3 +105,34 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 		Type: deployer.MetadataArtifact,
 	}, nil
 }
+
+//var getLoopDevice = `#!/bin/env bash
+//dd if=/dev/zero of={{ .PathToImage }} bs=1 count=1 seek={{ .HddSizeGb }}G
+//loop_device=""
+//for ((i=0;i<10;i++));do
+//    loop_device=$(losetup -f)
+//    losetup $loop_device $path_to_image && break
+//    sleep 2
+// done
+// echo -e "{{ .FdiskCmd }}" | fdisk $loop_device
+//  kpartx -av $loop_device
+
+//  local free_loop_name=${loop_device##/dev/}
+//  local loop_root_partition=${free_loop_name}p1
+//  local loop_swap_partition=${free_loop_name}p2
+
+//  [ ! -e /dev/mapper/$loop_root_partition ] && {
+//   echo "FATAL: loop device doesn't have any partitons"
+//   return 1
+//  }
+
+//  mkfs.ext4 /dev/mapper/$loop_root_partition
+//  e2fsck -y -f /dev/mapper/$loop_root_partition
+//  e2label /dev/mapper/$loop_root_partition SLASH
+//  mkswap -L SWAP /dev/mapper/$loop_swap_partition
+// __populate_loop_dev $loop_root_partition $type
+//  $TOOLS_DIR/bin/grub-legacy/grub --device-map=/dev/null << EOF
+//  device (hd0) $path_to_image
+//  root (hd0,0)
+//  setup (hd0)
+//EOF`
