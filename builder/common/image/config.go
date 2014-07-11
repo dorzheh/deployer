@@ -65,7 +65,7 @@ type Partition struct {
 	Description    string `xml:"description"`
 }
 
-// Parse is responsible for parsing appropriate XML file
+// ParseConfigFile is responsible for parsing appropriate XML file
 func ParseConfigFile(xmlpath string) (*Platforms, error) {
 	fb, err := ioutil.ReadFile(xmlpath)
 	if err != nil {
@@ -84,7 +84,7 @@ func ParseConfig(fb []byte) (*Platforms, error) {
 	return p, nil
 }
 
-// TypToTopology returns a topology configuration related to a type
+// TypeToTopology returns a topology configuration related to a type
 func (p *Platforms) TypeToTopology(topotype TopologyType) (*Topology, error) {
 	t := &p.Platforms[topotype]
 	if t == nil {
