@@ -153,3 +153,26 @@ func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 	}
 	return nicsMap, nil
 }
+
+func (i *HwInfoParser) RAMSize() (uint, error) {
+	var ramsize uint = 0
+	if _, err := os.Stat(i.cacheFile); err != nil {
+		if err = i.Parse(); err != nil {
+			return ramsize, err
+		}
+	}
+	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
+	if err != nil {
+		return ramsize, err
+	}
+	for _, s := range out {
+		r, _ := s.ValuesForPath("children.children")
+		for _, n := range r {
+			ch := n.(map[string]interface{})
+			if ch["id"] == "memory" {
+				ramsize = uint(ch["size"].(float64))
+			}
+		}
+	}
+	return uint(ramsize), nil
+}

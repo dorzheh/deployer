@@ -137,3 +137,30 @@ func printNicInfo(info map[int]*NicInfo) {
 		fmt.Println("==================")
 	}
 }
+
+func TestRAMsize(t *testing.T) {
+	i, err := NewHwInfoParser(tmpFile, "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.Remove(tmpFile)
+
+	// get HW info and write the info file
+	fmt.Println("===> executing lshw locally,writing info file")
+	if err := i.Parse(); err != nil {
+		t.Fatal(err)
+	}
+	_, err = i.RAMSize()
+	fmt.Println("===> parsing info file #1")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// read info file, do not run lshw
+	fmt.Println("===> parsing info file #2")
+	var ramsize uint
+	if ramsize, err = i.RAMSize(); err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("===> ramsize = %d ", ramsize)
+}
