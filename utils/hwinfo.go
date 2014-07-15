@@ -3,6 +3,7 @@ package utils
 import (
 	"io/ioutil"
 	"os"
+	"strconv"
 	"strings"
 
 	"github.com/dorzheh/deployer/deployer"
@@ -13,6 +14,7 @@ import (
 
 // CpuInfo contains CPU description and properties
 type CpuInfo struct {
+	Cpus int
 	Desc map[string]interface{}
 	Cap  map[string]interface{}
 }
@@ -65,11 +67,23 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 			return nil, err
 		}
 	}
+
 	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
 	if err != nil {
 		return nil, err
 	}
+
 	c := new(CpuInfo)
+	cpustr, err := i.run(`grep -c processor /proc/cpuinfo`)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Cpus, err = strconv.Atoi(strings.Trim(cpustr, "\n"))
+	if err != nil {
+		return nil, err
+	}
+
 	c.Desc = make(map[string]interface{})
 	c.Cap = make(map[string]interface{})
 	for _, s := range out {

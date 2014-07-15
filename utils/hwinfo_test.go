@@ -29,10 +29,12 @@ func TestCpuInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	_, err = i.CpuInfo()
+	info, err := i.CpuInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	fmt.Printf("===> CPUs: %d\n", info.Cpus)
 }
 
 func TestCpuInfoRemote(t *testing.T) {

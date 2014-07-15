@@ -25,6 +25,7 @@ type CommonMetadata struct {
 type Config struct {
 	Common       *deployer.CommonConfig
 	Networks     map[string]*utils.NicInfo
+	HwInfo       *utils.HwInfoParser
 	MetadataPath string
 	Data         *CommonMetadata
 }
@@ -45,10 +46,10 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 			return nil, err
 		}
 	}
-	info, err := utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
+	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
 
 	go func() {
-		if err := info.Parse(); err != nil {
+		if err := c.HwInfo.Parse(); err != nil {
 			panic(err)
 		}
 	}()
@@ -58,7 +59,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
 	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
 
-	ni, err := info.NicsInfo()
+	ni, err := c.HwInfo.NicsInfo()
 	if err != nil {
 		return nil, err
 	}
