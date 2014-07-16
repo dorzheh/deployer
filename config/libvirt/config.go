@@ -20,6 +20,8 @@ type CommonMetadata struct {
 	DomainName   string
 	EmulatorPath string
 	ImagePath    string
+	Cpus         uint
+	RAM          uint
 }
 
 type Config struct {
@@ -32,7 +34,7 @@ type Config struct {
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	var err error
-	d.DefaultExportDir = "/var/lib/libvirt/image"
+	d.DefaultExportDir = "/var/lib/libvirt/images"
 
 	c := new(Config)
 	c.Common = common.CreateConfig(d)
