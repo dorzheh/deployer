@@ -20,8 +20,6 @@ type CommonMetadata struct {
 	DomainName   string
 	EmulatorPath string
 	ImagePath    string
-	Cpus         uint
-	RAM          uint
 }
 
 type Config struct {
