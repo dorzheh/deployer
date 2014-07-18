@@ -74,7 +74,7 @@ func (c *FlowCreator) CreateBuilders() (b []deployer.Builder, err error) {
 	} else {
 		imageBuilder = &local.ImageBuilder{imageData,
 			filepath.Join(c.conf.Common.Data.RootDir, "install",
-				c.conf.Common.Data.Arch, "bin/lshw"), false}
+				c.conf.Common.Data.Arch, "bin/grub"), false}
 	}
 
 	var metadataBuilder deployer.Builder
