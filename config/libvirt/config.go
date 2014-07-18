@@ -20,6 +20,7 @@ type CommonMetadata struct {
 	DomainName   string
 	EmulatorPath string
 	ImagePath    string
+	Networks     string
 }
 
 type Config struct {
@@ -69,6 +70,11 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	}
 
 	c.Networks, err = gui.UiNetworks(d.Ui, i.Networks, ni)
+	if err != nil {
+		return nil, err
+	}
+
+	c.Data.Networks, err = SetNetworkData(c.Networks)
 	if err != nil {
 		return nil, err
 	}
