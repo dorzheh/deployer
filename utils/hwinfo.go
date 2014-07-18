@@ -136,6 +136,7 @@ func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 					default:
 						prod, ok := ch["product"].(string)
 						if ok {
+							nic.PCIAddr = ch["businfo"].(string)
 							vendor, _ := ch["vendor"].(string)
 							nic.Desc = vendor + " " + prod
 							nic.Type = NicTypePhys
