@@ -65,7 +65,8 @@ type Partition struct {
 	Description    string `xml:"description"`
 }
 
-// ParseConfigFile is responsible for parsing appropriate XML file
+// ParseConfigFile is responsible for reading appropriate XML file
+// and calling ParseConfig for further processing
 func ParseConfigFile(xmlpath string) (*Platforms, error) {
 	fb, err := ioutil.ReadFile(xmlpath)
 	if err != nil {
@@ -74,6 +75,7 @@ func ParseConfigFile(xmlpath string) (*Platforms, error) {
 	return ParseConfig(fb)
 }
 
+// ParseConfig is responsible for processing XML content
 func ParseConfig(fb []byte) (*Platforms, error) {
 	buf := bytes.NewBuffer(fb)
 	p := new(Platforms)

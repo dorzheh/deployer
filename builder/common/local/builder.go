@@ -1,3 +1,4 @@
+// Local builder is responsible for creating local artifacts
 package local
 
 import (
@@ -13,7 +14,10 @@ import (
 	"github.com/dorzheh/infra/utils"
 )
 
-// ImageBuilder represents
+// ImageBuilder represents properties related to a local image builder
+// *deployer.ImageBuilderData reprsents common data
+// GrubPath - path to a grub 1.x binary
+// Compress indicates if the artifact should be compressed
 type ImageBuilder struct {
 	*deployer.ImageBuilderData
 	GrubPath string
@@ -79,6 +83,9 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}, nil
 }
 
+// MetadataBuilder represents properties related to a local metadata builder
+// *deployer.MetadataBuilderData represents common data
+// Compress indicates if the artifact should be compressed
 type MetadataBuilder struct {
 	*deployer.MetadataBuilderData
 	Compress bool
@@ -119,6 +126,8 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	}, nil
 }
 
+// InstanceBuilder represents properties related to a local instance builder
+// The common usage of InstanceBuiler: running deployer on a cloud instance
 type InstanceBuilder struct {
 	Filler image.Rootfs
 }
@@ -133,6 +142,7 @@ func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {
 	return
 }
 
+// compressArtifact is intended for compressing artifacts in case of necessity
 func compressArtifact(path string) (string, error) {
 	dir := filepath.Dir(path)
 	oldArtifactFile := filepath.Base(path)

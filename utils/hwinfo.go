@@ -28,10 +28,11 @@ const (
 )
 
 type NicInfo struct {
-	Name   string
-	Driver string
-	Desc   string
-	Type   NicType
+	Name    string
+	Driver  string
+	Desc    string
+	PCIAddr string
+	Type    NicType
 }
 
 type HwInfoParser struct {

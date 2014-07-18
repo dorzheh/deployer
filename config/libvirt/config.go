@@ -48,16 +48,20 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	}
 	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
 
+	errCh := make(chan error)
+	defer close(errCh)
 	go func() {
-		if err := c.HwInfo.Parse(); err != nil {
-			panic(err)
-		}
+		errCh <- c.HwInfo.Parse()
 	}()
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Data.DomainName = d.VaName
 	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
 	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
+
+	if err = deployer.WaitForResult(errCh, 1); err != nil {
+		return nil, err
+	}
 
 	ni, err := c.HwInfo.NicsInfo()
 	if err != nil {

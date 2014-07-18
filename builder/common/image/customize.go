@@ -1,4 +1,4 @@
-// Customizing rootfs
+// Responsible for customizing rootfs
 
 package image
 
