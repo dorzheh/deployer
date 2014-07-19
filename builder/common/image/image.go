@@ -22,17 +22,18 @@ import (
 type mapperDevice struct {
 	// device name(full path)
 	name string
+
 	// mount point the device is mounted
 	mountPoint string
-	// Linux tree path
-	//path string
 }
 
 type loopDevice struct {
 	// device name(full path)
 	name string
+
 	// slice of mapperDevice pointers
 	mappers []*mapperDevice
+
 	// counter - amount of mappers the loop device contains
 	amountOfMappers uint8
 }
@@ -41,12 +42,16 @@ type loopDevice struct {
 type image struct {
 	// path to the image
 	imgpath string
+
 	// path to sirectory intended for mounting the image
 	slashpath string
+
 	// platform configuration file (image config)
 	conf *Topology
+
 	// do we need to partition and format the image
 	needToFormat bool
+
 	// loop device structure
 	*loopDevice
 }

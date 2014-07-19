@@ -15,12 +15,14 @@ import (
 )
 
 // ImageBuilder represents properties related to a local image builder
-// *deployer.ImageBuilderData reprsents common data
-// GrubPath - path to a grub 1.x binary
-// Compress indicates if the artifact should be compressed
 type ImageBuilder struct {
+	// *deployer.ImageBuilderData represents common data
 	*deployer.ImageBuilderData
+
+	// GrubPath - path to grub 1.x binary
 	GrubPath string
+
+	// Compress indicates if the artifact should be compressed
 	Compress bool
 }
 
@@ -84,10 +86,10 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 }
 
 // MetadataBuilder represents properties related to a local metadata builder
-// *deployer.MetadataBuilderData represents common data
-// Compress indicates if the artifact should be compressed
 type MetadataBuilder struct {
+	// *deployer.MetadataBuilderData represents common data
 	*deployer.MetadataBuilderData
+	// Compress indicates if the artifact should be compressed
 	Compress bool
 }
 

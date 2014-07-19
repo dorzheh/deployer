@@ -1,3 +1,4 @@
+// Represents any artifact crated by deployer
 package deployer
 
 import "os"
@@ -9,16 +10,32 @@ const (
 	MetadataArtifact
 )
 
+// Artifact is the interface to a real artifact implementation
+// Any artifact object must implement this interface
 type Artifact interface {
+	// artifact ID
 	GetName() string
+
+	// path to artifact
 	GetPath() string
+
+	// artifact type (either ImageArtifact or MetadataArtifact)
 	GetType() ArtifactType
+
+	// destroys the artifact
 	Destroy() error
 }
 
+// LocalArtifact implements Artifact interface
+// and represents artifacts that creared and used locally
 type LocalArtifact struct {
+	// Name - artifact name
 	Name string
+
+	// Path - full path to artifact
 	Path string
+
+	// artifact type (either ImageArtifact or MetadataArtifact)
 	Type ArtifactType
 }
 

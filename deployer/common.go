@@ -7,19 +7,26 @@ import (
 
 // CommonData represents the data
 // required by deployer at any stage
-// RootDir  - directory containing components
-// needed for creaing artifacts
-// DefaultExportDir - default directory for created artifact
-// VaName - default name for the virtual appliance
-// Arch - archirecture we'r running on
-// Ui - user interface
 type CommonData struct {
-	RootDir          string
-	RootfsMp         string
+	// Directory containing components required for
+	// creating the target appliance
+	RootDir string
+
+	// Directory that will be used as a mount point
+	// for
+	RootfsMp string
+
+	// DefaultExportDir - default directory for created artifact
 	DefaultExportDir string
-	VaName           string
-	Arch             string
-	Ui               *ui.DialogUi
+
+	// VaName - default name for the virtual appliance
+	VaName string
+
+	// Arch - archirecture we'r running on
+	Arch string
+
+	// Ui - user interface
+	Ui *ui.DialogUi
 }
 
 // CommonConfig represents common configuration

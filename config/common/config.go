@@ -1,3 +1,5 @@
+// Intended for creating a common configuration
+// required by either target
 package common
 
 import (

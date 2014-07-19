@@ -1,3 +1,4 @@
+// Local builder is responsible for creating remote artifacts
 package remote
 
 import (
@@ -12,9 +13,15 @@ import (
 	"github.com/dorzheh/infra/utils"
 )
 
+// ImageBuilder represents properties related to a local image builder
 type ImageBuilder struct {
+	// *deployer.ImageBuilderData represents common data
 	*deployer.ImageBuilderData
-	SshConfig           *ssh.Config
+
+	// SshCpnfig provides appropriate properties
+	// for being able to create remote connection
+	SshConfig *ssh.Config
+
 	BuildScriptPath     string
 	BuildScriptUserData interface{}
 }
@@ -75,7 +82,9 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}, nil
 }
 
+// MetadataBuilder represents properties related to a remote metadata builder
 type MetadataBuilder struct {
+	// *deployer.MetadataBuilderData represents common data
 	*deployer.MetadataBuilderData
 	SshConfig *ssh.Config
 }

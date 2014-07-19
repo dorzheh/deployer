@@ -1,3 +1,5 @@
+// Intended for creating configuration related to those deployments
+// where the target appliance assumed to be powered by libvirt API
 package libvirt
 
 import (
@@ -11,11 +13,18 @@ import (
 	"github.com/dorzheh/deployer/utils"
 )
 
+// InputData provides a static data
 type InputData struct {
+	// Networks contains a slice of networks
+	// that the target appliance will be bound to
 	Networks []string
+
+	// Path to the lshw binary
 	LshwPath string
 }
 
+// CommonMetadata contains elements that will processed
+// by the template library and used by Libvirt XML metadata
 type CommonMetadata struct {
 	DomainName   string
 	EmulatorPath string
@@ -23,6 +32,9 @@ type CommonMetadata struct {
 	Networks     string
 }
 
+// Config contains common configuration plus appropriate
+// configuration required for appliances powered by environment
+// based on libvirt API
 type Config struct {
 	Common       *deployer.CommonConfig
 	Networks     map[string]*utils.NicInfo
