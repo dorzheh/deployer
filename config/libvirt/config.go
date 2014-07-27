@@ -3,7 +3,6 @@
 package libvirt
 
 import (
-	"os/exec"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/config/common"
@@ -54,11 +53,6 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	if c.Data.EmulatorPath, err = driver.Emulator(); err != nil {
 		return nil, err
 	}
-	if i.LshwPath == "" {
-		if i.LshwPath, err = exec.LookPath("lshw"); err != nil {
-			return nil, err
-		}
-	}
 	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
 
 	errCh := make(chan error)
@@ -72,7 +66,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
 	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
 
-	if err = deployer.WaitForResult(errCh, 1); err != nil {
+	if err = utils.WaitForResult(errCh, 1); err != nil {
 		return nil, err
 	}
 

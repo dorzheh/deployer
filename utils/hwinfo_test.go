@@ -51,7 +51,7 @@ func TestCpuInfoRemote(t *testing.T) {
 	defer os.Remove(tmpFile)
 
 	// get HW info and write the info file
-	fmt.Println("===> executing lshw locally,writing info file")
+	fmt.Println("===> executing lshw remotely,writing info file")
 	if err := i.Parse(); err != nil {
 		t.Fatal(err)
 	}

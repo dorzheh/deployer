@@ -11,8 +11,8 @@ import (
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
-	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/deployer/utils"
+	infrautils "github.com/dorzheh/infra/utils"
 )
 
 type RootfsFiller struct {
@@ -28,12 +28,13 @@ type RootfsFiller struct {
 func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 	if f.PathToRootfsArchive == "" {
 		if f.PathToInjectDir != "" {
-			if err := utils.RunSorted(filepath.Join(f.PathToInjectDir, "pre-deploy-scripts")); err != nil {
+			if err := utils.RunPrePostScripts(filepath.Join(f.PathToInjectDir,
+				"pre-deploy-scripts"), utils.PRE_SCRIPTS); err != nil {
 				return err
 			}
 		}
 	} else {
-		if err := utils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
+		if err := infrautils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
 			return err
 		}
 	}
@@ -42,12 +43,12 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 		defer close(errCh)
 
 		go func() {
-			errCh <- utils.Extract(f.PathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
+			errCh <- infrautils.Extract(f.PathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
 		}()
 		go func() {
-			errCh <- utils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
+			errCh <- infrautils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
 		}()
-		if err := deployer.WaitForResult(errCh, 2); err != nil {
+		if err := utils.WaitForResult(errCh, 2); err != nil {
 			return err
 		}
 
@@ -59,7 +60,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 			return errors.New("modules not found")
 		}
 
-		kernelVersion := modulesDir[0]
+		kernelVersion := filepath.Base(modulesDir[0])
 		if err := os.Symlink("/boot/vmlinuz-"+kernelVersion, filepath.Join(pathToRootfsMp, "vmlinuz")); err != nil {
 			return err
 		}
@@ -86,7 +87,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 
 // InstallApp is responsible for application installation
 func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
-	if err := utils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
+	if err := infrautils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
 		return err
 	}
 	if f.ExtractApplImage {

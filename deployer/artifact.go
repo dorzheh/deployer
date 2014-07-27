@@ -1,7 +1,10 @@
 // Represents any artifact crated by deployer
 package deployer
 
-import "os"
+import (
+	"github.com/dorzheh/deployer/utils"
+	ssh "github.com/dorzheh/infra/comm/common"
+)
 
 type ArtifactType uint8
 
@@ -13,66 +16,77 @@ const (
 // Artifact is the interface to a real artifact implementation
 // Any artifact object must implement this interface
 type Artifact interface {
-	// artifact ID
+	// Artifact ID
 	GetName() string
 
-	// path to artifact
+	// Path to artifact
 	GetPath() string
 
-	// artifact type (either ImageArtifact or MetadataArtifact)
+	// Artifact type (either ImageArtifact or MetadataArtifact)
 	GetType() ArtifactType
 
-	// destroys the artifact
+	// Destroys the artifact
 	Destroy() error
 }
 
 // LocalArtifact implements Artifact interface
 // and represents artifacts that creared and used locally
-type LocalArtifact struct {
-	// Name - artifact name
-	Name string
+type CompressedArtifact struct {
+	// Artifact name before compression
+	RealName string
 
 	// Path - full path to artifact
 	Path string
 
-	// artifact type (either ImageArtifact or MetadataArtifact)
+	// Artifact type (either ImageArtifact or MetadataArtifact)
 	Type ArtifactType
+
+	SshConfig *ssh.Config
 }
 
-func (a *LocalArtifact) GetName() string {
-	return a.Name
+func (a *CompressedArtifact) GetName() string {
+	return a.RealName
 }
 
-func (a *LocalArtifact) GetPath() string {
+func (a *CompressedArtifact) GetPath() string {
 	return a.Path
 }
 
-func (a *LocalArtifact) GetType() ArtifactType {
+func (a *CompressedArtifact) GetType() ArtifactType {
 	return a.Type
 }
 
-func (a *LocalArtifact) Destroy() error {
-	return os.Remove(a.Path)
+func (a *CompressedArtifact) Destroy() error {
+	run := utils.RunFunc(a.SshConfig)
+	if _, err := run("rm -f " + a.Path); err != nil {
+		return err
+	}
+	return nil
 }
 
-type RemoteArtifact struct {
-	Name string
-	Path string
-	Type ArtifactType
+type CommonArtifact struct {
+	Name      string
+	Path      string
+	Type      ArtifactType
+	SshConfig *ssh.Config
 }
 
-func (a *RemoteArtifact) GetName() string {
+func (a *CommonArtifact) GetName() string {
 	return a.Name
 }
 
-func (a *RemoteArtifact) GetPath() string {
+func (a *CommonArtifact) GetPath() string {
 	return a.Path
 }
 
-func (a *RemoteArtifact) GetType() ArtifactType {
+func (a *CommonArtifact) GetType() ArtifactType {
 	return a.Type
 }
 
-func (a *RemoteArtifact) Destroy() error {
+func (a *CommonArtifact) Destroy() error {
+	run := utils.RunFunc(a.SshConfig)
+	if _, err := run("rm -f " + a.Path); err != nil {
+		return err
+	}
 	return nil
 }

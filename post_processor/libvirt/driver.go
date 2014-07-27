@@ -3,7 +3,7 @@ package libvirt
 import (
 	"sync"
 
-	"github.com/dorzheh/deployer/deployer"
+	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/mxj"
 )
@@ -15,7 +15,7 @@ type Driver struct {
 
 func NewDriver(config *ssh.Config) *Driver {
 	d := new(Driver)
-	d.run = deployer.RunFunc(config)
+	d.run = utils.RunFunc(config)
 	return d
 }
 

@@ -72,7 +72,7 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 func UiImagePath(ui *gui.DialogUi, defaultLocation string) (location string) {
 	for {
 		ui.SetSize(6, 64)
-		ui.Msgbox("The next step allows to choose a location for the image.\n\tPress <Ok> to proceed")
+		ui.Msgbox("The next step allows to choose location for the image.\n\tPress <Ok> to proceed")
 		location = ui.Dselect(defaultLocation)
 		if _, err := os.Stat(location); err != nil {
 			continue
@@ -92,8 +92,16 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 
 func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 	ip := ui.GetIpFromInput("Remote server IP:")
+	port := "22"
+	for {
+		port = ui.GetFromInput("SSH port:", port)
+		if portDig, err := strconv.Atoi(port); err == nil {
+			if portDig < 65536 {
+				break
+			}
+		}
+	}
 	user := ui.GetFromInput(ip+" user:", "root")
-	var port string
 	var passwd string
 	var keyFile string
 	answer := ui.Menu(2, "1", "Password", "2", "Private key")

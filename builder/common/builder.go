@@ -1,5 +1,5 @@
 // Local builder is responsible for creating local artifacts
-package local
+package common
 
 import (
 	"bytes"
@@ -11,13 +11,18 @@ import (
 
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/deployer/utils"
+	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 // ImageBuilder represents properties related to a local image builder
 type ImageBuilder struct {
-	// *deployer.ImageBuilderData represents common data
+	// deployer.ImageBuilderData represents common data
 	*deployer.ImageBuilderData
+
+	// image.RemoteConfig represents remote configuration
+	// facility needed by the builder
+	Rconf *image.RemoteConfig
 
 	// GrubPath - path to grub 1.x binary
 	GrubPath string
@@ -27,35 +32,39 @@ type ImageBuilder struct {
 }
 
 func (b *ImageBuilder) Id() string {
+	if b.Rconf == nil {
+		return "RemoteImageBuilder"
+	}
 	return "LocalImageBuilder"
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
-	if err := utils.CreateDirRecursively(b.RootfsMp, 0755, 0, 0, false); err != nil {
+	if err := os.MkdirAll(b.RootfsMp, 0755); err != nil {
 		return nil, err
 	}
-	defer os.RemoveAll(b.RootfsMp)
+	defer func() error {
+		return os.RemoveAll(b.RootfsMp)
+	}()
 	// create new image artifact
-	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig)
+	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.Rconf)
 	if err != nil {
-		return nil, err
-	}
-	// parse the image
-	if err := img.Parse(); err != nil {
 		return nil, err
 	}
 	// interrupt handler
 	img.ReleaseOnInterrupt()
-	defer func() {
+	defer func() error {
 		if err := img.Release(); err != nil {
-			panic(err)
+			return err
 		}
 		if b.ImageConfig.Bootable {
-			if err := img.MakeBootable(b.GrubPath); err != nil {
-				panic(err)
-			}
+			return img.MakeBootable(b.GrubPath)
 		}
+		return nil
 	}()
+	// parse the image
+	if err := img.Parse(); err != nil {
+		return nil, err
+	}
 	// create and customize rootfs
 	if b.Filler != nil {
 		if err := b.Filler.MakeRootfs(b.RootfsMp); err != nil {
@@ -67,8 +76,9 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		}
 	}
 
-	origName := filepath.Base(b.ImagePath)
+	var a deployer.Artifact
 	if b.Compress {
+		origName := filepath.Base(b.ImagePath)
 		newImagePath, err := compressArtifact(b.ImagePath)
 		if err != nil {
 			return nil, err
@@ -77,24 +87,34 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 			return nil, err
 		}
 		b.ImagePath = newImagePath
+
+		a = &deployer.CompressedArtifact{
+			RealName: origName,
+			Path:     b.ImagePath,
+			Type:     deployer.ImageArtifact,
+		}
+	} else {
+		a = &deployer.CommonArtifact{
+			Name: b.ImageConfig.Name,
+			Path: b.ImagePath,
+			Type: deployer.ImageArtifact,
+		}
 	}
-	return &deployer.LocalArtifact{
-		Name: origName,
-		Path: b.ImagePath,
-		Type: deployer.ImageArtifact,
-	}, nil
+	return a, nil
 }
 
 // MetadataBuilder represents properties related to a local metadata builder
 type MetadataBuilder struct {
 	// *deployer.MetadataBuilderData represents common data
 	*deployer.MetadataBuilderData
-	// Compress indicates if the artifact should be compressed
-	Compress bool
+
+	// SshCpnfig provides appropriate properties
+	// for being able to create remote connection
+	SshConfig *ssh.Config
 }
 
 func (b *MetadataBuilder) Id() string {
-	return "LocalMetadataBuilder"
+	return "MetadataBuilder"
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
@@ -102,27 +122,17 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := deployer.ProcessTemplate(string(f), b.UserData)
+	data, err := utils.ProcessTemplate(string(f), b.UserData)
 	if err != nil {
 		return nil, err
 	}
-	if err := ioutil.WriteFile(b.Dest, data, 0644); err != nil {
+
+	run := utils.RunFunc(b.SshConfig)
+	if _, err := run(fmt.Sprintf("echo \"%s\" > %s", data, b.Dest)); err != nil {
 		return nil, err
 	}
-
-	origName := filepath.Base(b.Dest)
-	if b.Compress {
-		newDest, err := compressArtifact(b.Dest)
-		if err != nil {
-			return nil, err
-		}
-		if err := os.Remove(b.Dest); err != nil {
-			return nil, err
-		}
-		b.Dest = newDest
-	}
-	return &deployer.LocalArtifact{
-		Name: origName,
+	return &deployer.CommonArtifact{
+		Name: filepath.Base(b.Dest),
 		Path: b.Dest,
 		Type: deployer.MetadataArtifact,
 	}, nil

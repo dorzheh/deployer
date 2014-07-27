@@ -7,15 +7,15 @@ import (
 	"errors"
 	"fmt"
 	"os"
-	"os/exec"
 	"os/signal"
 	"path/filepath"
+	"sort"
 	"strings"
 	"syscall"
 	"time"
 
-	"github.com/dorzheh/infra/utils"
-	"github.com/dorzheh/pipe"
+	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/infra/comm/sshfs"
 )
 
 // the structure represents a mapper device
@@ -43,6 +43,9 @@ type image struct {
 	// path to the image
 	imgpath string
 
+	//
+	localmount string
+
 	// path to sirectory intended for mounting the image
 	slashpath string
 
@@ -54,6 +57,20 @@ type image struct {
 
 	// loop device structure
 	*loopDevice
+
+	// Is this a remote image
+	remote bool
+
+	// executes commands locally or remotely
+	run func(string) (string, error)
+
+	// sshfs client
+	client *sshfs.Client
+}
+
+type RemoteConfig struct {
+	Conf           *sshfs.Config
+	RemoteRootfsMp string
 }
 
 //// Public methods ////
@@ -62,21 +79,34 @@ type image struct {
 // path to temporary directory where the vHDD image supposed to be mounted
 // and path to vHDD image.
 // Returns a pointer to the structure and error/nil
-func New(pathToRawImage, rootfsMp string, imageConfig *Topology) (img *image, err error) {
+func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *RemoteConfig) (i *image, err error) {
 	needToFormat := false
-	if _, err = os.Stat(pathToRawImage); err != nil {
-		if err = create(pathToRawImage, imageConfig.HddSizeGb); err != nil {
+	i = new(image)
+	if rconf == nil {
+		i.run = utils.RunFunc(nil)
+		i.slashpath = rootfsMp
+		i.remote = false
+	} else {
+		i.run = utils.RunFunc(rconf.Conf.Common)
+		i.client, err = sshfs.NewClient(rconf.Conf)
+		if err != nil {
+			return
+		}
+		i.localmount = rootfsMp
+		i.slashpath = rconf.RemoteRootfsMp
+		i.remote = true
+	}
+	i.imgpath = pathToRawImage
+	if _, err = i.run("ls" + pathToRawImage); err != nil {
+		if err = i.create(imageConfig.HddSizeGb); err != nil {
 			return
 		}
 		needToFormat = true
 	}
-	img = new(image)
-	img.imgpath = pathToRawImage
-	img.slashpath = rootfsMp
-	img.conf = imageConfig
-	img.needToFormat = needToFormat
-	img.loopDevice = &loopDevice{}
-	img.loopDevice.amountOfMappers = 0
+	i.conf = imageConfig
+	i.needToFormat = needToFormat
+	i.loopDevice = &loopDevice{}
+	i.loopDevice.amountOfMappers = 0
 	return
 }
 
@@ -88,9 +118,20 @@ func (i *image) Parse() error {
 		return err
 	}
 	if i.needToFormat {
-		return i.partTable()
+		if err := i.partTableMakefs(); err != nil {
+			return err
+		}
+	} else {
+		if err := i.addMappers(); err != nil {
+			return err
+		}
 	}
-	return i.addMappers()
+	if i.remote {
+		if err := i.client.Attach(i.slashpath, i.localmount); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // Customize intended for the target customization
@@ -107,49 +148,44 @@ func (i *image) Customize(pathToPlatformDir string) error {
 // and the cleans up a temporary stuff
 // Returns error or nil
 func (i *image) Release() error {
-	umount, err := exec.LookPath("umount")
-	if err != nil {
-		return err
+	if i.remote {
+		if err := i.client.Detach(i.localmount); err != nil {
+			return err
+		}
 	}
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
-		mounted, err := utils.Mounted(i.loopDevice.mappers[index].name, i.loopDevice.mappers[index].mountPoint)
+		mounted, err := i.mounted(i.loopDevice.mappers[index].name, i.loopDevice.mappers[index].mountPoint)
 		if err != nil {
 			return err
 		}
 		if mounted {
-			cmd := exec.Command(umount, "-l", i.loopDevice.mappers[index].mountPoint)
-			if out, err := cmd.CombinedOutput(); err != nil {
+			if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
 				return fmt.Errorf("%s [%v]", out, err)
 			}
 			i.loopDevice.amountOfMappers--
 		}
 	}
+	// unbind mappers and image
+	if out, err := i.run("kpartx -d " + i.loopDevice.name); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
+	}
+	if out, err := i.run("losetup -d " + i.loopDevice.name); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
+	}
 	// remove mount point
-	if err := utils.RemoveIfExists(true, i.slashpath); err != nil {
-		return err
-	}
-	// unbind mappers
-	if err := exec.Command("kpartx", "-d", i.loopDevice.name).Run(); err != nil {
-		return errors.New("kpartx" + " -d " + i.loopDevice.name)
-	}
-	// unbind the image
-	if err := exec.Command("losetup", "-d", i.loopDevice.name).Run(); err != nil {
-		return errors.New("losetup -d " + i.loopDevice.name)
+	if out, err := i.run("rm -rf " + i.slashpath); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
 	}
 	return nil
 }
 
 // MakeBootable is responsible for making RAW disk bootable
 func (i *image) MakeBootable(pathToGrubBin string) error {
-	p := pipe.Line(
-		pipe.Printf("device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n", i.imgpath),
-		pipe.Exec(pathToGrubBin),
-	)
-	output, err := pipe.CombinedOutput(p)
-	if err != nil {
-		return fmt.Errorf("%s [%v]", output, err)
+	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.imgpath, pathToGrubBin)
+	if out, err := i.run(cmd); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
 	}
 	return nil
 }
@@ -179,34 +215,23 @@ func (i *image) AmountOfMappers() uint8 {
 
 /// Private stuff ///
 
-func (i *image) bind() (loopDeviceStr string, err error) {
-	loopDeviceBytes, err := exec.Command("losetup", "-f").Output()
+func (i *image) bind() (loopDevice string, err error) {
+	loopDevice, err = i.run("losetup -f")
 	if err != nil {
 		return
 	}
-	loopDeviceStr = strings.TrimSpace(string(loopDeviceBytes))
-	if err = exec.Command("losetup", loopDeviceStr, i.imgpath).Run(); err != nil {
-		err = fmt.Errorf("cannot bind %s image to %s device", i.imgpath, loopDeviceStr)
+	cmd := fmt.Sprintf("losetup %s %s", loopDevice, i.imgpath)
+	if out, er := i.run(cmd); err != nil {
+		err = fmt.Errorf("%s [%v]", out, er)
 		return
 	}
 	return
 }
 
 // partTable creates partition table on the RAW disk
-func (i *image) partTable() error {
-	fdisk, err := exec.LookPath("fdisk")
-	if err != nil {
-		return errors.New("fdisk not found")
-	}
-	if err := utils.CmdPipe("echo", "-e "+i.conf.FdiskCmd, fdisk, i.loopDevice.name); err != nil {
-		return err
-	}
-	return i.makeFs()
-}
-
-// makeFs intended for creating file system
-func (i *image) makeFs() error {
-	mappers, err := getMappers(i.loopDevice.name)
+func (i *image) partTableMakefs() error {
+	i.run(fmt.Sprintf("echo -e  \"%s\"|%s %s", i.conf.FdiskCmd, "fdisk", i.loopDevice.name))
+	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
 		return err
 	}
@@ -217,22 +242,13 @@ func (i *image) makeFs() error {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
 		if strings.ToLower(part.FileSystem) == "swap" {
-			mkswap, err := exec.LookPath("mkswap")
-			if err != nil {
-				return errors.New("mkswap not found")
-			}
-			if out, err := exec.Command(mkswap, "-L", part.Label, mapper).CombinedOutput(); err != nil {
+			if out, err := i.run(fmt.Sprintf("mkswap -L %s %s", part.Label, mapper)); err != nil {
 				return fmt.Errorf("%s [%v]", out, err)
 			}
 		} else {
-			// treat a "none-swap" mapper
-			mkfs, err := exec.LookPath("mkfs")
-			if err != nil {
-				return errors.New("mkfs not found")
-			}
-			cmd := fmt.Sprintf("-t %v -L %v %v %v", part.FileSystem,
+			cmd := fmt.Sprintf("mkfs -t %v -L %v %v %v", part.FileSystem,
 				part.Label, part.FileSystemArgs, mapper)
-			if out, err := exec.Command(mkfs, strings.Fields(cmd)...).CombinedOutput(); err != nil {
+			if out, err := i.run(cmd); err != nil {
 				return fmt.Errorf("%s [%v]", out, err)
 			}
 			if err := i.addMapper(mapper, part.MountPoint); err != nil {
@@ -245,7 +261,7 @@ func (i *image) makeFs() error {
 
 // addMappers registers appropriate mappers
 func (i *image) addMappers() error {
-	mappers, err := getMappers(i.loopDevice.name)
+	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
 		return err
 	}
@@ -267,16 +283,16 @@ func (i *image) addMappers() error {
 // addMapper registers appropriate mapper and it's mount point
 func (i *image) addMapper(mapperDeviceName, path string) error {
 	mountPoint := filepath.Join(i.slashpath, path)
-	if err := utils.CreateDirRecursively(mountPoint, 0755, 0, 0, false); err != nil {
-		return err
+	if out, err := i.run("mkdir -p " + mountPoint); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
 	}
-	mounted, err := utils.Mounted(mapperDeviceName, mountPoint)
+	// check if the volume is already mounted
+	mounted, err := i.mounted(mapperDeviceName, mountPoint)
 	if err != nil {
 		return err
 	}
 	if !mounted {
-		cmd := exec.Command("mount", mapperDeviceName, mountPoint)
-		if out, err := cmd.CombinedOutput(); err != nil {
+		if out, err := i.run(fmt.Sprintf("mount %s %s", mapperDeviceName, mountPoint)); err != nil {
 			return fmt.Errorf("%s [%v]", out, err)
 		}
 	}
@@ -287,6 +303,7 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 			mountPoint: mountPoint,
 		},
 	)
+	// advance amount of mappers
 	i.loopDevice.amountOfMappers++
 	return nil
 }
@@ -301,22 +318,8 @@ func (i *image) validatePconf(amountOfMappers int) error {
 }
 
 // create is intended for creating RAW image
-func create(pathToRawImage string, hddSize int) error {
-	finfo, err := os.Stat(pathToRawImage)
-	switch {
-	case err != nil && !strings.Contains(err.Error(), "no such file or directory"):
-		return err
-
-	case err == nil && finfo.IsDir():
-		return errors.New(pathToRawImage + " is a directory")
-	}
-	ddCmd, err := exec.LookPath("dd")
-	if err != nil {
-		return errors.New("dd not found")
-	}
-	cmdStr := fmt.Sprintf("if=/dev/zero of=%s count=1 bs=1 seek=%vG",
-		pathToRawImage, hddSize)
-	out, err := exec.Command(ddCmd, strings.Fields(cmdStr)...).CombinedOutput()
+func (i *image) create(hddSize int) error {
+	out, err := i.run(fmt.Sprintf("dd if=/dev/zero of=%s count=1 bs=1 seek=%vG", i.imgpath, hddSize))
 	if err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
@@ -325,33 +328,78 @@ func create(pathToRawImage string, hddSize int) error {
 
 // getMappers is responsible for finding mappers bound to appropriate loop device
 // and providing the stuff as a slice
-func getMappers(loopDeviceName string) (mappers []string, err error) {
-	kpartx, err := exec.LookPath("kpartx")
-	if err != nil {
-		return
-	}
-	err = exec.Command(kpartx, "-av", loopDeviceName).Run()
-	if err != nil {
-		return
+func (i *image) getMappers(loopDeviceName string) ([]string, error) {
+	var mappers []string
+	if _, err := i.run("kpartx -a " + loopDeviceName); err != nil {
+		return mappers, err
 	}
 	// somehow on RHEL based systems refresh might take some time therefore
 	// no mappers are available until then
 	duration, err := time.ParseDuration("1s")
 	if err != nil {
-		return
+		return mappers, err
 	}
 	time.Sleep(duration)
-	filepath.Walk("/dev", func(mapperDeviceName string, info os.FileInfo, err error) error {
-		if strings.Contains(mapperDeviceName, "/"+filepath.Base(loopDeviceName)+"p") {
-			// skip extended partition
-			if !strings.HasSuffix(mapperDeviceName, "4") {
-				mappers = append(mappers, mapperDeviceName)
-			}
-		}
-		return nil
-	})
-	if len(mappers) == 0 {
-		err = errors.New("mappers not found")
+
+	cmd := fmt.Sprintf("find /dev -name loop%sp[0-9]",
+		strings.TrimSpace(strings.SplitAfter(loopDeviceName, "/dev/loop")[1]))
+	out, err := i.run(cmd)
+	if err != nil {
+		return mappers, fmt.Errorf("%s [%v]", out, err)
 	}
-	return
+	for _, line := range strings.Split(out, "\n") {
+		if line != "" {
+			mappers = append(mappers, line)
+		}
+	}
+	if len(mappers) == 0 {
+		return mappers, errors.New("mappers not found")
+	}
+	sort.Strings(mappers)
+	return mappers, nil
+}
+
+// check mountinfo
+
+const (
+	mountinfoFormat = "%d %d %d:%d %s %s %s"
+)
+
+type procEntry struct {
+	id, parent, major, minor int
+	source, mountpoint, opts string
+}
+
+func (i *image) parseMountTable() ([]*procEntry, error) {
+	out, err := i.run("cat /proc/self/mountinfo")
+	if err != nil {
+		return nil, err
+	}
+	entries := []*procEntry{}
+	p := &procEntry{}
+	for _, line := range strings.Split(out, "\n") {
+		if _, err := fmt.Sscanf(line, mountinfoFormat,
+			&p.id, &p.parent, &p.major, &p.minor,
+			&p.source, &p.mountpoint, &p.opts); err != nil {
+			return nil, fmt.Errorf("Scanning '%s' failed: %s", line, err)
+		}
+		entries = append(entries, p)
+	}
+	return entries, nil
+}
+
+// Looks at /proc/self/mountinfo to determine of the specified
+// mountpoint has been mounted
+func (i *image) mounted(device, mountpoint string) (bool, error) {
+	entries, err := i.parseMountTable()
+	if err != nil {
+		return false, err
+	}
+	// Search the table for the mountpoint
+	for _, entry := range entries {
+		if entry.mountpoint == mountpoint || strings.Contains(entry.opts, device) {
+			return true, nil
+		}
+	}
+	return false, nil
 }

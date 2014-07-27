@@ -1,12 +1,14 @@
+// Responsible for parsing lshw output
+
 package utils
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"strconv"
 	"strings"
 
-	"github.com/dorzheh/deployer/deployer"
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/utils/lshw"
 	"github.com/dorzheh/mxj"
@@ -19,6 +21,7 @@ type CpuInfo struct {
 	Cap  map[string]interface{}
 }
 
+// supported NIC types
 type NicType string
 
 const (
@@ -27,12 +30,22 @@ const (
 	NicTypeBridge NicType = "bridge"
 )
 
+// NIC information
 type NicInfo struct {
-	Name    string
-	Driver  string
-	Desc    string
+	// port name (eth0,br0...)
+	Name string
+
+	// NIC driver(bridge,openvswitch...)
+	Driver string
+
+	// Description
+	Desc string
+
+	// PCI Address
 	PCIAddr string
-	Type    NicType
+
+	// Port type
+	Type NicType
 }
 
 type HwInfoParser struct {
@@ -41,19 +54,29 @@ type HwInfoParser struct {
 	cmd       string
 }
 
+// NewHwInfoParser constructs new lshw parser
+// The output will be represented in JSON format
 func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoParser, error) {
+	i := new(HwInfoParser)
+	i.run = RunFunc(sshconf)
+	if lshwpath == "" {
+		out, err := i.run("which lshw")
+		if err != nil {
+			return nil, fmt.Errorf("%s [%s]", out, err)
+		}
+		lshwpath = out
+	}
 	lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
 	l, err := lshw.New(lshwpath, lshwconf)
 	if err != nil {
 		return nil, err
 	}
-	i := new(HwInfoParser)
-	i.run = deployer.RunFunc(sshconf)
 	i.cmd = l.Cmd()
 	i.cacheFile = cacheFile
 	return i, nil
 }
 
+// Parse parses lshw output
 func (i *HwInfoParser) Parse() error {
 	out, err := i.run(i.cmd)
 	if err != nil {
@@ -62,6 +85,7 @@ func (i *HwInfoParser) Parse() error {
 	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
 }
 
+// CpuInfo gathers information related to installed CPUs
 func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
@@ -106,6 +130,7 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 	return c, nil
 }
 
+// NicInfo gathers information related to installed NICs
 func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
@@ -170,6 +195,7 @@ func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 	return nicsMap, nil
 }
 
+// RAMSize gathers information related to the installed RAM pools
 func (i *HwInfoParser) RAMSize() (uint, error) {
 	var ramsize uint = 0
 	if _, err := os.Stat(i.cacheFile); err != nil {

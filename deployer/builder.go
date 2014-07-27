@@ -9,6 +9,7 @@ import (
 type Builder interface {
 	// Id of the build
 	Id() string
+
 	// Run the build
 	Run() (Artifact, error)
 }

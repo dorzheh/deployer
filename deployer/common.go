@@ -32,13 +32,16 @@ type CommonData struct {
 // CommonConfig represents common configuration
 // generated during either user input or pasing appropriate
 // configuration file
-// RemoteMode - indicates whether the deployment occures remotely or not
-// ExportDir - directory for storing appropriate artifacts
-// SshConfig - ssh configuration
-// Data - common data (above)
 type CommonConfig struct {
+	// RemoteMode indicates whether the deployment occures remotely
 	RemoteMode bool
-	ExportDir  string
-	SshConfig  *ssh.Config
-	Data       *CommonData
+
+	// ExportDir is a directory for storing appropriate artifacts
+	ExportDir string
+
+	// SshConfig represents ssh configuration
+	SshConfig *ssh.Config
+
+	// Data repesents common data
+	Data *CommonData
 }

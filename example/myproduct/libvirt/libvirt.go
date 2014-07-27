@@ -6,12 +6,12 @@ package libvirt
 import (
 	"path/filepath"
 
+	"github.com/dorzheh/deployer/builder/common"
 	"github.com/dorzheh/deployer/builder/common/image"
-	"github.com/dorzheh/deployer/builder/common/local"
-	"github.com/dorzheh/deployer/builder/common/remote"
 	libvirtconf "github.com/dorzheh/deployer/config/libvirt"
 	"github.com/dorzheh/deployer/deployer"
 	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt"
+	"github.com/dorzheh/infra/comm/sshfs"
 )
 
 var networks = []string{"management", "data"}
@@ -65,25 +65,28 @@ func (c *FlowCreator) CreateBuilders() (b []deployer.Builder, err error) {
 		UserData: altd,
 	}
 
-	var imageBuilder deployer.Builder
+	var grubPath string
 	if c.conf.Common.RemoteMode {
-		imageBuilder = &remote.ImageBuilder{imageData,
-			c.conf.Common.SshConfig,
-			"path", "path",
+		grubPath = "/tmp/grub"
+	} else {
+		grubPath = filepath.Join(c.conf.Common.Data.RootDir, "install",
+			c.conf.Common.Data.Arch, "bin/grub")
+	}
+	var rc *image.RemoteConfig
+	if c.conf.Common.RemoteMode {
+		c := &sshfs.Config{
+			Common:      c.conf.Common.SshConfig,
+			SshpassPath: "",
+			SshfsPath:   "",
+			FusrmntPath: "",
 		}
-	} else {
-		imageBuilder = &local.ImageBuilder{imageData,
-			filepath.Join(c.conf.Common.Data.RootDir, "install",
-				c.conf.Common.Data.Arch, "bin/grub"), false}
+		rc = &image.RemoteConfig{
+			Conf:           c,
+			RemoteRootfsMp: "/tmp/root_mp",
+		}
 	}
-
-	var metadataBuilder deployer.Builder
-	if c.conf.Common.RemoteMode {
-		metadataBuilder = &remote.MetadataBuilder{metaData, c.conf.Common.SshConfig}
-	} else {
-		metadataBuilder = &local.MetadataBuilder{metaData, false}
-	}
-
+	imageBuilder := &common.ImageBuilder{imageData, rc, grubPath, false}
+	metadataBuilder := &common.MetadataBuilder{metaData, c.conf.Common.SshConfig}
 	b = append(b, imageBuilder, metadataBuilder)
 	return
 }

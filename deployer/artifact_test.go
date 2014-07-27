@@ -3,16 +3,18 @@ package deployer
 import (
 	"os"
 	"testing"
+
+	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 const artifactPath = "/tmp/testArtifact"
 
-func TestCreateDestroyLocalArtifact(t *testing.T) {
+func TestCreateDestroyLocalCommonArtifact(t *testing.T) {
 	if _, err := os.Create(artifactPath); err != nil {
 		t.Error(err)
 		return
 	}
-	a := &LocalArtifact{
+	a := &CommonArtifact{
 		Name: "testArtifact",
 		Path: artifactPath,
 		Type: ImageArtifact,
@@ -22,22 +24,27 @@ func TestCreateDestroyLocalArtifact(t *testing.T) {
 	}
 }
 
-func TestCreateDestroyRemoteArtifact(t *testing.T) {
+func TestCreateDestroyRemoteCommonArtifact(t *testing.T) {
 	if _, err := os.Create(artifactPath); err != nil {
 		t.Error(err)
 		return
 	}
 	defer os.Remove(artifactPath)
 
-	a := &RemoteArtifact{
-		Name: "testArtifact",
-		Path: artifactPath,
-		Type: ImageArtifact,
+	conf := &ssh.Config{
+		Host:        "127.0.0.1",
+		Port:        "22",
+		User:        "root",
+		Password:    "d",
+		PrvtKeyFile: "",
+	}
+	a := &CommonArtifact{
+		Name:      "testArtifact",
+		Path:      artifactPath,
+		Type:      ImageArtifact,
+		SshConfig: conf,
 	}
 	if err := a.Destroy(); err != nil {
 		t.Fatal(err)
-	}
-	if _, err := os.Stat(artifactPath); err != nil {
-		t.Fatalf("RemoteArtifact shouldn't be destroyed")
 	}
 }

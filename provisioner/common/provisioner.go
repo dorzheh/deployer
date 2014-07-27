@@ -1,4 +1,4 @@
-package deployer
+package common
 
 import (
 	"fmt"
@@ -23,7 +23,7 @@ func (p *Provisioner) Provision(artifacts []deployer.Artifact) (artfcts []deploy
 
 	for _, srcArtifact := range artifacts {
 		switch srcArtifact.(type) {
-		case *deployer.LocalArtifact:
+		case *deployer.CompressedArtifact:
 			if err = conn.Upload(srcArtifact.GetPath(), p.DstDir); err != nil {
 				return
 			}
@@ -33,7 +33,7 @@ func (p *Provisioner) Provision(artifacts []deployer.Artifact) (artfcts []deploy
 				err = fmt.Errorf("%s [%s]", errout, e)
 				return
 			}
-			newArtifact := &deployer.RemoteArtifact{
+			newArtifact := &deployer.CommonArtifact{
 				Name: srcArtifact.GetName(),
 				Path: filepath.Join(p.DstDir, srcArtifact.GetName()),
 				Type: srcArtifact.GetType(),

@@ -12,7 +12,7 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 	go func() {
 		errChan <- p.PostProcess(artifacts)
 	}()
-	duration, err := time.ParseDuration("10s")
+	duration, err := time.ParseDuration("5s")
 	if err != nil {
 		return err
 	}

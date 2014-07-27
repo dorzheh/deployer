@@ -32,8 +32,9 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	return
 }
 
-// buildResult
+// buildResult contains result of a build
 type buildResult struct {
+	// artifact
 	artifact Artifact
 	err      error
 }
