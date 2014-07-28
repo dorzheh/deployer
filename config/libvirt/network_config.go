@@ -27,7 +27,7 @@ func SetNetworkData(ni map[string]*utils.NicInfo) (string, error) {
 	for _, port := range ni {
 		switch port.Type {
 		case utils.NicTypePhys:
-			tempData, err := processSingleRootPassthroughTemplate(port.PCIAddr)
+			tempData, err := processGenericPassthroughTemplate(port.PCIAddr)
 			if err != nil {
 				return "", err
 			}
@@ -51,14 +51,14 @@ func SetNetworkData(ni map[string]*utils.NicInfo) (string, error) {
 	return data, nil
 }
 
-func processSingleRootPassthroughTemplate(pci string) ([]byte, error) {
+func processGenericPassthroughTemplate(pci string) ([]byte, error) {
 	pciSlice := strings.Split(pci, ":")
 	d := new(passthroughData)
 	d.Bus = pciSlice[1]
 	temp := strings.Split(pciSlice[2], ".")
 	d.Slot = temp[0]
 	d.Function = temp[1]
-	return utils.ProcessTemplate(singleRootPassthrough, d)
+	return utils.ProcessTemplate(genericPassthrough, d)
 }
 
 var bridged = `<interface type='bridge'>
@@ -80,7 +80,7 @@ var sriovPassthrough = `<interface type='hostdev' managed='yes'>
       </source>
     </interface>
 `
-var singleRootPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
+var genericPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
     <source>
       <address type='pci' domain='0x0000' bus='0x{{ .Bus }}' slot='0x{{ .Slot }}' function='0x{{ .Function }}'/>
     </source>

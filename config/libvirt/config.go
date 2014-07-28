@@ -18,6 +18,9 @@ type InputData struct {
 	// that the target appliance will be bound to
 	Networks []string
 
+        // Supported NIC vendors
+	NICVendors []string
+	
 	// Path to the lshw binary
 	LshwPath string
 }
@@ -74,7 +77,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	// In this case -  pass empty slice and overwrite appropriate
 	// logic at a higher implementation level
 	if len(i.Networks) > 0 {
-		ni, err := c.HwInfo.NicsInfo()
+		ni, err := c.HwInfo.NicsInfo(NicVendors)
 		if err != nil {
 			return nil, err
 		}

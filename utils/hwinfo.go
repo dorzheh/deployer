@@ -131,7 +131,7 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 }
 
 // NicInfo gathers information related to installed NICs
-func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
+func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err
@@ -165,8 +165,18 @@ func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 					default:
 						prod, ok := ch["product"].(string)
 						if ok {
-							nic.PCIAddr = ch["businfo"].(string)
 							vendor, _ := ch["vendor"].(string)
+							found := false
+							for _, v := range supNicVendors {
+								if v == vendor {
+									found = true
+									break
+								}
+							}
+							if !found {
+								continue
+							}
+							nic.PCIAddr = ch["businfo"].(string)
 							nic.Desc = vendor + " " + prod
 							nic.Type = NicTypePhys
 						}
