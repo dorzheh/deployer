@@ -81,7 +81,7 @@ func TestNicsInfoLocal(t *testing.T) {
 	if err := i.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.NicsInfo()
+	_, err = i.NicsInfo(nil)
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -89,7 +89,7 @@ func TestNicsInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := i.NicsInfo()
+	info, err := i.NicsInfo(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestNicsInfoRemote(t *testing.T) {
 	if err := i.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.NicsInfo()
+	_, err = i.NicsInfo(nil)
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestNicsInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := i.NicsInfo()
+	info, err := i.NicsInfo(nil)
 	if err != nil {
 		t.Fatal(err)
 	}

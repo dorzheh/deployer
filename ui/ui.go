@@ -135,7 +135,7 @@ func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo
 	for _, net := range networks {
 		var ifaceNumStr string
 		for {
-			ui.SetSize(sliceLength, 95)
+			ui.SetSize(sliceLength+2, 95)
 			ui.SetLabel(fmt.Sprintf("Choose appropriate interface for \"%s\" network:", net))
 			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
 			if ifaceNumStr != "" {
@@ -155,7 +155,7 @@ func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo
 		ui.SetLabel("Would you like to configure additional network?")
 		if ui.Yesno() {
 			for {
-				ui.SetSize(sliceLength, 95)
+				ui.SetSize(sliceLength+2, 95)
 				ui.SetLabel(fmt.Sprintf("Choose appropriate interface for the network #%d:", nextIndex))
 				ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
 				if ifaceNumStr != "" {

@@ -166,15 +166,17 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							found := false
-							for _, v := range supNicVendors {
-								if v == vendor {
-									found = true
-									break
+							if len(supNicVendors) > 0 {
+								found := false
+								for _, v := range supNicVendors {
+									if v == vendor {
+										found = true
+										break
+									}
 								}
-							}
-							if !found {
-								continue
+								if !found {
+									continue
+								}
 							}
 							nic.PCIAddr = ch["businfo"].(string)
 							nic.Desc = vendor + " " + prod
