@@ -151,8 +151,12 @@ func (i *HwInfoParser) NicsInfo() (map[int]*NicInfo, error) {
 			for _, n := range r {
 				ch := n.(map[string]interface{})
 				if ch["description"] == "Ethernet interface" {
+					name := ch["logicalname"].(string)
+					if name == "ovs-system" {
+						continue
+					}
 					nic := new(NicInfo)
-					nic.Name = ch["logicalname"].(string)
+					nic.Name = name
 					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
 					switch driver {
 					case "openvswitch":

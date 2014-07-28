@@ -70,19 +70,24 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 		return nil, err
 	}
 
-	ni, err := c.HwInfo.NicsInfo()
-	if err != nil {
-		return nil, err
-	}
+	// Sometimes more complex network configuration is needed.
+	// In this case -  pass empty slice and overwrite appropriate
+	// logic at a higher implementation level
+	if len(i.Networks) > 0 {
+		ni, err := c.HwInfo.NicsInfo()
+		if err != nil {
+			return nil, err
+		}
 
-	c.Networks, err = gui.UiNetworks(d.Ui, i.Networks, ni)
-	if err != nil {
-		return nil, err
-	}
+		c.Networks, err = gui.UiNetworks(d.Ui, i.Networks, ni)
+		if err != nil {
+			return nil, err
+		}
 
-	c.Data.Networks, err = SetNetworkData(c.Networks)
-	if err != nil {
-		return nil, err
+		c.Data.Networks, err = SetNetworkData(c.Networks)
+		if err != nil {
+			return nil, err
+		}
 	}
 	return c, nil
 }
