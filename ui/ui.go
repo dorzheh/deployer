@@ -74,9 +74,9 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string) (location string) {
 		ui.SetSize(6, 64)
 		ui.Msgbox("The next step allows to choose location for the image.\n\tPress <Ok> to proceed")
 		location = ui.Dselect(defaultLocation)
-		if _, err := os.Stat(location); err != nil {
-			continue
-		}
+		//if _, err := os.Stat(location); err != nil {
+		//	continue
+		//}
 		break
 	}
 	return
@@ -108,11 +108,11 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 	if answer == "1" {
 		passwd = ui.GetPasswordFromInput(ip, user)
 	} else {
+		ui.SetSize(6, 40)
+		ui.Msgbox("Path to ssh private key.\nPress <Ok> to proceed")
 		for {
-			ui.SetSize(6, 64)
-			ui.Msgbox("Path to ssh private key.\n\tPress <Ok> to proceed")
 			keyFile = ui.Fselect("")
-			if _, err := os.Stat(keyFile); err != nil {
+			if fd, err := os.Stat(keyFile); err != nil || fd.IsDir() {
 				continue
 			}
 			break

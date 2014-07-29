@@ -9,8 +9,12 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strings"
 	"text/template"
 	"time"
+
+	sshconf "github.com/dorzheh/infra/comm/common"
+	"github.com/dorzheh/infra/comm/ssh"
 )
 
 const (
@@ -95,4 +99,33 @@ func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
 		}
 	}
 	return err
+}
+
+// UploadBinaries is intended to create a temporary directory on a remote server,
+// upload binaries to the temporary location and return path to the directory.
+// The tempoary directory will be removed as soon as the function exits
+func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
+	c, err := ssh.NewSshConn(conf)
+	if err != nil {
+		return "", err
+	}
+	defer c.ConnClose()
+
+	dir, errout, err := c.Run("mktemp -d --suffix _deployer_bin")
+	if err != nil {
+		return "", fmt.Errorf("%s [%v]", errout, err)
+	}
+
+	dir = strings.TrimSpace(dir)
+
+	for _, src := range pathbins {
+		dst := filepath.Join(dir, filepath.Base(src))
+		if err := c.Upload(src, dst); err != nil {
+			return "", err
+		}
+		if _, errout, err := c.Run("chmod 755 " + dst); err != nil {
+			return "", fmt.Errorf("%s [%v]", errout, err)
+		}
+	}
+	return dir, nil
 }

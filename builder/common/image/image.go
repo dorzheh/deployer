@@ -6,7 +6,6 @@ package image
 import (
 	"errors"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/comm/sshfs"
-	infrautils "github.com/dorzheh/infra/utils"
 )
 
 // the structure represents a mapper device
@@ -91,6 +89,12 @@ func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *sshfs.Co
 		}
 		i.localmount = rootfsMp
 		i.remote = true
+		if i.slashpath, err = i.run("mktemp -d --suffix _deployer_rootfs"); err != nil {
+			return
+		}
+		if err = i.client.Attach(i.slashpath, i.localmount); err != nil {
+			return
+		}
 	}
 	i.imgpath = pathToRawImage
 	if _, err = i.run("ls" + pathToRawImage); err != nil {
@@ -119,14 +123,6 @@ func (i *image) Parse() error {
 		}
 	} else {
 		if err := i.addMappers(); err != nil {
-			return err
-		}
-	}
-	if i.remote {
-		if i.slashpath, err = i.run("mktemp -d --suffix _deployer_rootfs"); err != nil {
-			return err
-		}
-		if err := i.client.Attach(i.slashpath, i.localmount); err != nil {
 			return err
 		}
 	}
@@ -185,28 +181,12 @@ func (i *image) Release() error {
 func (i *image) MakeBootable(localPathToGrubBin string) error {
 	var pathToGrubBin string
 	if i.remote {
-		remoteMp, err := i.run("mktemp -d --suffix _deployer_bin")
-		if err != nil {
-			return fmt.Errorf("%s [%s]", remoteMp, err)
-		}
-
-		localMp, err := ioutil.TempDir("", "deployer_bin_")
+		dir, err := utils.UploadBinaries(i.client.Config.Common, localPathToGrubBin)
 		if err != nil {
 			return err
 		}
-		if err := i.client.Attach(remoteMp, localMp); err != nil {
-			return err
-		}
-		defer func() {
-			i.client.Detach(localMp)
-			i.run("rm -rf " + remoteMp)
-			os.RemoveAll(localMp)
-		}()
-
-		pathToGrubBin = filepath.Join(remoteMp, filepath.Base(localPathToGrubBin))
-		if err := infrautils.CopyFile(localPathToGrubBin, pathToGrubBin, 0755, 0, 0, false); err != nil {
-			return err
-		}
+		pathToGrubBin = filepath.Join(dir, filepath.Base(localPathToGrubBin))
+		defer i.run("rm -rf " + dir)
 	} else {
 		pathToGrubBin = localPathToGrubBin
 	}

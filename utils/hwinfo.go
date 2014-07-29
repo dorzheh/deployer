@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -62,10 +63,20 @@ func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoPa
 	if lshwpath == "" {
 		out, err := i.run("which lshw")
 		if err != nil {
-			return nil, fmt.Errorf("%s [%s]", out, err)
+			return nil, fmt.Errorf("%s [%v]", out, err)
 		}
 		lshwpath = out
+	} else {
+		if sshconf != nil {
+			dir, err := UploadBinaries(sshconf, lshwpath)
+			if err != nil {
+				return nil, err
+			}
+			lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
+
+		}
 	}
+
 	lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
 	l, err := lshw.New(lshwpath, lshwconf)
 	if err != nil {
@@ -159,6 +170,8 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error
 					nic.Name = name
 					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
 					switch driver {
+					case "tun":
+						continue
 					case "openvswitch":
 						nic.Desc = "Open vSwitch interface"
 						nic.Type = NicTypeOVS
