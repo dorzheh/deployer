@@ -6,12 +6,10 @@ import (
 
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/comm/sshfs"
-	infrautils "github.com/dorzheh/infra/utils"
 )
 
 const imagePath = "/tmp/testImage"
 const rootfsMp = "/tmp/mnt"
-const remoteMp = "/tmp/mntRemote"
 const grubPath = "/tmp/grub"
 const topology = `<?xml version="1.0" encoding="UTF-8"?>
 <Platforms>
@@ -93,7 +91,7 @@ func TestLocalImage(t *testing.T) {
 
 func TestRemoteImage(t *testing.T) {
 	t.Log("=> MkdirAll")
-	if err := os.MkdirAll(rootfsMp); err != nil {
+	if err := os.MkdirAll(rootfsMp, 0755); err != nil {
 		t.Fatal(err)
 	}
 	defer os.RemoveAll(rootfsMp)
@@ -110,14 +108,10 @@ func TestRemoteImage(t *testing.T) {
 		Password:    "password",
 		PrvtKeyFile: "",
 	}
-	sshfsConf := &sshfs.Config{sshConf, "", "", ""}
-	rconf := &RemoteConfig{
-		Conf:           sshfsConf,
-		RemoteRootfsMp: remoteMp,
-	}
+	sshfsConf := &sshfs.Config{sshConf, "", ""}
 
 	t.Log("=> New")
-	img, err := New(imagePath, rootfsMp, topo, rconf)
+	img, err := New(imagePath, rootfsMp, topo, sshfsConf)
 	if err != nil {
 		t.Fatal(err)
 	}

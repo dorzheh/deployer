@@ -82,7 +82,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 			return nil, err
 		}
 
-		c.Networks, err = gui.UiNetworks(d.Ui, i.Networks, ni)
+		c.Networks, err = gui.UiNetworks(d.Ui, ni, i.Networks[0:]...)
 		if err != nil {
 			return nil, err
 		}

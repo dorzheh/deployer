@@ -13,6 +13,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
+	"github.com/dorzheh/infra/comm/sshfs"
 )
 
 // ImageBuilder represents properties related to a local image builder
@@ -22,7 +23,7 @@ type ImageBuilder struct {
 
 	// image.RemoteConfig represents remote configuration
 	// facility needed by the builder
-	Rconf *image.RemoteConfig
+	SshfsConfig *sshfs.Config
 
 	// GrubPath - path to grub 1.x binary
 	GrubPath string
@@ -32,10 +33,10 @@ type ImageBuilder struct {
 }
 
 func (b *ImageBuilder) Id() string {
-	if b.Rconf == nil {
-		return "RemoteImageBuilder"
+	if b.SshfsConfig == nil {
+		return "LocalImageBuilder"
 	}
-	return "LocalImageBuilder"
+	return "RemoteImageBuilder"
 }
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
@@ -46,7 +47,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		return os.RemoveAll(b.RootfsMp)
 	}()
 	// create new image artifact
-	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.Rconf)
+	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.SshfsConfig)
 	if err != nil {
 		return nil, err
 	}

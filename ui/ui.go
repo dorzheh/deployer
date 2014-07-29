@@ -121,7 +121,7 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 	return ip, port, user, passwd, keyFile
 }
 
-func UiNetworks(ui *gui.DialogUi, networks []string, info map[int]*utils.NicInfo) (map[string]*utils.NicInfo, error) {
+func UiNetworks(ui *gui.DialogUi, info map[int]*utils.NicInfo, networks ...string) (map[string]*utils.NicInfo, error) {
 	newMap := make(map[string]*utils.NicInfo)
 	var temp []string
 	index := 0

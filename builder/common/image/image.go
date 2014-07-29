@@ -6,6 +6,7 @@ package image
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/signal"
 	"path/filepath"
@@ -16,6 +17,7 @@ import (
 
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/comm/sshfs"
+	infrautils "github.com/dorzheh/infra/utils"
 )
 
 // the structure represents a mapper device
@@ -68,18 +70,13 @@ type image struct {
 	client *sshfs.Client
 }
 
-type RemoteConfig struct {
-	Conf           *sshfs.Config
-	RemoteRootfsMp string
-}
-
 //// Public methods ////
 
 // New gets a path to configuration directory
 // path to temporary directory where the vHDD image supposed to be mounted
 // and path to vHDD image.
 // Returns a pointer to the structure and error/nil
-func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *RemoteConfig) (i *image, err error) {
+func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *sshfs.Config) (i *image, err error) {
 	needToFormat := false
 	i = new(image)
 	if rconf == nil {
@@ -87,13 +84,12 @@ func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *RemoteCo
 		i.slashpath = rootfsMp
 		i.remote = false
 	} else {
-		i.run = utils.RunFunc(rconf.Conf.Common)
-		i.client, err = sshfs.NewClient(rconf.Conf)
+		i.run = utils.RunFunc(rconf.Common)
+		i.client, err = sshfs.NewClient(rconf)
 		if err != nil {
 			return
 		}
 		i.localmount = rootfsMp
-		i.slashpath = rconf.RemoteRootfsMp
 		i.remote = true
 	}
 	i.imgpath = pathToRawImage
@@ -127,6 +123,9 @@ func (i *image) Parse() error {
 		}
 	}
 	if i.remote {
+		if i.slashpath, err = i.run("mktemp -d --suffix _deployer_rootfs"); err != nil {
+			return err
+		}
 		if err := i.client.Attach(i.slashpath, i.localmount); err != nil {
 			return err
 		}
@@ -181,9 +180,39 @@ func (i *image) Release() error {
 	return nil
 }
 
-// MakeBootable is responsible for making RAW disk bootable
-func (i *image) MakeBootable(pathToGrubBin string) error {
-	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.imgpath, pathToGrubBin)
+// MakeBootable is responsible for making RAW disk bootable.
+// The target disk could be either local or remote image
+func (i *image) MakeBootable(localPathToGrubBin string) error {
+	var pathToGrubBin string
+	if i.remote {
+		remoteMp, err := i.run("mktemp -d --suffix _deployer_bin")
+		if err != nil {
+			return fmt.Errorf("%s [%s]", remoteMp, err)
+		}
+
+		localMp, err := ioutil.TempDir("", "deployer_bin_")
+		if err != nil {
+			return err
+		}
+		if err := i.client.Attach(remoteMp, localMp); err != nil {
+			return err
+		}
+		defer func() {
+			i.client.Detach(localMp)
+			i.run("rm -rf " + remoteMp)
+			os.RemoveAll(localMp)
+		}()
+
+		pathToGrubBin = filepath.Join(remoteMp, filepath.Base(localPathToGrubBin))
+		if err := infrautils.CopyFile(localPathToGrubBin, pathToGrubBin, 0755, 0, 0, false); err != nil {
+			return err
+		}
+	} else {
+		pathToGrubBin = localPathToGrubBin
+	}
+
+	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s",
+		i.imgpath, pathToGrubBin)
 	if out, err := i.run(cmd); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
@@ -246,7 +275,7 @@ func (i *image) partTableMakefs() error {
 				return fmt.Errorf("%s [%v]", out, err)
 			}
 		} else {
-			cmd := fmt.Sprintf("mkfs -t %v -L %v %v %v", part.FileSystem,
+			cmd := fmt.Sprintf("mkfs -t %v -L %s %s %s", part.FileSystem,
 				part.Label, part.FileSystemArgs, mapper)
 			if out, err := i.run(cmd); err != nil {
 				return fmt.Errorf("%s [%v]", out, err)
