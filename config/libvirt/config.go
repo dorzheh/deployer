@@ -51,11 +51,6 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 
 	c := new(Config)
 	c.Common = common.CreateConfig(d)
-	driver := libvirt.NewDriver(c.Common.SshConfig)
-	c.Data = new(CommonMetadata)
-	if c.Data.EmulatorPath, err = driver.Emulator(); err != nil {
-		return nil, err
-	}
 	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
 
 	errCh := make(chan error)
@@ -63,6 +58,12 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	go func() {
 		errCh <- c.HwInfo.Parse()
 	}()
+
+	driver := libvirt.NewDriver(c.Common.SshConfig)
+	c.Data = new(CommonMetadata)
+	if c.Data.EmulatorPath, err = driver.Emulator(); err != nil {
+		return nil, err
+	}
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Data.DomainName = d.VaName

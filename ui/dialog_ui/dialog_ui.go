@@ -244,7 +244,7 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string) string {
 				break
 			}
 		}
-		msg = "Confirm password for the user \"" + user + "\":"
+		msg = "Password confirmation for user \"" + user + "\":"
 		width = len(msg) + 5
 		for {
 			ui.SetSize(8, width)

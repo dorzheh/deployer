@@ -10,7 +10,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
-	infra "github.com/dorzheh/infra/utils"
+	infrautils "github.com/dorzheh/infra/utils"
 )
 
 func UiNewSession() *gui.DialogUi {
@@ -18,7 +18,7 @@ func UiNewSession() *gui.DialogUi {
 }
 
 func UiValidateUser(ui *gui.DialogUi, userId int) {
-	if err := infra.ValidateUserID(userId); err != nil {
+	if err := infrautils.ValidateUserID(userId); err != nil {
 		ui.ErrorOutput(err.Error(), 6, 14)
 	}
 }
@@ -40,7 +40,7 @@ func UiHostName(ui *gui.DialogUi) (hostname string) {
 		ui.SetSize(8, 30)
 		ui.SetLabel("New hostname: ")
 		hostname = ui.Inputbox("")
-		if err := infra.SetHostname(hostname); err != nil {
+		if err := infrautils.SetHostname(hostname); err != nil {
 			ui.Output(gui.Warning, err.Error()+".Press <OK> to proceed", 8, 12)
 			continue
 		}
@@ -69,15 +69,19 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 	return name
 }
 
-func UiImagePath(ui *gui.DialogUi, defaultLocation string) (location string) {
+func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (location string) {
 	for {
+		if remote {
+			location = ui.GetFromInput("Location to store the image on remote server:", defaultLocation)
+			break
+		}
 		ui.SetSize(6, 64)
-		ui.Msgbox("The next step allows to choose location for the image.\n\tPress <Ok> to proceed")
+		ui.Msgbox("The next step allows to choose location to store the image.\n\tPress <Ok> to proceed")
 		location = ui.Dselect(defaultLocation)
-		//if _, err := os.Stat(location); err != nil {
-		//	continue
-		//}
-		break
+		if _, err := os.Stat(location); err == nil {
+			break
+		}
+
 	}
 	return
 }
@@ -90,9 +94,9 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 	return true
 }
 
-func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
-	ip := ui.GetIpFromInput("Remote server IP:")
-	port := "22"
+func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, passwd string, keyFile string) {
+	ip = ui.GetIpFromInput("Remote server IP:")
+	port = "22"
 	for {
 		port = ui.GetFromInput("SSH port:", port)
 		if portDig, err := strconv.Atoi(port); err == nil {
@@ -101,24 +105,26 @@ func UiRemoteParams(ui *gui.DialogUi) (string, string, string, string, string) {
 			}
 		}
 	}
-	user := ui.GetFromInput(ip+" user:", "root")
-	var passwd string
-	var keyFile string
-	answer := ui.Menu(2, "1", "Password", "2", "Private key")
-	if answer == "1" {
-		passwd = ui.GetPasswordFromInput(ip, user)
-	} else {
-		ui.SetSize(6, 40)
-		ui.Msgbox("Path to ssh private key.\nPress <Ok> to proceed")
-		for {
-			keyFile = ui.Fselect("")
-			if fd, err := os.Stat(keyFile); err != nil || fd.IsDir() {
-				continue
+	user = ui.GetFromInput(ip+" user:", "root")
+	for {
+		ui.SetLabel("Authentication method:")
+		switch ui.Menu(2, "1", "Password", "2", "Private key") {
+		case "1":
+			passwd = ui.GetPasswordFromInput(ip, user)
+			return
+		case "2":
+			ui.SetSize(6, 40)
+			ui.Msgbox("Path to ssh private key.\nPress <Ok> to proceed")
+			for {
+				keyFile = ui.Fselect("")
+				if fd, err := os.Stat(keyFile); err == nil && !fd.IsDir() {
+					return
+				}
 			}
-			break
+		default:
 		}
 	}
-	return ip, port, user, passwd, keyFile
+	return
 }
 
 func UiNetworks(ui *gui.DialogUi, info map[int]*utils.NicInfo, networks ...string) (map[string]*utils.NicInfo, error) {
@@ -136,7 +142,7 @@ func UiNetworks(ui *gui.DialogUi, info map[int]*utils.NicInfo, networks ...strin
 		var ifaceNumStr string
 		for {
 			ui.SetSize(sliceLength+2, 95)
-			ui.SetLabel(fmt.Sprintf("Choose appropriate interface for \"%s\" network:", net))
+			ui.SetLabel(fmt.Sprintf("Select interface for \"%s\" network:", net))
 			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
 			if ifaceNumStr != "" {
 				break
