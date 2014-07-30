@@ -6,6 +6,7 @@ import (
 	"os"
 	"strconv"
 	"strings"
+	"time"
 
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
@@ -179,6 +180,26 @@ func UiNetworks(ui *gui.DialogUi, info []*utils.NicInfo, networks ...string) (ma
 		}
 	}
 	return newMap, nil
+}
+
+func UiGatherHWInfo(ui *gui.DialogUi, hw *utils.HwInfoParser, sleepInSec string, remote bool) error {
+	errCh := make(chan error)
+	defer close(errCh)
+	go func() {
+		errCh <- hw.Parse()
+	}()
+	sleep, err := time.ParseDuration(sleepInSec)
+	if err != nil {
+		return err
+	}
+
+	var msg string
+	if remote {
+		msg = "Gathering remote host harwdare information.\nPlease wait..."
+	} else {
+		msg = "Gathering hardware information.\nPlease wait..."
+	}
+	return ui.Wait(msg, sleep, errCh)
 }
 
 func UiConfirmation(ui *gui.DialogUi, buf *bytes.Buffer, height int) {

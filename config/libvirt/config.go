@@ -51,13 +51,6 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 
 	c := new(Config)
 	c.Common = common.CreateConfig(d)
-	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
-
-	errCh := make(chan error)
-	defer close(errCh)
-	go func() {
-		errCh <- c.HwInfo.Parse()
-	}()
 
 	driver := libvirt.NewDriver(c.Common.SshConfig)
 	c.Data = new(CommonMetadata)
@@ -70,10 +63,10 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
 	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
 
-	if err = utils.WaitForResult(errCh, 1); err != nil {
+	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
+	if err := gui.UiGatherHWInfo(d.Ui, c.HwInfo, "3s", c.Common.RemoteMode); err != nil {
 		return nil, err
 	}
-
 	// Sometimes more complex network configuration is needed.
 	// In this case -  pass empty slice and overwrite appropriate
 	// logic at a higher implementation level
