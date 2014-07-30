@@ -142,7 +142,7 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 }
 
 // NicInfo gathers information related to installed NICs
-func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error) {
+func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err
@@ -153,8 +153,7 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error
 		return nil, err
 	}
 
-	nicsMap := make(map[int]*NicInfo)
-	index := 0
+	nics := make([]*NicInfo, 0)
 	deep := []string{"children.children.children.children", "children"}
 	for _, m := range out {
 		for _, d := range deep {
@@ -197,8 +196,7 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error
 						}
 					}
 					nic.Driver = driver
-					nicsMap[index] = nic
-					index++
+					nics = append(nics, nic)
 				}
 			}
 		}
@@ -217,11 +215,10 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) (map[int]*NicInfo, error
 				Desc:   "Bridge interface",
 				Type:   NicTypeBridge,
 			}
-			nicsMap[index] = br
-			index++
+			nics = append(nics, br)
 		}
 	}
-	return nicsMap, nil
+	return nics, nil
 }
 
 // RAMSize gathers information related to the installed RAM pools
