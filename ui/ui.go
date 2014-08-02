@@ -14,10 +14,6 @@ import (
 	infrautils "github.com/dorzheh/infra/utils"
 )
 
-func UiNewSession() *gui.DialogUi {
-	return gui.NewDialogUi()
-}
-
 func UiValidateUser(ui *gui.DialogUi, userId int) {
 	if err := infrautils.ValidateUserID(userId); err != nil {
 		ui.ErrorOutput(err.Error(), 6, 14)
@@ -195,7 +191,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hw *utils.HwInfoParser, sleepInSec string,
 
 	var msg string
 	if remote {
-		msg = "Gathering remote host harwdare information.\nPlease wait..."
+		msg = "Gathering harwdare information from remote host.\nPlease wait..."
 	} else {
 		msg = "Gathering hardware information.\nPlease wait..."
 	}

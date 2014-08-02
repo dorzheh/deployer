@@ -10,7 +10,6 @@ import (
 
 const imagePath = "/tmp/testImage"
 const rootfsMp = "/tmp/mnt"
-const grubPath = "/tmp/grub"
 const topology = `<?xml version="1.0" encoding="UTF-8"?>
 <Platforms>
   <Topology>
@@ -40,6 +39,11 @@ const topology = `<?xml version="1.0" encoding="UTF-8"?>
 </Platforms>
 `
 
+var u = &Utils{
+	Grub:   "/tmp/grub",
+	Kpartx: "/tmp/kpartx",
+}
+
 func getToplogy() (*Topology, error) {
 	p, err := ParseConfig([]byte(topology))
 	if err != nil {
@@ -62,7 +66,7 @@ func TestLocalImage(t *testing.T) {
 	}
 
 	t.Log("=> New")
-	img, err := New(imagePath, rootfsMp, topo, nil)
+	img, err := New(imagePath, rootfsMp, topo, u, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,7 +80,11 @@ func TestLocalImage(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Log("=> MakeBootable")
-		if err := img.MakeBootable(grubPath); err != nil {
+		if err := img.MakeBootable(); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("=>Cleanup")
+		if err := img.Cleanup(); err != nil {
 			t.Fatal(err)
 		}
 		t.Log("=> Remove")
@@ -111,7 +119,7 @@ func TestRemoteImage(t *testing.T) {
 	sshfsConf := &sshfs.Config{sshConf, "", ""}
 
 	t.Log("=> New")
-	img, err := New(imagePath, rootfsMp, topo, sshfsConf)
+	img, err := New(imagePath, rootfsMp, topo, u, sshfsConf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +131,11 @@ func TestRemoteImage(t *testing.T) {
 			t.Fatal(err)
 		}
 		t.Log("=> MakeBootable")
-		if err := img.MakeBootable(grubPath); err != nil {
+		if err := img.MakeBootable(); err != nil {
+			t.Fatal(err)
+		}
+		t.Log("=>Cleanup")
+		if err := img.Cleanup(); err != nil {
 			t.Fatal(err)
 		}
 		t.Log("=> Remove")

@@ -1,4 +1,3 @@
-// Local builder is responsible for creating local artifacts
 package common
 
 import (
@@ -25,8 +24,8 @@ type ImageBuilder struct {
 	// facility needed by the builder
 	SshfsConfig *sshfs.Config
 
-	// GrubPath - path to grub 1.x binary
-	GrubPath string
+	// set of utilities needed for image manipulation
+	Utils *image.Utils
 
 	// Compress indicates if the artifact should be compressed
 	Compress bool
@@ -47,7 +46,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		return os.RemoveAll(b.RootfsMp)
 	}()
 	// create new image artifact
-	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.SshfsConfig)
+	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.Utils, b.SshfsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -58,9 +57,11 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 			return err
 		}
 		if b.ImageConfig.Bootable {
-			return img.MakeBootable(b.GrubPath)
+			if err := img.MakeBootable(); err != nil {
+				return err
+			}
 		}
-		return nil
+		return img.Cleanup()
 	}()
 	// parse the image
 	if err := img.Parse(); err != nil {

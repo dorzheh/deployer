@@ -43,11 +43,13 @@ type image struct {
 	// path to the image
 	imgpath string
 
-	//
-	localmount string
-
-	// path to sirectory intended for mounting the image
+	// path to the root directory where the image will be mounted
 	slashpath string
+
+	// path to sshfs mount
+	// due to the fact that the remote deployment mode only
+	// it indicates whether image creation occurs locally or remotely
+	localmount string
 
 	// platform configuration file (image config)
 	conf *Topology
@@ -58,8 +60,8 @@ type image struct {
 	// loop device structure
 	*loopDevice
 
-	// Is this a remote image
-	remote bool
+	// set of utilities needed for image manipulation
+	utils *Utils
 
 	// executes commands locally or remotely
 	run func(string) (string, error)
@@ -68,19 +70,26 @@ type image struct {
 	client *sshfs.Client
 }
 
+type Utils struct {
+	Grub   string
+	Kpartx string
+	dir    string
+}
+
 //// Public methods ////
 
 // New gets a path to configuration directory
 // path to temporary directory where the vHDD image supposed to be mounted
 // and path to vHDD image.
 // Returns a pointer to the structure and error/nil
-func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *sshfs.Config) (i *image, err error) {
+func New(pathToRawImage, rootfsMp string, imageConfig *Topology,
+	bins *Utils, rconf *sshfs.Config) (i *image, err error) {
 	needToFormat := false
 	i = new(image)
 	if rconf == nil {
 		i.run = utils.RunFunc(nil)
 		i.slashpath = rootfsMp
-		i.remote = false
+		i.utils = bins
 	} else {
 		i.run = utils.RunFunc(rconf.Common)
 		i.client, err = sshfs.NewClient(rconf)
@@ -88,11 +97,13 @@ func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *sshfs.Co
 			return
 		}
 		i.localmount = rootfsMp
-		i.remote = true
 		if i.slashpath, err = i.run("mktemp -d --suffix _deployer_rootfs"); err != nil {
 			return
 		}
 		if err = i.client.Attach(i.slashpath, i.localmount); err != nil {
+			return
+		}
+		if err = setUtilNewPaths(i, bins); err != nil {
 			return
 		}
 	}
@@ -108,6 +119,18 @@ func New(pathToRawImage, rootfsMp string, imageConfig *Topology, rconf *sshfs.Co
 	i.loopDevice = &loopDevice{}
 	i.loopDevice.amountOfMappers = 0
 	return
+}
+
+func setUtilNewPaths(i *image, u *Utils) error {
+	dir, err := utils.UploadBinaries(i.client.Config.Common, u.Grub, u.Kpartx)
+	if err != nil {
+		return err
+	}
+	i.utils = new(Utils)
+	i.utils.Grub = filepath.Join(dir, filepath.Base(u.Grub))
+	i.utils.Kpartx = filepath.Join(dir, filepath.Base(u.Kpartx))
+	i.utils.dir = dir
+	return nil
 }
 
 // parse processes the RAW image
@@ -143,7 +166,7 @@ func (i *image) Customize(pathToPlatformDir string) error {
 // and the cleans up a temporary stuff
 // Returns error or nil
 func (i *image) Release() error {
-	if i.remote {
+	if i.localmount != "" {
 		if err := i.client.Detach(i.localmount); err != nil {
 			return err
 		}
@@ -151,7 +174,7 @@ func (i *image) Release() error {
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
-		mounted, err := i.mounted(i.loopDevice.mappers[index].name, i.loopDevice.mappers[index].mountPoint)
+		mounted, err := mounted(i, i.loopDevice.mappers[index].name, i.loopDevice.mappers[index].mountPoint)
 		if err != nil {
 			return err
 		}
@@ -163,36 +186,38 @@ func (i *image) Release() error {
 		}
 	}
 	// unbind mappers and image
-	if out, err := i.run("kpartx -d " + i.loopDevice.name); err != nil {
+	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
 	if out, err := i.run("losetup -d " + i.loopDevice.name); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
+	return nil
+}
+
+func (i *image) Cleanup() error {
 	// remove mount point
 	if out, err := i.run("rm -rf " + i.slashpath); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
+	}
+	if i.localmount != "" {
+		// remove mount point
+		if out, err := i.run("rm -rf " + i.utils.dir); err != nil {
+			return fmt.Errorf("%s [%v]", out, err)
+		}
+		// remove mount point
+		if out, err := i.run("rm -rf " + i.localmount); err != nil {
+			return fmt.Errorf("%s [%v]", out, err)
+		}
 	}
 	return nil
 }
 
 // MakeBootable is responsible for making RAW disk bootable.
 // The target disk could be either local or remote image
-func (i *image) MakeBootable(localPathToGrubBin string) error {
-	var pathToGrubBin string
-	if i.remote {
-		dir, err := utils.UploadBinaries(i.client.Config.Common, localPathToGrubBin)
-		if err != nil {
-			return err
-		}
-		pathToGrubBin = filepath.Join(dir, filepath.Base(localPathToGrubBin))
-		defer i.run("rm -rf " + dir)
-	} else {
-		pathToGrubBin = localPathToGrubBin
-	}
-
+func (i *image) MakeBootable() error {
 	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s",
-		i.imgpath, pathToGrubBin)
+		i.imgpath, i.utils.Grub)
 	if out, err := i.run(cmd); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
@@ -212,12 +237,13 @@ func (i *image) ReleaseOnInterrupt() {
 			select {
 			case <-interrupt:
 				i.Release()
+				i.Cleanup()
 			}
 		}
 	}()
 }
 
-// Exports amount of mappers to the outside of the class
+// Exports amount of mappers
 func (i *image) AmountOfMappers() uint8 {
 	return i.amountOfMappers
 }
@@ -296,7 +322,7 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
 	// check if the volume is already mounted
-	mounted, err := i.mounted(mapperDeviceName, mountPoint)
+	mounted, err := mounted(i, mapperDeviceName, mountPoint)
 	if err != nil {
 		return err
 	}
@@ -339,7 +365,7 @@ func (i *image) create(hddSize int) error {
 // and providing the stuff as a slice
 func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 	var mappers []string
-	if _, err := i.run("kpartx -a " + loopDeviceName); err != nil {
+	if _, err := i.run(i.utils.Kpartx + " -a " + loopDeviceName); err != nil {
 		return mappers, err
 	}
 	// somehow on RHEL based systems refresh might take some time therefore
@@ -366,49 +392,4 @@ func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 	}
 	sort.Strings(mappers)
 	return mappers, nil
-}
-
-// check mountinfo
-
-const (
-	mountinfoFormat = "%d %d %d:%d %s %s %s"
-)
-
-type procEntry struct {
-	id, parent, major, minor int
-	source, mountpoint, opts string
-}
-
-func (i *image) parseMountTable() ([]*procEntry, error) {
-	out, err := i.run("cat /proc/self/mountinfo")
-	if err != nil {
-		return nil, err
-	}
-	entries := []*procEntry{}
-	p := &procEntry{}
-	for _, line := range strings.Split(out, "\n") {
-		if _, err := fmt.Sscanf(line, mountinfoFormat,
-			&p.id, &p.parent, &p.major, &p.minor,
-			&p.source, &p.mountpoint, &p.opts); err != nil {
-			return nil, fmt.Errorf("Scanning '%s' failed: %s", line, err)
-		}
-		entries = append(entries, p)
-	}
-	return entries, nil
-}
-
-// Looks at /proc/self/mountinfo to determine of the specified
-// mountpoint has been mounted
-func (i *image) mounted(device, mountpoint string) (bool, error) {
-	entries, err := i.parseMountTable()
-	if err != nil {
-		return false, err
-	}
-	// Search the table for the mountpoint
-	for _, entry := range entries {
-		if entry.mountpoint == mountpoint || strings.Contains(entry.opts, device) {
-			return true, nil
-		}
-	}
-	return false, nil
 }

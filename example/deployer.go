@@ -9,6 +9,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/example/myproduct"
 	gui "github.com/dorzheh/deployer/ui"
+	"github.com/dorzheh/deployer/ui/dialog_ui"
 )
 
 var (
@@ -37,15 +38,18 @@ func init() {
 }
 
 func main() {
-	ui := gui.UiNewSession()
+	ui := dialog_ui.NewDialogUi()
 	gui.UiValidateUser(ui, 0)
 	gui.UiWelcomeMsg(ui, "MyProduct")
 	data := &deployer.CommonData{
-		RootDir:  rootDir,
-		RootfsMp: filepath.Join(rootDir, "rootfs_mnt"),
-		VaName:   defaultProductName,
-		Arch:     arch,
-		Ui:       ui,
+		RootDir:          rootDir,
+		RootfsMp:         filepath.Join(rootDir, "rootfs_mnt"),
+		DefaultExportDir: rootDir,
+		VaName:           defaultProductName,
+		Arch:             arch,
+		Ui:               ui,
 	}
-	gui.UiDeploymentResult(ui, myproduct.Deploy(data))
+	for {
+		gui.UiDeploymentResult(ui, myproduct.Deploy(data))
+	}
 }

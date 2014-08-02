@@ -16,7 +16,7 @@ import (
 
 var networks = []string{"management", "data"}
 
-type altdata struct {
+type prodData struct {
 	*libvirtconf.CommonMetadata
 	Cpus int
 }
@@ -58,34 +58,29 @@ func (c *FlowCreator) CreateBuilders() (b []deployer.Builder, err error) {
 		Filler:      c.Filler,
 	}
 
-	altd := &altdata{c.conf.Data, 2}
+	data := &prodData{c.conf.Data, 2}
 	metaData := &deployer.MetadataBuilderData{
 		Source:   c.SrcMetadata,
 		Dest:     c.conf.MetadataPath,
-		UserData: altd,
+		UserData: data,
 	}
-
-	var grubPath string
+	var sshfsConf *sshfs.Config
 	if c.conf.Common.RemoteMode {
-		grubPath = "/tmp/grub"
-	} else {
-		grubPath = filepath.Join(c.conf.Common.Data.RootDir, "install",
-			c.conf.Common.Data.Arch, "bin/grub")
-	}
-	var rc *image.RemoteConfig
-	if c.conf.Common.RemoteMode {
-		c := &sshfs.Config{
+		sshfsConf = &sshfs.Config{
 			Common:      c.conf.Common.SshConfig,
-			SshpassPath: "",
 			SshfsPath:   "",
 			FusrmntPath: "",
 		}
-		rc = &image.RemoteConfig{
-			Conf:           c,
-			RemoteRootfsMp: "/tmp/root_mp",
-		}
 	}
-	imageBuilder := &common.ImageBuilder{imageData, rc, grubPath, false}
+
+	u := &image.Utils{
+		Grub: filepath.Join(c.conf.Common.Data.RootDir, "install",
+			c.conf.Common.Data.Arch, "bin/grub"),
+		Kpartx: filepath.Join(c.conf.Common.Data.RootDir, "install",
+			c.conf.Common.Data.Arch, "bin/kpartx"),
+	}
+
+	imageBuilder := &common.ImageBuilder{imageData, sshfsConf, u, false}
 	metadataBuilder := &common.MetadataBuilder{metaData, c.conf.Common.SshConfig}
 	b = append(b, imageBuilder, metadataBuilder)
 	return
@@ -98,7 +93,6 @@ func (c *FlowCreator) CreateProvisioner() (p deployer.Provisioner, err error) {
 func (c *FlowCreator) CreatePostProcessor() (p deployer.PostProcessor, err error) {
 	p = &libvirtpost.PostProcessor{
 		Driver:      libvirtpost.NewDriver(c.conf.Common.SshConfig),
-		DomName:     c.conf.Data.DomainName,
 		StartDomain: false,
 	}
 	return
