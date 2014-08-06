@@ -35,7 +35,7 @@ func UiDeploymentResult(ui *gui.DialogUi, err error) {
 func UiHostName(ui *gui.DialogUi) (hostname string) {
 	for {
 		ui.SetSize(8, 30)
-		ui.SetLabel("New hostname: ")
+		ui.SetLabel("Set hostname")
 		hostname = ui.Inputbox("")
 		if err := infrautils.SetHostname(hostname); err != nil {
 			ui.Output(gui.Warning, err.Error()+".Press <OK> to proceed", 8, 12)
@@ -50,7 +50,7 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 	var name string
 	for {
 		ui.SetSize(8, 30)
-		ui.SetLabel("Appliance name: ")
+		ui.SetLabel("Appliance name")
 		name = ui.Inputbox(defaultName)
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
@@ -69,11 +69,11 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (location string) {
 	for {
 		if remote {
-			location = ui.GetFromInput("Location to store the image on remote server:", defaultLocation)
+			location = ui.GetFromInput("Location to store the image on remote server", defaultLocation)
 			break
 		}
 		ui.SetSize(6, 64)
-		ui.Msgbox("The next step allows to choose location to store the image.\n\tPress <Ok> to proceed")
+		ui.Msgbox("The next step allows to choose location to store the image.\nPress <Ok> to proceed")
 		location = ui.Dselect(defaultLocation)
 		if _, err := os.Stat(location); err == nil {
 			break
@@ -84,7 +84,7 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (locatio
 }
 
 func UiRemoteMode(ui *gui.DialogUi) bool {
-	ui.SetLabel("Deployment Mode:")
+	ui.SetLabel("Deployment Mode")
 	if answer := ui.Menu(2, "1", "Local", "2", "Remote"); answer == "1" {
 		return false
 	}
@@ -92,10 +92,10 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 }
 
 func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, passwd string, keyFile string) {
-	ip = ui.GetIpFromInput("Remote server IP:")
+	ip = ui.GetIpFromInput("Remote server IP")
 	port = "22"
 	for {
-		port = ui.GetFromInput("SSH port:", port)
+		port = ui.GetFromInput("SSH port", port)
 		if portDig, err := strconv.Atoi(port); err == nil {
 			if portDig < 65536 {
 				break
@@ -104,7 +104,7 @@ func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, pass
 	}
 	user = ui.GetFromInput(ip+" user:", "root")
 	for {
-		ui.SetLabel("Authentication method:")
+		ui.SetLabel("Authentication method")
 		switch ui.Menu(2, "1", "Password", "2", "Private key") {
 		case "1":
 			passwd = ui.GetPasswordFromInput(ip, user)
@@ -139,7 +139,7 @@ func UiNetworks(ui *gui.DialogUi, info []*utils.NicInfo, networks ...string) (ma
 		var ifaceNumStr string
 		for {
 			ui.SetSize(sliceLength+2, 95)
-			ui.SetLabel(fmt.Sprintf("Select interface for \"%s\" network:", net))
+			ui.SetLabel(fmt.Sprintf("Select interface for \"%s\" network", net))
 			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
 			if ifaceNumStr != "" {
 				break

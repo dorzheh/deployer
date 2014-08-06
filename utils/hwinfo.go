@@ -221,26 +221,14 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 	return nics, nil
 }
 
-// RAMSize gathers information related to the installed RAM pools
+// RAMSize gathers information related to the installed amount of RAM
 func (i *HwInfoParser) RAMSize() (uint, error) {
-	var ramsize uint = 0
-	if _, err := os.Stat(i.cacheFile); err != nil {
-		if err = i.Parse(); err != nil {
-			return ramsize, err
-		}
-	}
-	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
+	out, err := i.run("grep MemTotal /proc/meminfo")
 	if err != nil {
-		return ramsize, err
+		return 0, err
 	}
-	for _, s := range out {
-		r, _ := s.ValuesForPath("children.children")
-		for _, n := range r {
-			ch := n.(map[string]interface{})
-			if ch["id"] == "memory" {
-				ramsize = uint(ch["size"].(float64))
-			}
-		}
-	}
-	return uint(ramsize), nil
+	var col3 string
+	var ramsize uint
+	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize, &col3)
+	return ramsize, nil
 }
