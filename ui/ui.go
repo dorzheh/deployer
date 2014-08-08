@@ -21,15 +21,17 @@ func UiValidateUser(ui *gui.DialogUi, userId int) {
 }
 
 func UiWelcomeMsg(ui *gui.DialogUi, name string) {
-	ui.SetSize(6, 49)
-	ui.Msgbox("Welcome to the " + name + " Deployment Procedure!")
+	msg := "Welcome to the " + name + " Deployment Procedure!"
+	ui.SetSize(6, len(msg)+5)
+	ui.Msgbox(msg)
 }
 
-func UiDeploymentResult(ui *gui.DialogUi, err error) {
+func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	if err != nil {
 		ui.ErrorOutput(err.Error(), 8, 14)
 	}
-	ui.Output(gui.Success, "deployment process completed.", 6, 14)
+	width := len(msg) + 2
+	ui.Output(gui.Success, msg, 6, width)
 }
 
 func UiHostName(ui *gui.DialogUi) (hostname string) {
@@ -56,7 +58,7 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Drive
 			name = strings.Replace(name, ".", "-", -1)
 			if driver != nil {
 				if driver.DomainExists(name) {
-					ui.Output(gui.Warning, "domain "+name+" exists.Press <OK> and choose another name", 8, 12)
+					ui.Output(gui.Warning, "domain "+name+" exists.\nPress <OK> and choose another name", 8, 10)
 					continue
 				}
 			}
@@ -72,20 +74,18 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (locatio
 			location = ui.GetFromInput("Location to store the image on remote server", defaultLocation)
 			break
 		}
-		ui.SetSize(6, 64)
-		ui.Msgbox("The next step allows to choose location to store the image.\nPress <Ok> to proceed")
-		location = ui.Dselect(defaultLocation)
+		location := ui.GetPathToDirFromInput(defaultLocation, "Select location to store the image")
 		if _, err := os.Stat(location); err == nil {
 			break
 		}
-
 	}
 	return
 }
 
 func UiRemoteMode(ui *gui.DialogUi) bool {
 	ui.SetLabel("Deployment Mode")
-	if answer := ui.Menu(2, "1", "Local", "2", "Remote"); answer == "1" {
+	answer := ui.Menu(2, "1", "Local", "2", "Remote")
+	if answer == "1" {
 		return false
 	}
 	return true
@@ -102,7 +102,7 @@ func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, pass
 			}
 		}
 	}
-	user = ui.GetFromInput(ip+" user:", "root")
+	user = ui.GetFromInput("Username for logging into the host "+ip, "root")
 	for {
 		ui.SetLabel("Authentication method")
 		switch ui.Menu(2, "1", "Password", "2", "Private key") {
@@ -110,15 +110,10 @@ func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, pass
 			passwd = ui.GetPasswordFromInput(ip, user)
 			return
 		case "2":
-			ui.SetSize(6, 40)
-			ui.Msgbox("Path to ssh private key.\nPress <Ok> to proceed")
-			for {
-				keyFile = ui.Fselect("")
-				if fd, err := os.Stat(keyFile); err == nil && !fd.IsDir() {
-					return
-				}
+			location := ui.GetPathToFileFromInput("Path to ssh private key file")
+			if _, err := os.Stat(location); err == nil {
+				return
 			}
-		default:
 		}
 	}
 	return
@@ -126,56 +121,64 @@ func UiRemoteParams(ui *gui.DialogUi) (ip string, port string, user string, pass
 
 func UiNetworks(ui *gui.DialogUi, info []*utils.NicInfo, networks ...string) (map[string]*utils.NicInfo, error) {
 	newMap := make(map[string]*utils.NicInfo)
-	var temp []string
-	index := 0
-	for _, n := range info {
-		index += 1
-		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
-	}
-
-	sliceLength := len(temp)
-	var ifaceNumStr string
 	for _, net := range networks {
-		var ifaceNumStr string
-		for {
-			ui.SetSize(sliceLength+2, 95)
-			ui.SetLabel(fmt.Sprintf("Select interface for \"%s\" network", net))
-			ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
-			if ifaceNumStr != "" {
-				break
-			}
-		}
-		ifaceNumInt, err := strconv.Atoi(ifaceNumStr)
+		nic, err := uiGetNicInfo(ui, &info, net)
 		if err != nil {
 			return nil, err
 		}
-		newMap[net] = info[ifaceNumInt-1]
+		newMap[net] = nic
 	}
-
-	nextIndex := len(networks) + 1
+	nextIndex := len(networks)
 	for {
 		ui.SetSize(5, 60)
-		ui.SetLabel("Would you like to configure additional network?")
-		if ui.Yesno() {
-			for {
-				ui.SetSize(sliceLength+2, 95)
-				ui.SetLabel(fmt.Sprintf("Choose appropriate interface for the network #%d:", nextIndex))
-				ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
-				if ifaceNumStr != "" {
-					break
-				}
-			}
-			ifaceNumInt, err := strconv.Atoi(ifaceNumStr)
-			if err != nil {
-				return nil, err
-			}
-			newMap[ifaceNumStr] = info[ifaceNumInt-1]
-			nextIndex++
+		if len(networks) == 0 {
+			ui.SetLabel("Would you like to configure network?")
 		} else {
+			ui.SetLabel("Would you like to configure additional network?")
+		}
+		if !ui.Yesno() {
+			break
+		}
+		net := fmt.Sprintf("#%d", nextIndex)
+		nic, err := uiGetNicInfo(ui, &info, net)
+		if err != nil {
+			return nil, err
+		}
+		newMap[net] = nic
+	}
+	return newMap, nil
+}
+
+func uiGetNicInfo(ui *gui.DialogUi, info *[]*utils.NicInfo, network string) (*utils.NicInfo, error) {
+	var temp []string
+	index := 0
+	for _, n := range *info {
+		index += 1
+		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
+	}
+	sliceLength := len(temp)
+	var ifaceNumStr string
+	var err error
+	for {
+		ui.SetSize(sliceLength+2, 95)
+		ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
+		ifaceNumStr = ui.Menu(sliceLength, temp[0:]...)
+		if ifaceNumStr != "" {
 			break
 		}
 	}
-	return newMap, nil
+	ifaceNumInt, err := strconv.Atoi(ifaceNumStr)
+	if err != nil {
+		return nil, err
+	}
+	index = ifaceNumInt - 1
+	nic := (*info)[index]
+	if nic.Type == utils.NicTypePhys {
+		tempInfo := *info
+		tempInfo = append(tempInfo[:index], tempInfo[index+1:]...)
+		*info = tempInfo
+	}
+	return nic, nil
 }
 
 func UiGatherHWInfo(ui *gui.DialogUi, hw *utils.HwInfoParser, sleepInSec string, remote bool) error {

@@ -5,7 +5,6 @@ import (
 	"net"
 	"os"
 	"os/exec"
-	"strings"
 	"time"
 
 	. "github.com/dorzheh/go-dialog"
@@ -40,7 +39,7 @@ func (ui *DialogUi) ErrorOutput(err string, height, widthOffset int) {
 // Output gets dialog session and a msg string and height/width
 // It prints out appropriate output inside dialog inforbox.
 func (ui *DialogUi) Output(ntype string, msg string, height, widthOffset int) {
-	if ntype == Notification {
+	if ntype == Notification || ntype == "" {
 		ui.SetSize(height, widthOffset)
 		ui.Msgbox(msg)
 	} else {
@@ -137,44 +136,35 @@ func (ui *DialogUi) Wait(msg string, pause time.Duration, done chan error) error
 	return nil
 }
 
-// GetPathToFileFromInput uses a dialog session for getting path to a file to upload
-// Returns path to the file
-func (ui *DialogUi) GetPathToFileFromInput(msg string) string {
-	ui.SetSize(7, 60)
-	ui.Msgbox(msg)
+// GetPathToFileFromInput uses a dialog session for getting path to a file
+func (ui *DialogUi) GetPathToFileFromInput(backtitle string) string {
 	var result string
 	for {
+		ui.SetBackTitle(backtitle)
 		ui.SetSize(10, 50)
 		result = ui.Fselect("/")
-		if result == "" {
-			continue
-		}
-		stat, err := os.Stat(result)
-		if err == nil && !stat.IsDir() {
-			break
+		if result != "" {
+			stat, err := os.Stat(result)
+			if err == nil && !stat.IsDir() {
+				break
+			}
 		}
 	}
 	return result
 }
 
 // GetPathToDirFromInput uses a dialog session for getting path to a directory to upload
-// Returns path to directory
-func (ui *DialogUi) GetPathToDirFromInput(defaultDir, msg string) string {
-	if !strings.HasSuffix(defaultDir, "/") {
-		defaultDir += "/"
-	}
-	ui.SetSize(7, 75)
-	ui.Msgbox(msg)
+func (ui *DialogUi) GetPathToDirFromInput(defaultDir, backtitle string) string {
 	var result string
 	for {
+		ui.SetBackTitle(backtitle)
 		ui.SetSize(10, 50)
 		result = ui.Dselect(defaultDir)
-		if result == "" {
-			continue
-		}
-		stat, err := os.Stat(result)
-		if err == nil && stat.IsDir() {
-			break
+		if result != "" {
+			stat, err := os.Stat(result)
+			if err == nil && stat.IsDir() {
+				break
+			}
 		}
 	}
 	return result
@@ -204,9 +194,8 @@ func (ui *DialogUi) GetIpFromInput(labelMsg string) string {
 // Returns user input
 func (ui *DialogUi) GetFromInput(labelMsg string, defaultInput string) string {
 	var input string
-	width := len(labelMsg) + 5
 	for {
-		ui.SetSize(8, width)
+		ui.SetSize(8, len(labelMsg)+5)
 		ui.SetLabel(labelMsg)
 		input = ui.Inputbox(defaultInput)
 		if input != "" {
@@ -222,20 +211,18 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string) string {
 	var passwd1 string
 	var passwd2 string
 	for {
-		msg := fmt.Sprintf("\"%s\" password on the host %s: ", user, host)
-		width := len(msg) + 5
+		msg := fmt.Sprintf("\"%s\" password on the host %s", user, host)
 		for {
-			ui.SetSize(8, width)
+			ui.SetSize(8, len(msg)+5)
 			ui.SetLabel(msg)
 			passwd1 = ui.Passwordbox()
 			if passwd1 != "" {
 				break
 			}
 		}
-		msg = "Password confirmation for user \"" + user + "\":"
-		width = len(msg) + 5
+		msg = "Password confirmation for user \"" + user + "\""
 		for {
-			ui.SetSize(8, width)
+			ui.SetSize(8, len(msg)+5)
 			ui.SetLabel(msg)
 			passwd2 = ui.Passwordbox()
 			if passwd2 != "" {
