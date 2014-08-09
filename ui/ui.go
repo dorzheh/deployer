@@ -74,7 +74,7 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (locatio
 			location = ui.GetFromInput("Location to store the image on remote server", defaultLocation)
 			break
 		}
-		location := ui.GetPathToDirFromInput(defaultLocation, "Select location to store the image")
+		location = ui.GetPathToDirFromInput(defaultLocation, "Select location to store the image")
 		if _, err := os.Stat(location); err == nil {
 			break
 		}
