@@ -15,6 +15,7 @@ const (
 	Error        = "ERROR"
 	Warning      = "WARNING"
 	Notification = "NOTIFICATION"
+	None         = ""
 )
 
 type DialogUi struct {
@@ -127,8 +128,8 @@ func (ui *DialogUi) Wait(msg string, pause time.Duration, done chan error) error
 	for {
 		select {
 		// wait for result
-		case <-done:
-			return nil
+		case result := <-done:
+			return result
 		default:
 			time.Sleep(pause)
 		}
@@ -154,7 +155,7 @@ func (ui *DialogUi) GetPathToFileFromInput(backtitle string) string {
 }
 
 // GetPathToDirFromInput uses a dialog session for getting path to a directory to upload
-func (ui *DialogUi) GetPathToDirFromInput(defaultDir, backtitle string) string {
+func (ui *DialogUi) GetPathToDirFromInput(backtitle, defaultDir string) string {
 	var result string
 	for {
 		ui.SetBackTitle(backtitle)
@@ -207,9 +208,7 @@ func (ui *DialogUi) GetFromInput(labelMsg string, defaultInput string) string {
 
 //GetPasswordFromInput uses a dialog session for reading user password from user input
 //Returns password string
-func (ui *DialogUi) GetPasswordFromInput(host, user string) string {
-	var passwd1 string
-	var passwd2 string
+func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passwd1 string) {
 	for {
 		msg := fmt.Sprintf("\"%s\" password on the host %s", user, host)
 		for {
@@ -217,21 +216,24 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string) string {
 			ui.SetLabel(msg)
 			passwd1 = ui.Passwordbox()
 			if passwd1 != "" {
-				break
+				return
 			}
 		}
-		msg = "Password confirmation for user \"" + user + "\""
-		for {
-			ui.SetSize(8, len(msg)+5)
-			ui.SetLabel(msg)
-			passwd2 = ui.Passwordbox()
-			if passwd2 != "" {
-				break
+		if confirm {
+			var passwd2 string
+			msg = "Password confirmation for user \"" + user + "\""
+			for {
+				ui.SetSize(8, len(msg)+5)
+				ui.SetLabel(msg)
+				passwd2 = ui.Passwordbox()
+				if passwd2 != "" {
+					break
+				}
 			}
-		}
-		if passwd1 == passwd2 {
-			break
+			if passwd1 == passwd2 {
+				return
+			}
 		}
 	}
-	return passwd1
+	return
 }

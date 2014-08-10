@@ -16,7 +16,7 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 	if err != nil {
 		return err
 	}
-	progressBarTitle := c.VaName + " post-processing progress"
+	progressBarTitle := c.VaName + " installation in progress (post-processing stage)"
 	progressBarMsg := "\n\nPlease wait..."
 	return c.Ui.Progress(progressBarTitle, progressBarMsg, duration, 15, errChan)
 }

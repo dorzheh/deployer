@@ -26,7 +26,7 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	if err != nil {
 		return
 	}
-	progressBarTitle := c.VaName + " artifacts building progress"
+	progressBarTitle := c.VaName + " installation in progress (artifacts building stage)"
 	progressBarMsg := "\n\nPlease wait..."
 	err = c.Ui.Progress(progressBarTitle, progressBarMsg, duration, 15, errChan)
 	return
@@ -34,7 +34,6 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 
 // buildResult contains result of a build
 type buildResult struct {
-	// artifact
 	artifact Artifact
 	err      error
 }
