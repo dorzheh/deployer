@@ -49,7 +49,6 @@ func main() {
 		Arch:             arch,
 		Ui:               ui,
 	}
-	for {
-		gui.UiDeploymentResult(ui, myproduct.Deploy(data))
-	}
+
+	gui.UiDeploymentResult(ui, myproduct.Deploy(data))
 }

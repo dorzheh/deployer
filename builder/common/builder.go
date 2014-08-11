@@ -1,11 +1,9 @@
 package common
 
 import (
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
@@ -26,9 +24,6 @@ type ImageBuilder struct {
 
 	// set of utilities needed for image manipulation
 	Utils *image.Utils
-
-	// Compress indicates if the artifact should be compressed
-	Compress bool
 }
 
 func (b *ImageBuilder) Id() string {
@@ -78,31 +73,11 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 		}
 	}
 
-	var a deployer.Artifact
-	if b.Compress {
-		origName := filepath.Base(b.ImagePath)
-		newImagePath, err := compressArtifact(b.ImagePath)
-		if err != nil {
-			return nil, err
-		}
-		if err := os.Remove(b.ImagePath); err != nil {
-			return nil, err
-		}
-		b.ImagePath = newImagePath
-
-		a = &deployer.CompressedArtifact{
-			RealName: origName,
-			Path:     b.ImagePath,
-			Type:     deployer.ImageArtifact,
-		}
-	} else {
-		a = &deployer.CommonArtifact{
-			Name: b.ImageConfig.Name,
-			Path: b.ImagePath,
-			Type: deployer.ImageArtifact,
-		}
-	}
-	return a, nil
+	return &deployer.CommonArtifact{
+		Name: b.ImageConfig.Name,
+		Path: b.ImagePath,
+		Type: deployer.ImageArtifact,
+	}, nil
 }
 
 // MetadataBuilder represents properties related to a local metadata builder
@@ -154,24 +129,4 @@ func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {
 		return
 	}
 	return
-}
-
-// compressArtifact is intended for compressing artifacts in case of necessity
-func compressArtifact(path string) (string, error) {
-	dir := filepath.Dir(path)
-	oldArtifactFile := filepath.Base(path)
-	if err := os.Chdir(dir); err != nil {
-		return "", err
-	}
-	newArtifactFile := oldArtifactFile + ".tgz"
-	var stderr bytes.Buffer
-	cmd := exec.Command("tar", "cfzp", newArtifactFile, oldArtifactFile)
-	cmd.Stderr = &stderr
-	if err := cmd.Start(); err != nil {
-		return "", err
-	}
-	if err := cmd.Wait(); err != nil {
-		return "", fmt.Errorf("%s [%s]", stderr.String(), err)
-	}
-	return filepath.Join(dir, newArtifactFile), nil
 }

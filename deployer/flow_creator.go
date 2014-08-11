@@ -8,9 +8,6 @@ type FlowCreator interface {
 	// Creates builders
 	CreateBuilders() ([]Builder, error)
 
-	// Creates a provisioner
-	CreateProvisioner() (Provisioner, error)
-
 	// Creates a post-processor
 	CreatePostProcessor() (PostProcessor, error)
 }

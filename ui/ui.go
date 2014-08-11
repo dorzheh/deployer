@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"os"
+	"os/exec"
 	"strconv"
 	"strings"
 	"time"
@@ -75,6 +76,10 @@ func UiRemoteMode(ui *gui.DialogUi) bool {
 	answer := ui.Menu(2, "1", "Local", "2", "Remote")
 	if answer == "1" {
 		return false
+	}
+
+	if _, err := exec.LookPath("sshfs"); err != nil {
+		ui.ErrorOutput("sshfs utility is not installed", 8, 14)
 	}
 	return true
 }

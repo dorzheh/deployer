@@ -29,41 +29,6 @@ type Artifact interface {
 	Destroy() error
 }
 
-// LocalArtifact implements Artifact interface
-// and represents artifacts that creared and used locally
-type CompressedArtifact struct {
-	// Artifact name before compression
-	RealName string
-
-	// Path - full path to artifact
-	Path string
-
-	// Artifact type (either ImageArtifact or MetadataArtifact)
-	Type ArtifactType
-
-	SshConfig *ssh.Config
-}
-
-func (a *CompressedArtifact) GetName() string {
-	return a.RealName
-}
-
-func (a *CompressedArtifact) GetPath() string {
-	return a.Path
-}
-
-func (a *CompressedArtifact) GetType() ArtifactType {
-	return a.Type
-}
-
-func (a *CompressedArtifact) Destroy() error {
-	run := utils.RunFunc(a.SshConfig)
-	if _, err := run("rm -f " + a.Path); err != nil {
-		return err
-	}
-	return nil
-}
-
 type CommonArtifact struct {
 	Name      string
 	Path      string

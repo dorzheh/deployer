@@ -64,7 +64,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
 
 	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
-	if err := gui.UiGatherHWInfo(d.Ui, c.HwInfo, "3s", c.Common.RemoteMode); err != nil {
+	if err := gui.UiGatherHWInfo(d.Ui, c.HwInfo, "1s", c.Common.RemoteMode); err != nil {
 		return nil, err
 	}
 	// Sometimes more complex network configuration is needed.

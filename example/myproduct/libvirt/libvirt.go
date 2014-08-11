@@ -80,13 +80,9 @@ func (c *FlowCreator) CreateBuilders() (b []deployer.Builder, err error) {
 			c.conf.Common.Data.Arch, "bin/kpartx"),
 	}
 
-	imageBuilder := &common.ImageBuilder{imageData, sshfsConf, u, false}
+	imageBuilder := &common.ImageBuilder{imageData, sshfsConf, u}
 	metadataBuilder := &common.MetadataBuilder{metaData, c.conf.Common.SshConfig}
 	b = append(b, imageBuilder, metadataBuilder)
-	return
-}
-
-func (c *FlowCreator) CreateProvisioner() (p deployer.Provisioner, err error) {
 	return
 }
 
