@@ -13,7 +13,6 @@ import (
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
 	sshconf "github.com/dorzheh/infra/comm/common"
-	"github.com/dorzheh/infra/comm/ssh"
 	infrautils "github.com/dorzheh/infra/utils"
 )
 
@@ -40,7 +39,7 @@ func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Driver) string {
 	var name string
 	for {
-		ui.SetSize(8, 30)
+		ui.SetSize(8, len(defaultName)+10)
 		ui.SetLabel("Virtual machine name")
 		name = ui.Inputbox(defaultName)
 		if name != "" {
@@ -112,7 +111,9 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 		}
 
 		go func() {
-			_, err := ssh.NewSshConn(cfg)
+			run := utils.RunFunc(cfg)
+			// verifying that user is able execute a command by using sudo
+			_, err := run("uname")
 			errCh <- err
 		}()
 
