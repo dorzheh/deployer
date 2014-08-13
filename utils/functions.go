@@ -47,7 +47,7 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 			return "", err
 		}
 		defer c.ConnClose()
-		outstr, errstr, err := c.Run(command)
+		outstr, errstr, err := c.Run("sudo " + command)
 		if err != nil {
 			return "", fmt.Errorf("executing %s : %s [%s]", command, errstr, err)
 		}
