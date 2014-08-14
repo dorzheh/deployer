@@ -189,9 +189,10 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 								if !found {
 									continue
 								}
-								if _, err := i.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
-									continue
-								}
+							
+							}
+							if _, err := i.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
+								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
 							nic.Desc = vendor + " " + prod
