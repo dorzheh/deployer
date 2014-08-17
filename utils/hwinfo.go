@@ -110,7 +110,7 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 	}
 
 	c := new(CpuInfo)
-	cpustr, err := i.run(`grep -c processor /proc/cpuinfo`)
+	cpustr, err := i.run(`grep -c ^processor /proc/cpuinfo`)
 	if err != nil {
 		return nil, err
 	}
