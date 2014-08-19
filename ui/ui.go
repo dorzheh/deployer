@@ -199,6 +199,38 @@ func UiGatherHWInfo(ui *gui.DialogUi, hw *utils.HwInfoParser, sleepInSec string,
 	return ui.Wait(msg, sleep, errCh)
 }
 
+func UiRAMSize(ui *gui.DialogUi, installedRamInMb uint) uint {
+	var amountUint uint
+	for {
+		msg := fmt.Sprintf("Virtual Machine RAM allocation (installed on the host: %dMb)", installedRamInMb)
+		ui.SetSize(8, len(msg)+10)
+		ui.SetLabel(msg)
+		amountStr := ui.Inputbox("")
+		amountInt, err := strconv.Atoi(amountStr)
+		amountUint = uint(amountInt)
+		if err == nil && amountUint < installedRamInMb {
+			break
+		}
+	}
+	return amountUint
+}
+
+func UiCPUs(ui *gui.DialogUi, installedCpus uint) uint {
+	var amountUint uint
+	for {
+		msg := fmt.Sprintf("Virtual Machine vCPUs allocation (installed on the host: %d)", installedCpus)
+		ui.SetSize(8, len(msg)+10)
+		ui.SetLabel(msg)
+		amountStr := ui.Inputbox("")
+		amountInt, err := strconv.Atoi(amountStr)
+		amountUint = uint(amountInt)
+		if err == nil && amountUint <= installedCpus {
+			break
+		}
+	}
+	return amountUint
+}
+
 func UiConfirmation(ui *gui.DialogUi, buf *bytes.Buffer, height int) {
 	buf.WriteString("\n\nPress <OK> to proceed or <CTRL+C> to exit")
 	ui.SetSize(height, 100)

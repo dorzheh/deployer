@@ -17,7 +17,7 @@ import (
 
 // CpuInfo contains CPU description and properties
 type CpuInfo struct {
-	Cpus int
+	Cpus uint
 	Desc map[string]interface{}
 	Cap  map[string]interface{}
 }
@@ -115,7 +115,8 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 		return nil, err
 	}
 
-	c.Cpus, err = strconv.Atoi(strings.Trim(cpustr, "\n"))
+	cpus, err := strconv.Atoi(strings.Trim(cpustr, "\n"))
+	c.Cpus = uint(cpus)
 	if err != nil {
 		return nil, err
 	}
@@ -189,7 +190,6 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 								if !found {
 									continue
 								}
-							
 							}
 							if _, err := i.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
 								continue

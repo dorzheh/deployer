@@ -14,6 +14,12 @@ import (
 
 // InputData provides a static data
 type InputData struct {
+	// Amount of vCPUs to allocate for VM
+	CPUs uint
+
+	// Amount of RAM to allocate for VM
+	RAM uint
+
 	// Networks contains a slice of networks
 	// that the target appliance will be bound to
 	Networks []string
@@ -29,6 +35,8 @@ type InputData struct {
 // by the template library and used by Libvirt XML metadata
 type CommonMetadata struct {
 	DomainName   string
+	CPUs         uint
+	RAM          uint
 	EmulatorPath string
 	ImagePath    string
 	Networks     string
@@ -66,6 +74,20 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
 	if err := gui.UiGatherHWInfo(d.Ui, c.HwInfo, "1s", c.Common.RemoteMode); err != nil {
 		return nil, err
+	}
+	if i.CPUs > 0 {
+		ci, err := c.HwInfo.CpuInfo()
+		if err != nil {
+			return nil, err
+		}
+		c.Data.CPUs = gui.UiCPUs(d.Ui, ci.Cpus)
+	}
+	if i.RAM > 0 {
+		ram, err := c.HwInfo.RAMSize()
+		if err != nil {
+			return nil, err
+		}
+		c.Data.RAM = gui.UiRAMSize(d.Ui, ram)
 	}
 	// Sometimes more complex network configuration is needed.
 	// In this case -  pass empty slice and overwrite appropriate

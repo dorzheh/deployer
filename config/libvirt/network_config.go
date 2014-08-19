@@ -62,13 +62,13 @@ func processGenericPassthroughTemplate(pci string) ([]byte, error) {
 }
 
 var bridged = `<interface type='bridge'>
-      <source bridge='{{ .Bridge }}'/>
+      <source bridge='{{.Bridge}}'/>
 	  <model type='virtio'/>
 	  <driver name='vhost'/>
  </interface>`
 
 var bridgedOVS = `<interface type='bridge'>
-      <source bridge='{{ .OVSBridge }}'/>
+      <source bridge='{{.OVSBridge}}'/>
       <virtualport type='openvswitch'/>
 	  <model type='virtio'/>
 	  <driver name='vhost'/>
@@ -76,13 +76,13 @@ var bridgedOVS = `<interface type='bridge'>
 
 var sriovPassthrough = `<interface type='hostdev' managed='yes'>
       <source>
-        <address type='pci' domain='0x0000' bus='0x{{ .Bus }}' slot='0x{{ .Slot }}' function='0x{{ .Function }}'/>
+        <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>
       </source>
     </interface>
 `
 var genericPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
     <source>
-      <address type='pci' domain='0x0000' bus='0x{{ .Bus }}' slot='0x{{ .Slot }}' function='0x{{ .Function }}'/>
+      <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>
     </source>
   </hostdev>
 `
