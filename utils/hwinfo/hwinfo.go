@@ -1,6 +1,6 @@
 // Responsible for parsing lshw output
 
-package utils
+package hwinfo
 
 import (
 	"fmt"
@@ -10,56 +10,23 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/utils/lshw"
 	"github.com/dorzheh/mxj"
 )
 
-// CpuInfo contains CPU description and properties
-type CpuInfo struct {
-	Cpus uint
-	Desc map[string]interface{}
-	Cap  map[string]interface{}
-}
-
-// supported NIC types
-type NicType string
-
-const (
-	NicTypePhys   NicType = "physical"
-	NicTypeOVS    NicType = "openvswitch"
-	NicTypeBridge NicType = "bridge"
-)
-
-// NIC information
-type NicInfo struct {
-	// port name (eth0,br0...)
-	Name string
-
-	// NIC driver(bridge,openvswitch...)
-	Driver string
-
-	// Description
-	Desc string
-
-	// PCI Address
-	PCIAddr string
-
-	// Port type
-	Type NicType
-}
-
-type HwInfoParser struct {
+type Parser struct {
 	run       func(string) (string, error)
 	cacheFile string
 	cmd       string
 }
 
-// NewHwInfoParser constructs new lshw parser
+// NewParser constructs new lshw parser
 // The output will be represented in JSON format
-func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoParser, error) {
-	i := new(HwInfoParser)
-	i.run = RunFunc(sshconf)
+func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error) {
+	i := new(Parser)
+	i.run = utils.RunFunc(sshconf)
 	if lshwpath == "" {
 		out, err := i.run("which lshw")
 		if err != nil {
@@ -68,7 +35,7 @@ func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoPa
 		lshwpath = out
 	} else {
 		if sshconf != nil {
-			dir, err := UploadBinaries(sshconf, lshwpath)
+			dir, err := utils.UploadBinaries(sshconf, lshwpath)
 			if err != nil {
 				return nil, err
 			}
@@ -88,7 +55,7 @@ func NewHwInfoParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*HwInfoPa
 }
 
 // Parse parses lshw output
-func (i *HwInfoParser) Parse() error {
+func (i *Parser) Parse() error {
 	out, err := i.run(i.cmd)
 	if err != nil {
 		return err
@@ -96,31 +63,26 @@ func (i *HwInfoParser) Parse() error {
 	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
 }
 
-// CpuInfo gathers information related to installed CPUs
-func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
+// CPU contains CPU description and properties
+type CPU struct {
+	Desc map[string]interface{}
+	Cap  map[string]interface{}
+}
+
+// CPUInfo gathers information related to installed CPUs
+func (i *Parser) CPUInfo() (*CPU, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
 			return nil, err
 		}
 	}
 
-	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
+	out, err := mxj.NewMapsFromJsonFile(i.cacheFile)
 	if err != nil {
 		return nil, err
 	}
 
-	c := new(CpuInfo)
-	cpustr, err := i.run(`grep -c ^processor /proc/cpuinfo`)
-	if err != nil {
-		return nil, err
-	}
-
-	cpus, err := strconv.Atoi(strings.Trim(cpustr, "\n"))
-	c.Cpus = uint(cpus)
-	if err != nil {
-		return nil, err
-	}
-
+	c := new(CPU)
 	c.Desc = make(map[string]interface{})
 	c.Cap = make(map[string]interface{})
 	for _, s := range out {
@@ -142,19 +104,59 @@ func (i *HwInfoParser) CpuInfo() (*CpuInfo, error) {
 	return c, nil
 }
 
-// NicInfo gathers information related to installed NICs
-func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
-	if _, err := os.Stat(i.cacheFile); err != nil {
-		if err = i.Parse(); err != nil {
+func (p *Parser) CPUs() (uint, error) {
+	cpustr, err := p.run(`grep -c ^processor /proc/cpuinfo`)
+	if err != nil {
+		return 0, err
+	}
+
+	cpus, err := strconv.Atoi(strings.Trim(cpustr, "\n"))
+	if err != nil {
+		return 0, err
+	}
+	return uint(cpus), nil
+}
+
+// supported NIC types
+type NicType string
+
+const (
+	NicTypePhys   NicType = "physical"
+	NicTypeOVS    NicType = "openvswitch"
+	NicTypeBridge NicType = "bridge"
+)
+
+// NIC information
+type NIC struct {
+	// port name (eth0,br0...)
+	Name string
+
+	// NIC driver(bridge,openvswitch...)
+	Driver string
+
+	// Description
+	Desc string
+
+	// PCI Address
+	PCIAddr string
+
+	// Port type
+	Type NicType
+}
+
+// NICInfo gathers information related to installed NICs
+func (p *Parser) NICInfo(supNicVendors []string) ([]*NIC, error) {
+	if _, err := os.Stat(p.cacheFile); err != nil {
+		if err = p.Parse(); err != nil {
 			return nil, err
 		}
 	}
-	out, err := mxj.ReadMapsFromJsonFile(i.cacheFile)
+	out, err := mxj.NewMapsFromJsonFile(p.cacheFile)
 	if err != nil {
 		return nil, err
 	}
 
-	nics := make([]*NicInfo, 0)
+	nics := make([]*NIC, 0)
 	deep := []string{"children.children.children.children", "children"}
 	for _, m := range out {
 		for _, d := range deep {
@@ -166,7 +168,7 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 					if name == "ovs-system" {
 						continue
 					}
-					nic := new(NicInfo)
+					nic := new(NIC)
 					nic.Name = name
 					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
 					switch driver {
@@ -191,7 +193,7 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 									continue
 								}
 							}
-							if _, err := i.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
+							if _, err := p.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
 								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
@@ -207,13 +209,13 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 	}
 
 	// lshw is unable to find linux bridges so let's do it manually
-	res, err := i.run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
+	res, err := p.run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
 	if err != nil {
 		return nil, err
 	}
 	if res != "" {
 		for _, n := range strings.Split(res, " ") {
-			br := &NicInfo{
+			br := &NIC{
 				Name:   n,
 				Driver: "bridge",
 				Desc:   "Bridge interface",
@@ -225,9 +227,36 @@ func (i *HwInfoParser) NicsInfo(supNicVendors []string) ([]*NicInfo, error) {
 	return nics, nil
 }
 
+func (p *Parser) NUMANodes() (map[uint8][]uint8, error) {
+	out, err := p.run("ls -d  /sys/devices/system/node/node[0-9]*")
+	if err != nil {
+		return nil, err
+	}
+
+	numaMap := make(map[uint8][]uint8)
+	for i, _ := range strings.SplitAfter(out, "\n") {
+		//numaMap[uint8(i)] = make([]uint8, 0)
+		out, err := p.run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
+		if err != nil {
+			return nil, err
+		}
+		cpus := make([]uint8, 0)
+		for _, line := range strings.SplitAfter(out, "\n") {
+			cpuStr := strings.SplitAfter(line, "cpu")[1]
+			cpu, err := strconv.Atoi(strings.TrimSpace(cpuStr))
+			if err != nil {
+				return nil, err
+			}
+			cpus = append(cpus, uint8(cpu))
+		}
+		numaMap[uint8(i)] = cpus
+	}
+	return numaMap, nil
+}
+
 // RAMSize gathers information related to the installed amount of RAM
-func (i *HwInfoParser) RAMSize() (uint, error) {
-	out, err := i.run("grep MemTotal /proc/meminfo")
+func (p *Parser) RAMSize() (uint, error) {
+	out, err := p.run("grep MemTotal /proc/meminfo")
 	if err != nil {
 		return 0, err
 	}

@@ -6,8 +6,8 @@ type FlowCreator interface {
 	CreateConfig(*CommonData) error
 
 	// Creates builders
-	CreateBuilders() ([]Builder, error)
+	CreateBuilders(*CommonData) ([]Builder, error)
 
 	// Creates a post-processor
-	CreatePostProcessor() (PostProcessor, error)
+	CreatePostProcessor(*CommonData) (PostProcessor, error)
 }

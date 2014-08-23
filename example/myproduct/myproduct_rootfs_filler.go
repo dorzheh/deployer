@@ -12,7 +12,7 @@ import (
 
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/utils"
-	infrautils "github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/infra/utils/archutils"
 )
 
 type RootfsFiller struct {
@@ -34,7 +34,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 			}
 		}
 	} else {
-		if err := infrautils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
+		if err := archutils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
 			return err
 		}
 	}
@@ -43,10 +43,10 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 		defer close(errCh)
 
 		go func() {
-			errCh <- infrautils.Extract(f.PathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
+			errCh <- archutils.Extract(f.PathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
 		}()
 		go func() {
-			errCh <- infrautils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
+			errCh <- archutils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
 		}()
 		if err := utils.WaitForResult(errCh, 2); err != nil {
 			return err
@@ -87,7 +87,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 
 // InstallApp is responsible for application installation
 func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
-	if err := infrautils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
+	if err := archutils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
 		return err
 	}
 	if f.ExtractApplImage {

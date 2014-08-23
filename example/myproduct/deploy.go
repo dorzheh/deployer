@@ -6,7 +6,7 @@ import (
 	main "github.com/dorzheh/deployer"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/example/myproduct/libvirt"
-	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/infra/utils/archutils"
 )
 
 const (
@@ -24,7 +24,7 @@ var mainConfig = map[string]map[string]string{
 }
 
 func Deploy(c *deployer.CommonData) error {
-	if err := utils.Extract(filepath.Join(c.RootDir, "comp/env.tgz"), c.RootDir); err != nil {
+	if err := archutils.Extract(filepath.Join(c.RootDir, "comp/env.tgz"), c.RootDir); err != nil {
 		return err
 	}
 

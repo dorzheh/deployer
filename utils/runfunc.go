@@ -10,18 +10,6 @@ import (
 	"github.com/dorzheh/infra/comm/ssh"
 )
 
-type ConnFuncAlias func(*sshconf.Config) (*ssh.SshConn, error)
-
-func ConnFunc(config *sshconf.Config) func() (*ssh.SshConn, error) {
-	return func() (*ssh.SshConn, error) {
-		c, err := ssh.NewSshConn(config)
-		if err != nil {
-			return nil, err
-		}
-		return c, nil
-	}
-}
-
 // RunFunc is a generic solution for running appropriate commands
 // on local or remote host
 func RunFunc(config *sshconf.Config) func(string) (string, error) {

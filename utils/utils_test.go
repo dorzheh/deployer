@@ -8,7 +8,7 @@ import (
 type data struct {
 	DomainName string
 	MemorySize uint
-	Cpus       int
+	Cpus       uint
 }
 
 func TestProcessTemplate(t *testing.T) {
@@ -25,9 +25,9 @@ func TestProcessTemplate(t *testing.T) {
 }
 
 var str = `
- <name>{{ .DomainName }}</name>
+ <name>{{.DomainName}}</name>
   <uuid></uuid>
-  <memory>{{ .MemorySize }}</memory>
-  <currentMemory>{{ .MemorySize }}</currentMemory>
-  <vcpu>{{ .Cpus }}</vcpu>
+  <memory>{{.MemorySize}}</memory>
+  <currentMemory>{{.MemorySize}}</currentMemory>
+  <vcpu>{{.Cpus}}</vcpu>
 `

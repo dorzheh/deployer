@@ -12,6 +12,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/deployer/utils/hwinfo"
 	sshconf "github.com/dorzheh/infra/comm/common"
 	infrautils "github.com/dorzheh/infra/utils"
 )
@@ -128,8 +129,8 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, info []*utils.NicInfo, networks ...string) (map[string]*utils.NicInfo, error) {
-	newMap := make(map[string]*utils.NicInfo)
+func UiNetworks(ui *gui.DialogUi, info []*hwinfo.NIC, networks ...string) (map[string]*hwinfo.NIC, error) {
+	newMap := make(map[string]*hwinfo.NIC)
 	for _, net := range networks {
 		nic, err := uiGetNicInfo(ui, &info, net)
 		if err != nil {
@@ -155,7 +156,7 @@ func UiNetworks(ui *gui.DialogUi, info []*utils.NicInfo, networks ...string) (ma
 	return newMap, nil
 }
 
-func uiGetNicInfo(ui *gui.DialogUi, info *[]*utils.NicInfo, network string) (*utils.NicInfo, error) {
+func uiGetNicInfo(ui *gui.DialogUi, info *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
 	var temp []string
 	index := 0
 	for _, n := range *info {
@@ -171,7 +172,7 @@ func uiGetNicInfo(ui *gui.DialogUi, info *[]*utils.NicInfo, network string) (*ut
 	}
 	index = ifaceNumInt - 1
 	nic := (*info)[index]
-	if nic.Type == utils.NicTypePhys {
+	if nic.Type == hwinfo.NicTypePhys {
 		tempInfo := *info
 		tempInfo = append(tempInfo[:index], tempInfo[index+1:]...)
 		*info = tempInfo
@@ -179,7 +180,7 @@ func uiGetNicInfo(ui *gui.DialogUi, info *[]*utils.NicInfo, network string) (*ut
 	return nic, nil
 }
 
-func UiGatherHWInfo(ui *gui.DialogUi, hw *utils.HwInfoParser, sleepInSec string, remote bool) error {
+func UiGatherHWInfo(ui *gui.DialogUi, hw *hwinfo.Parser, sleepInSec string, remote bool) error {
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {

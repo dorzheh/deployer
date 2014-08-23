@@ -1,16 +1,24 @@
-package utils
+package hwinfo
 
 import (
 	"fmt"
-	ssh "github.com/dorzheh/infra/comm/common"
 	"os"
 	"testing"
+
+	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 const tmpFile = "/tmp/lshw_cache"
 
-func TestCpuInfoLocal(t *testing.T) {
-	i, err := NewHwInfoParser(tmpFile, "", nil)
+var conf = &ssh.Config{
+	Host:     "127.0.0.1",
+	Port:     "22",
+	User:     "root",
+	Password: "<root_password>",
+}
+
+func TestCPUInfoLocal(t *testing.T) {
+	p, err := NewParser(tmpFile, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -18,10 +26,10 @@ func TestCpuInfoLocal(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw locally,writing info file")
-	if err := i.Parse(); err != nil {
+	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.CpuInfo()
+	_, err = p.CPUInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -29,22 +37,20 @@ func TestCpuInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := i.CpuInfo()
+	_, err = p.CPUInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	fmt.Printf("===> CPUs: %d\n", info.Cpus)
+	cpus, err := p.CPUs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("===> CPUs: %d\n", cpus)
 }
 
-func TestCpuInfoRemote(t *testing.T) {
-	conf := &ssh.Config{
-		Host:     "127.0.0.1",
-		Port:     "22",
-		User:     "root",
-		Password: "<root_password>",
-	}
-	i, err := NewHwInfoParser(tmpFile, "", conf)
+func TestCPUInfoRemote(t *testing.T) {
+	p, err := NewParser(tmpFile, "", conf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -52,10 +58,10 @@ func TestCpuInfoRemote(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw remotely,writing info file")
-	if err := i.Parse(); err != nil {
+	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.CpuInfo()
+	_, err = p.CPUInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -63,14 +69,20 @@ func TestCpuInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	_, err = i.CpuInfo()
+	_, err = p.CPUInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	cpus, err := p.CPUs()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("===> CPUs: %d\n", cpus)
 }
 
-func TestNicsInfoLocal(t *testing.T) {
-	i, err := NewHwInfoParser(tmpFile, "", nil)
+func TestNICsInfoLocal(t *testing.T) {
+	p, err := NewParser(tmpFile, "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,10 +90,10 @@ func TestNicsInfoLocal(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw locally,writing info file")
-	if err := i.Parse(); err != nil {
+	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.NicsInfo(nil)
+	_, err = p.NICInfo(nil)
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -89,22 +101,16 @@ func TestNicsInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := i.NicsInfo(nil)
+	info, err := p.NICInfo(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	printNicInfo(info)
+	printNICInfo(info)
 }
 
-func TestNicsInfoRemote(t *testing.T) {
-	conf := &ssh.Config{
-		Host:     "127.0.0.1",
-		Port:     "22",
-		User:     "root",
-		Password: "<root_password>",
-	}
-	i, err := NewHwInfoParser(tmpFile, "", conf)
+func TestNICInfoRemote(t *testing.T) {
+	p, err := NewParser(tmpFile, "", conf)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,10 +118,10 @@ func TestNicsInfoRemote(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw remotely,writing info file")
-	if err := i.Parse(); err != nil {
+	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = i.NicsInfo(nil)
+	_, err = p.NICInfo(nil)
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -123,15 +129,15 @@ func TestNicsInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := i.NicsInfo(nil)
+	info, err := p.NICInfo(nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	printNicInfo(info)
+	printNICInfo(info)
 }
 
-func printNicInfo(info []*NicInfo) {
+func printNICInfo(info []*NIC) {
 	fmt.Println("==== Slice Content ======")
 	for _, n := range info {
 		fmt.Printf("NIC type => %v\nNIC name => %v\nNIC PCI addr => %v\nNIC desc => %v\nNIC driver => %v\n",
@@ -140,12 +146,40 @@ func printNicInfo(info []*NicInfo) {
 	}
 }
 
-func TestRAMSizeLocal(t *testing.T) {
-	i, err := NewHwInfoParser("", "", nil)
+func TestNUMANodesLocal(t *testing.T) {
+	p, err := NewParser("", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ramsize, err := i.RAMSize()
+	n, err := p.NUMANodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range n {
+		fmt.Printf("===> NUMA node %d => CPUs %v\n", k, v)
+	}
+}
+
+func TestNUMANodesRemote(t *testing.T) {
+	p, err := NewParser("", "", conf)
+	if err != nil {
+		t.Fatal(err)
+	}
+	n, err := p.NUMANodes()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for k, v := range n {
+		fmt.Printf("===> NUMA node %d => CPUs %v\n", k, v)
+	}
+}
+
+func TestRAMSizeLocal(t *testing.T) {
+	p, err := NewParser("", "", nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ramsize, err := p.RAMSize()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -153,17 +187,11 @@ func TestRAMSizeLocal(t *testing.T) {
 }
 
 func TestRAMSizeRemote(t *testing.T) {
-	conf := &ssh.Config{
-		Host:     "127.0.0.1",
-		Port:     "22",
-		User:     "root",
-		Password: "<root_password>",
-	}
-	i, err := NewHwInfoParser("", "", conf)
+	p, err := NewParser("", "", conf)
 	if err != nil {
 		t.Fatal(err)
 	}
-	ramsize, err := i.RAMSize()
+	ramsize, err := p.RAMSize()
 	if err != nil {
 		t.Fatal(err)
 	}

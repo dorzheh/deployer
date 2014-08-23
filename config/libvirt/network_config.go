@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
 type passthroughData struct {
@@ -22,25 +23,25 @@ type bridgedData struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func SetNetworkData(ni map[string]*utils.NicInfo) (string, error) {
+func SetNetworkData(ni map[string]*hwinfo.NIC) (string, error) {
 	var data string
 	for _, port := range ni {
 		switch port.Type {
-		case utils.NicTypePhys:
+		case hwinfo.NicTypePhys:
 			tempData, err := processGenericPassthroughTemplate(port.PCIAddr)
 			if err != nil {
 				return "", err
 			}
 			data += string(tempData) + "\n"
 
-		case utils.NicTypeOVS:
+		case hwinfo.NicTypeOVS:
 			tempData, err := utils.ProcessTemplate(bridgedOVS, &bridgedOVSData{port.Name})
 			if err != nil {
 				return "", err
 			}
 			data += string(tempData) + "\n"
 
-		case utils.NicTypeBridge:
+		case hwinfo.NicTypeBridge:
 			tempData, err := utils.ProcessTemplate(bridged, &bridgedData{port.Name})
 			if err != nil {
 				return "", err

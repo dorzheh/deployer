@@ -9,7 +9,7 @@ func Deploy(c *deployer.CommonData, f deployer.FlowCreator) error {
 		return err
 	}
 
-	builders, err := f.CreateBuilders()
+	builders, err := f.CreateBuilders(c)
 	if err != nil {
 		return err
 	}
@@ -19,7 +19,7 @@ func Deploy(c *deployer.CommonData, f deployer.FlowCreator) error {
 		return err
 	}
 
-	post, err := f.CreatePostProcessor()
+	post, err := f.CreatePostProcessor(c)
 	if err != nil {
 		return err
 	}

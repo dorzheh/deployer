@@ -9,16 +9,22 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/post_processor/libvirt"
 	gui "github.com/dorzheh/deployer/ui"
-	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
 // InputData provides a static data
 type InputData struct {
+	// Path to the lshw binary
+	LshwPath string
+
 	// Amount of vCPUs to allocate for VM
 	CPUs uint
 
 	// Amount of RAM to allocate for VM
 	RAM uint
+
+	//
+	ConfigNet bool
 
 	// Networks contains a slice of networks
 	// that the target appliance will be bound to
@@ -26,14 +32,11 @@ type InputData struct {
 
 	// Supported NIC vendors
 	NICVendors []string
-
-	// Path to the lshw binary
-	LshwPath string
 }
 
-// CommonMetadata contains elements that will processed
+// commonMetadata contains elements that will processed
 // by the template library and used by Libvirt XML metadata
-type CommonMetadata struct {
+type commonMetadata struct {
 	DomainName   string
 	CPUs         uint
 	RAM          uint
@@ -46,64 +49,72 @@ type CommonMetadata struct {
 // configuration required for appliances powered by environment
 // based on libvirt API
 type Config struct {
-	Common       *deployer.CommonConfig
-	Networks     map[string]*utils.NicInfo
-	HwInfo       *utils.HwInfoParser
-	MetadataPath string
-	Data         *CommonMetadata
+	// Common configuration
+	*deployer.CommonConfig
+
+	// Common metadata stuff
+	Metadata *commonMetadata
+
+	// Path to metadata file (libvirt XML)
+	MetadataFile string
+
+	//Networks     map[string]*hwinfo.NIC
+	HWInfo *hwinfo.Parser
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
 
-	c := new(Config)
-	c.Common = common.CreateConfig(d)
+	c := &Config{common.CreateConfig(d), nil, "", nil}
+	c.Metadata = new(commonMetadata)
 
-	driver := libvirt.NewDriver(c.Common.SshConfig)
-	c.Data = new(CommonMetadata)
-	if c.Data.EmulatorPath, err = driver.Emulator(); err != nil {
+	driver := libvirt.NewDriver(c.SshConfig)
+	if c.Metadata.EmulatorPath, err = driver.Emulator(); err != nil {
 		return nil, err
 	}
 
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
-	c.Data.DomainName = d.VaName
-	c.Data.ImagePath = filepath.Join(c.Common.ExportDir, c.Data.DomainName)
-	c.MetadataPath = filepath.Join(c.Common.ExportDir, c.Data.DomainName+".xml")
+	c.Metadata.DomainName = d.VaName
+	c.Metadata.ImagePath = filepath.Join(c.ExportDir, d.VaName)
+	c.MetadataFile = filepath.Join(c.ExportDir, d.VaName+".xml")
 
-	c.HwInfo, err = utils.NewHwInfoParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.Common.SshConfig)
-	if err := gui.UiGatherHWInfo(d.Ui, c.HwInfo, "1s", c.Common.RemoteMode); err != nil {
+	c.HWInfo, err = hwinfo.NewParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.SshConfig)
+	if err := gui.UiGatherHWInfo(d.Ui, c.HWInfo, "1s", c.RemoteMode); err != nil {
 		return nil, err
 	}
-	if i.CPUs > 0 {
-		ci, err := c.HwInfo.CpuInfo()
+	if i.CPUs == 0 {
+		cpus, err := c.HWInfo.CPUs()
 		if err != nil {
 			return nil, err
 		}
-		c.Data.CPUs = gui.UiCPUs(d.Ui, ci.Cpus)
+		c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus)
+	} else {
+		c.Metadata.CPUs = i.CPUs
 	}
-	if i.RAM > 0 {
-		ram, err := c.HwInfo.RAMSize()
+	if i.RAM == 0 {
+		ram, err := c.HWInfo.RAMSize()
 		if err != nil {
 			return nil, err
 		}
-		c.Data.RAM = gui.UiRAMSize(d.Ui, ram)
+		c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram)
+	} else {
+		c.Metadata.RAM = i.RAM
 	}
 	// Sometimes more complex network configuration is needed.
-	// In this case -  pass empty slice and overwrite appropriate
-	// logic at a higher implementation level
-	if len(i.Networks) > 0 {
-		ni, err := c.HwInfo.NicsInfo(i.NICVendors)
+	// In this case set ConfigNet to false
+	if i.ConfigNet {
+		ni, err := c.HWInfo.NICInfo(i.NICVendors)
 		if err != nil {
 			return nil, err
 		}
 
-		c.Networks, err = gui.UiNetworks(d.Ui, ni, i.Networks[0:]...)
+		nets, err := gui.UiNetworks(d.Ui, ni, i.Networks[0:]...)
 		if err != nil {
 			return nil, err
 		}
 
-		c.Data.Networks, err = SetNetworkData(c.Networks)
+		c.Metadata.Networks, err = SetNetworkData(nets)
 		if err != nil {
 			return nil, err
 		}

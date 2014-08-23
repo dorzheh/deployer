@@ -11,7 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/dorzheh/infra/utils"
+	"github.com/dorzheh/infra/utils/ioutils"
 )
 
 // Represents Item to inject
@@ -207,7 +207,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 		switch val.Action {
 		case ACTION_REMOVE:
 			if val.BkpName == "" {
-				if err := utils.RemoveIfExists(true, dstPath); err != nil {
+				if err := ioutils.RemoveIfExists(true, dstPath); err != nil {
 					return err
 				}
 			} else {
@@ -220,7 +220,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 		case ACTION_UPLOAD, ACTION_CREATE:
 			switch val.Type {
 			case ITEM_TYPE_FILE:
-				if err := utils.CreateDirRecursively(targetLocationPath, 0755,
+				if err := ioutils.CreateDirRecursively(targetLocationPath, 0755,
 					val.UID, val.GID, false); err != nil {
 					if err != os.ErrExist {
 						return err
@@ -234,7 +234,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 							}
 						}
 					}
-					if err := utils.CopyFile(srcPath, dstPath, 0,
+					if err := ioutils.CopyFile(srcPath, dstPath, 0,
 						val.UID, val.GID, false); err != nil {
 						return err
 					}
@@ -253,7 +253,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 				//}
 				// Currently , it copies permission flags from the source
 			case ITEM_TYPE_DIR:
-				if err := utils.CreateDirRecursively(filepath.Join(targetLocationPath, val.Name),
+				if err := ioutils.CreateDirRecursively(filepath.Join(targetLocationPath, val.Name),
 					val.Permissions, val.UID, val.GID, false); err != nil {
 					return err
 				}
@@ -265,7 +265,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 							}
 						}
 					}
-					if err := utils.CopyDir(srcPath, dstPath); err != nil {
+					if err := ioutils.CopyDir(srcPath, dstPath); err != nil {
 						return err
 					}
 				}
@@ -273,10 +273,10 @@ func injectManip(pathToXml, pathToSlash string) error {
 				if _, err := os.Stat(val.BkpName); err != nil {
 					return err
 				}
-				if err := utils.RemoveIfExists(false, dstPath); err != nil {
+				if err := ioutils.RemoveIfExists(false, dstPath); err != nil {
 					return err
 				}
-				if err := utils.CreateDirRecursively(targetLocationPath,
+				if err := ioutils.CreateDirRecursively(targetLocationPath,
 					val.Permissions, val.UID, val.GID, false); err != nil {
 					return err
 				}
@@ -379,7 +379,7 @@ func serviceManip(pathToXml, pathToSlash string) error {
 					}
 				}
 			case SVC_STATUS_ON:
-				if err := utils.RemoveIfExists(false, dummyServicePath); err != nil {
+				if err := ioutils.RemoveIfExists(false, dummyServicePath); err != nil {
 					return err
 				}
 			default:
@@ -442,7 +442,7 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 		}
 		if val.BkpName != "" {
 			bkpFilePath := filepath.Join(pathToSlash, val.BkpName)
-			if err := utils.CopyFile(targetPath, bkpFilePath, 0, -1, -1, false); err != nil {
+			if err := ioutils.CopyFile(targetPath, bkpFilePath, 0, -1, -1, false); err != nil {
 				return err
 			}
 		}
@@ -455,7 +455,7 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 		switch val.Action {
 		// if we need to append to the file
 		case ACTION_APPEND:
-			if err := utils.AppendToFd(fd, val.NewPattern, val.NewPattern); err != nil {
+			if err := ioutils.AppendToFd(fd, val.NewPattern, val.NewPattern); err != nil {
 				return err
 			}
 		// if we need to replace a pattern
@@ -463,7 +463,7 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 			if val.OldPattern == "" {
 				return errors.New("configuration error - replace action is set but OldPattern is empty")
 			}
-			if err := utils.FindAndReplaceFd(fd, val.OldPattern, val.NewPattern); err != nil {
+			if err := ioutils.FindAndReplaceFd(fd, val.OldPattern, val.NewPattern); err != nil {
 				return err
 			}
 		default:

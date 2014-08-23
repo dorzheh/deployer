@@ -50,5 +50,5 @@ func main() {
 		Ui:               ui,
 	}
 
-	gui.UiDeploymentResult(ui, myproduct.Deploy(data))
+	gui.UiDeploymentResult(ui, "MyProduct Installation completed successfully", myproduct.Deploy(data))
 }

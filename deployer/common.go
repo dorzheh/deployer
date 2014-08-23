@@ -41,7 +41,4 @@ type CommonConfig struct {
 
 	// SshConfig represents ssh configuration
 	SshConfig *ssh.Config
-
-	// Data repesents common data
-	Data *CommonData
 }
