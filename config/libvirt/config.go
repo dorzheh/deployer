@@ -23,7 +23,7 @@ type InputData struct {
 	// Amount of RAM to allocate for VM
 	RAM uint
 
-	//
+	// Indicates if network configuration is needed
 	ConfigNet bool
 
 	// Networks contains a slice of networks
@@ -58,7 +58,7 @@ type Config struct {
 	// Path to metadata file (libvirt XML)
 	MetadataFile string
 
-	//Networks     map[string]*hwinfo.NIC
+	// HWinfor parser
 	HWInfo *hwinfo.Parser
 }
 
