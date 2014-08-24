@@ -227,34 +227,34 @@ func (p *Parser) NICInfo(supNicVendors []string) ([]*NIC, error) {
 	return nics, nil
 }
 
-func (p *Parser) NUMANodes() (map[uint8][]uint8, error) {
+func (p *Parser) NUMANodes() (map[uint][]uint, error) {
 	out, err := p.run("ls -d  /sys/devices/system/node/node[0-9]*")
 	if err != nil {
 		return nil, err
 	}
 
-	numaMap := make(map[uint8][]uint8)
+	numaMap := make(map[uint][]uint)
 	for i, _ := range strings.SplitAfter(out, "\n") {
 		//numaMap[uint8(i)] = make([]uint8, 0)
 		out, err := p.run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
 		if err != nil {
 			return nil, err
 		}
-		cpus := make([]uint8, 0)
+		cpus := make([]uint, 0)
 		for _, line := range strings.SplitAfter(out, "\n") {
 			cpuStr := strings.SplitAfter(line, "cpu")[1]
 			cpu, err := strconv.Atoi(strings.TrimSpace(cpuStr))
 			if err != nil {
 				return nil, err
 			}
-			cpus = append(cpus, uint8(cpu))
+			cpus = append(cpus, uint(cpu))
 		}
-		numaMap[uint8(i)] = cpus
+		numaMap[uint(i)] = cpus
 	}
 	return numaMap, nil
 }
 
-// RAMSize gathers information related to the installed amount of RAM
+// RAMSize gathers information related to the installed amount of RAM in MB
 func (p *Parser) RAMSize() (uint, error) {
 	out, err := p.run("grep MemTotal /proc/meminfo")
 	if err != nil {
@@ -263,5 +263,5 @@ func (p *Parser) RAMSize() (uint, error) {
 	var col3 string
 	var ramsize uint
 	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize, &col3)
-	return ramsize, nil
+	return ramsize / 1024, nil
 }

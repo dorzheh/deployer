@@ -17,13 +17,19 @@ type InputData struct {
 	// Path to the lshw binary
 	LshwPath string
 
-	// Amount of vCPUs to allocate for VM
-	CPUs uint
+	// Indicates if Ui function allowing CPU configuration will be called
+	ConfigCPUs bool
 
-	// Amount of RAM to allocate for VM
-	RAM uint
+	// Minimum vCPU requirement for VM
+	MinCPUs uint
 
-	// Indicates if network configuration is needed
+	// Indicates if Ui function allowing RAM configuration will be called
+	ConfigRAM bool
+
+	// Minimum RAM (in Mb)requirement for VM
+	MinRAM uint
+
+	// Indicates if Ui function allowing network configuration will be called
 	ConfigNet bool
 
 	// Networks contains a slice of networks
@@ -83,23 +89,23 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	if err := gui.UiGatherHWInfo(d.Ui, c.HWInfo, "1s", c.RemoteMode); err != nil {
 		return nil, err
 	}
-	if i.CPUs == 0 {
+	if i.ConfigCPUs {
 		cpus, err := c.HWInfo.CPUs()
 		if err != nil {
 			return nil, err
 		}
-		c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus)
-	} else {
-		c.Metadata.CPUs = i.CPUs
+		c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus, i.MinCPUs)
+	} else if i.MinCPUs > 0 {
+		c.Metadata.CPUs = i.MinCPUs
 	}
-	if i.RAM == 0 {
+	if i.ConfigRAM {
 		ram, err := c.HWInfo.RAMSize()
 		if err != nil {
 			return nil, err
 		}
-		c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram)
-	} else {
-		c.Metadata.RAM = i.RAM
+		c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, i.MinRAM)
+	} else if i.MinRAM > 0 {
+		c.Metadata.RAM = i.MinRAM
 	}
 	// Sometimes more complex network configuration is needed.
 	// In this case set ConfigNet to false

@@ -200,7 +200,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hw *hwinfo.Parser, sleepInSec string, remo
 	return ui.Wait(msg, sleep, errCh)
 }
 
-func UiRAMSize(ui *gui.DialogUi, installedRamInMb uint) uint {
+func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb uint) uint {
 	var amountUint uint
 	for {
 		msg := fmt.Sprintf("Virtual Machine RAM allocation (installed on the host: %dMb)", installedRamInMb)
@@ -209,25 +209,27 @@ func UiRAMSize(ui *gui.DialogUi, installedRamInMb uint) uint {
 		amountStr := ui.Inputbox("")
 		amountInt, err := strconv.Atoi(amountStr)
 		amountUint = uint(amountInt)
-		if err == nil && amountUint < installedRamInMb {
+		if err == nil && amountUint < installedRamInMb && amountUint >= reqMinimumRamInMb {
 			break
 		}
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMb.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
 	}
 	return amountUint
 }
 
-func UiCPUs(ui *gui.DialogUi, installedCpus uint) uint {
+func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus uint) uint {
 	var amountUint uint
 	for {
-		msg := fmt.Sprintf("Virtual Machine vCPUs allocation (installed on the host: %d)", installedCpus)
+		msg := fmt.Sprintf("Virtual Machine vCPU allocation (installed on the host: %d)", installedCpus)
 		ui.SetSize(8, len(msg)+10)
 		ui.SetLabel(msg)
 		amountStr := ui.Inputbox("")
 		amountInt, err := strconv.Atoi(amountStr)
 		amountUint = uint(amountInt)
-		if err == nil && amountUint <= installedCpus {
+		if err == nil && amountUint <= installedCpus && amountUint >= reqMinimumCpus {
 			break
 		}
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPU requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
 	}
 	return amountUint
 }
