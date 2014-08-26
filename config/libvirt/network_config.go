@@ -1,48 +1,63 @@
 package libvirt
 
 import (
+	"io/ioutil"
+	"path/filepath"
 	"strings"
 
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
-type passthroughData struct {
+const (
+	TmpltFileBridgedOVS = "template_bridged_ovs.xml"
+	TmpltFileBridged    = "template_bridged.xml"
+)
+
+type PassthroughData struct {
 	Bus      string
 	Slot     string
 	Function string
 }
 
-type bridgedOVSData struct {
+type BridgedOVSData struct {
 	OVSBridge string
 }
 
-type bridgedData struct {
+type BridgedData struct {
 	Bridge string
 }
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func SetNetworkData(ni map[string]*hwinfo.NIC) (string, error) {
+func SetNetworkData(ni map[string]*hwinfo.NIC, templatesDir string) (string, error) {
 	var data string
 	for _, port := range ni {
 		switch port.Type {
 		case hwinfo.NicTypePhys:
-			tempData, err := processGenericPassthroughTemplate(port.PCIAddr)
+			tempData, err := ProcessTemplatePassthrough(port.PCIAddr)
 			if err != nil {
 				return "", err
 			}
 			data += string(tempData) + "\n"
 
 		case hwinfo.NicTypeOVS:
-			tempData, err := utils.ProcessTemplate(bridgedOVS, &bridgedOVSData{port.Name})
+			buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
+			if err == nil {
+				TmpltBridgedOVS = string(buf)
+			}
+			tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name})
 			if err != nil {
 				return "", err
 			}
 			data += string(tempData) + "\n"
 
 		case hwinfo.NicTypeBridge:
-			tempData, err := utils.ProcessTemplate(bridged, &bridgedData{port.Name})
+			buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridged))
+			if err == nil {
+				TmpltBridged = string(buf)
+			}
+			tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name})
 			if err != nil {
 				return "", err
 			}
@@ -52,38 +67,12 @@ func SetNetworkData(ni map[string]*hwinfo.NIC) (string, error) {
 	return data, nil
 }
 
-func processGenericPassthroughTemplate(pci string) ([]byte, error) {
+func ProcessTemplatePassthrough(pci string) ([]byte, error) {
 	pciSlice := strings.Split(pci, ":")
-	d := new(passthroughData)
+	d := new(PassthroughData)
 	d.Bus = pciSlice[1]
 	temp := strings.Split(pciSlice[2], ".")
 	d.Slot = temp[0]
 	d.Function = temp[1]
-	return utils.ProcessTemplate(genericPassthrough, d)
+	return utils.ProcessTemplate(TmpltPassthrough, d)
 }
-
-var bridged = `<interface type='bridge'>
-      <source bridge='{{.Bridge}}'/>
-	  <model type='virtio'/>
-	  <driver name='vhost'/>
- </interface>`
-
-var bridgedOVS = `<interface type='bridge'>
-      <source bridge='{{.OVSBridge}}'/>
-      <virtualport type='openvswitch'/>
-	  <model type='virtio'/>
-	  <driver name='vhost'/>
-</interface>`
-
-var sriovPassthrough = `<interface type='hostdev' managed='yes'>
-      <source>
-        <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>
-      </source>
-    </interface>
-`
-var genericPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
-    <source>
-      <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>
-    </source>
-  </hostdev>
-`

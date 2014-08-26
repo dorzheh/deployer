@@ -145,7 +145,7 @@ type NIC struct {
 }
 
 // NICInfo gathers information related to installed NICs
-func (p *Parser) NICInfo(supNicVendors []string) ([]*NIC, error) {
+func (p *Parser) NICInfo() ([]*NIC, error) {
 	if _, err := os.Stat(p.cacheFile); err != nil {
 		if err = p.Parse(); err != nil {
 			return nil, err
@@ -181,18 +181,6 @@ func (p *Parser) NICInfo(supNicVendors []string) ([]*NIC, error) {
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							if len(supNicVendors) > 0 {
-								found := false
-								for _, v := range supNicVendors {
-									if v == vendor {
-										found = true
-										break
-									}
-								}
-								if !found {
-									continue
-								}
-							}
 							if _, err := p.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
 								continue
 							}
@@ -235,7 +223,6 @@ func (p *Parser) NUMANodes() (map[uint][]uint, error) {
 
 	numaMap := make(map[uint][]uint)
 	for i, _ := range strings.SplitAfter(out, "\n") {
-		//numaMap[uint8(i)] = make([]uint8, 0)
 		out, err := p.run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
 		if err != nil {
 			return nil, err

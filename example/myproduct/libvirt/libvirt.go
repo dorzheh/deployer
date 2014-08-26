@@ -14,27 +14,28 @@ import (
 	"github.com/dorzheh/infra/comm/sshfs"
 )
 
-var networks = []string{"management", "data"}
-
 type FlowCreator struct {
-	Filler      image.Rootfs
-	SrcMetadata string
-	topology    *image.Topology
-	config      *libvirtconf.Config
+	Filler              image.Rootfs
+	SrcMetadataFile     string
+	TopologyConfigFile  string
+	InputDataConfigFile string
+	topology            *image.Topology
+	config              *libvirtconf.Config
 }
 
 func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 	var err error
 
 	data := &libvirtconf.InputData{
-		Networks: networks,
-		LshwPath: filepath.Join(d.RootDir, "install", d.Arch, "bin/lshw"),
+		Lshw:             filepath.Join(d.RootDir, "install", d.Arch, "bin/lshw"),
+		InputDataXMLFile: c.InputDataConfigFile,
 	}
+
 	c.config, err = libvirtconf.CreateConfig(d, data)
 	if err != nil {
 		return err
 	}
-	f, err := image.ParseConfigFile(filepath.Join(d.RootDir, "env/common/topology.xml"))
+	f, err := image.ParseConfigFile(c.TopologyConfigFile)
 	if err != nil {
 		return err
 	}
@@ -54,8 +55,8 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 	}
 
 	metaData := &deployer.MetadataBuilderData{
-		Source:   c.SrcMetadata,
-		Dest:     c.config.MetadataFile,
+		Source:   c.SrcMetadataFile,
+		Dest:     c.config.DestMetadataFile,
 		UserData: c.config.Metadata,
 	}
 	var sshfsConf *sshfs.Config
@@ -67,7 +68,8 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 		}
 	}
 
-	util := &image.Utils{Grub: filepath.Join(d.RootDir, "install", d.Arch, "bin/grub"),
+	util := &image.Utils{
+		Grub:   filepath.Join(d.RootDir, "install", d.Arch, "bin/grub"),
 		Kpartx: filepath.Join(d.RootDir, "install", d.Arch, "bin/kpartx"),
 	}
 

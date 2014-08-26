@@ -95,10 +95,17 @@ func (b *MetadataBuilder) Id() string {
 }
 
 func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
+	// in case no source template exists apparently we should use the default metadata
+	_, err := os.Stat(b.Source)
+	if err != nil && err == os.ErrNotExist {
+		b.Source = b.Dest
+	}
+
 	f, err := ioutil.ReadFile(b.Source)
 	if err != nil {
 		return nil, err
 	}
+
 	data, err := utils.ProcessTemplate(string(f), b.UserData)
 	if err != nil {
 		return nil, err

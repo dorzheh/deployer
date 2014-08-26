@@ -3,9 +3,12 @@
 package libvirt
 
 import (
+	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/config/common"
+	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/post_processor/libvirt"
 	gui "github.com/dorzheh/deployer/ui"
@@ -15,29 +18,14 @@ import (
 // InputData provides a static data
 type InputData struct {
 	// Path to the lshw binary
-	LshwPath string
+	Lshw string
 
-	// Indicates if Ui function allowing CPU configuration will be called
-	ConfigCPUs bool
+	// Path to the basic configuration file (see xmlinput package)
+	InputDataXMLFile string
 
-	// Minimum vCPU requirement for VM
-	MinCPUs uint
-
-	// Indicates if Ui function allowing RAM configuration will be called
-	ConfigRAM bool
-
-	// Minimum RAM (in Mb)requirement for VM
-	MinRAM uint
-
-	// Indicates if Ui function allowing network configuration will be called
-	ConfigNet bool
-
-	// Networks contains a slice of networks
-	// that the target appliance will be bound to
-	Networks []string
-
-	// Supported NIC vendors
-	NICVendors []string
+	// Path to directory containing appropriate templates intended
+	// for overriding default configuration
+	NetworkDataTemplatesDir string
 }
 
 // commonMetadata contains elements that will processed
@@ -62,7 +50,7 @@ type Config struct {
 	Metadata *commonMetadata
 
 	// Path to metadata file (libvirt XML)
-	MetadataFile string
+	DestMetadataFile string
 
 	// HWinfor parser
 	HWInfo *hwinfo.Parser
@@ -83,45 +71,18 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
 	c.Metadata.ImagePath = filepath.Join(c.ExportDir, d.VaName)
-	c.MetadataFile = filepath.Join(c.ExportDir, d.VaName+".xml")
 
-	c.HWInfo, err = hwinfo.NewParser(filepath.Join(d.RootDir, "hwinfo.json"), i.LshwPath, c.SshConfig)
-	if err := gui.UiGatherHWInfo(d.Ui, c.HWInfo, "1s", c.RemoteMode); err != nil {
+	c.DestMetadataFile = filepath.Join(c.ExportDir, d.VaName+".xml")
+	// always create default metadata
+	if err := ioutil.WriteFile(c.DestMetadataFile, defaultMetdata, 0); err != nil {
 		return nil, err
 	}
-	if i.ConfigCPUs {
-		cpus, err := c.HWInfo.CPUs()
+	if fd, err := os.Stat(i.InputDataXMLFile); err == nil && !fd.IsDir() {
+		xid, err := xmlinput.ParseXML(i.InputDataXMLFile)
 		if err != nil {
 			return nil, err
 		}
-		c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus, i.MinCPUs)
-	} else if i.MinCPUs > 0 {
-		c.Metadata.CPUs = i.MinCPUs
-	}
-	if i.ConfigRAM {
-		ram, err := c.HWInfo.RAMSize()
-		if err != nil {
-			return nil, err
-		}
-		c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, i.MinRAM)
-	} else if i.MinRAM > 0 {
-		c.Metadata.RAM = i.MinRAM
-	}
-	// Sometimes more complex network configuration is needed.
-	// In this case set ConfigNet to false
-	if i.ConfigNet {
-		ni, err := c.HWInfo.NICInfo(i.NICVendors)
-		if err != nil {
-			return nil, err
-		}
-
-		nets, err := gui.UiNetworks(d.Ui, ni, i.Networks[0:]...)
-		if err != nil {
-			return nil, err
-		}
-
-		c.Metadata.Networks, err = SetNetworkData(nets)
-		if err != nil {
+		if err := ResourcesConfig(d, i, c, xid); err != nil {
 			return nil, err
 		}
 	}

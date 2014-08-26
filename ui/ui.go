@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"bytes"
 	"fmt"
 	"os"
 	"os/exec"
@@ -9,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
@@ -129,47 +129,84 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, info []*hwinfo.NIC, networks ...string) (map[string]*hwinfo.NIC, error) {
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NIC) (map[string]*hwinfo.NIC, error) {
 	newMap := make(map[string]*hwinfo.NIC)
-	for _, net := range networks {
-		nic, err := uiGetNicInfo(ui, &info, net)
+	for _, net := range data.Networks.Default {
+		nic, err := uiGetNicInfo(ui, data, &info, net.Name)
 		if err != nil {
 			return nil, err
 		}
-		newMap[net] = nic
+		newMap[net.Name] = nic
 	}
-	nextIndex := len(networks)
-	ui.SetSize(5, 60)
-	if len(networks) == 0 {
-		ui.SetLabel("Would you like to configure network?")
-	} else {
-		ui.SetLabel("Would you like to configure additional network?")
-	}
-	if ui.Yesno() {
-		net := fmt.Sprintf("#%d", nextIndex)
-		nic, err := uiGetNicInfo(ui, &info, net)
-		if err != nil {
-			return nil, err
+
+	nextIndex := len(data.Networks.Default)
+	for nextIndex <= int(data.Networks.Max) {
+		ui.SetSize(5, 60)
+		if nextIndex == 0 {
+			ui.SetLabel("Would you like to configure network?")
+		} else {
+			ui.SetLabel("Would you like to configure additional network?")
 		}
-		newMap[net] = nic
+		if ui.Yesno() {
+			net := fmt.Sprintf("#%d", nextIndex)
+			nic, err := uiGetNicInfo(ui, data, &info, net)
+			if err != nil {
+				return nil, err
+			}
+			newMap[net] = nic
+		} else {
+			break
+		}
+		nextIndex++
 	}
 	return newMap, nil
 }
 
-func uiGetNicInfo(ui *gui.DialogUi, info *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
+func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, info *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
 	var temp []string
 	index := 0
 	for _, n := range *info {
+		found := false
+		for _, nic := range data.NIC.Denied {
+			if strings.Contains(n.Desc, nic.Vendor) && nic.Model != "" && strings.Contains(n.Desc, nic.Model) {
+				found = true
+				break
+			}
+		}
+		if found {
+			continue
+		}
+		if n.Type == hwinfo.NicTypePhys {
+			for _, nic := range data.NIC.Allowed {
+				if strings.Contains(n.Desc, nic.Vendor) {
+					found = true
+					if nic.Model != "" {
+						if strings.Contains(n.Desc, nic.Model) {
+							found = true
+						} else {
+							found = false
+						}
+					}
+				}
+			}
+			if found == false {
+				continue
+			}
+		}
 		index += 1
 		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
+
 	}
+
 	sliceLength := len(temp)
+	fmt.Printf("INdex: %d\n", sliceLength)
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
 	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
 	if err != nil {
 		return nil, err
 	}
+
 	index = ifaceNumInt - 1
 	nic := (*info)[index]
 	if nic.Type == hwinfo.NicTypePhys {
@@ -200,7 +237,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hw *hwinfo.Parser, sleepInSec string, remo
 	return ui.Wait(msg, sleep, errCh)
 }
 
-func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb uint) uint {
+func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximumRamInMb uint) uint {
 	var amountUint uint
 	for {
 		msg := fmt.Sprintf("Virtual Machine RAM allocation (installed on the host: %dMb)", installedRamInMb)
@@ -208,16 +245,28 @@ func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb uint) uint 
 		ui.SetLabel(msg)
 		amountStr := ui.Inputbox("")
 		amountInt, err := strconv.Atoi(amountStr)
-		amountUint = uint(amountInt)
-		if err == nil && amountUint < installedRamInMb && amountUint >= reqMinimumRamInMb {
-			break
+		if err != nil {
+			continue
 		}
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMb.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
+		amountUint = uint(amountInt)
+		if amountUint > installedRamInMb {
+			ui.Output(gui.Warning, fmt.Sprintf("The host only has %dMb of RAM.\nPress <OK> to proceed", installedRamInMb), 7, 2)
+			continue
+		}
+		if reqMinimumRamInMb != 0 && amountUint < reqMinimumRamInMb {
+			ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMb.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
+			continue
+		}
+		if reqMaximumRamInMb != 0 && amountUint > reqMaximumRamInMb {
+			ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dMb.\nPress <OK> to proceed", reqMaximumRamInMb), 7, 2)
+			continue
+		}
+		break
 	}
 	return amountUint
 }
 
-func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus uint) uint {
+func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint) uint {
 	var amountUint uint
 	for {
 		msg := fmt.Sprintf("Virtual Machine vCPU allocation (installed on the host: %d)", installedCpus)
@@ -225,17 +274,23 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus uint) uint {
 		ui.SetLabel(msg)
 		amountStr := ui.Inputbox("")
 		amountInt, err := strconv.Atoi(amountStr)
-		amountUint = uint(amountInt)
-		if err == nil && amountUint <= installedCpus && amountUint >= reqMinimumCpus {
-			break
+		if err != nil {
+			continue
 		}
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPU requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
+		amountUint = uint(amountInt)
+		if amountUint > installedCpus {
+			ui.Output(gui.Warning, fmt.Sprintf("The host only has %d CPUs.\nPress <OK> to proceed", installedCpus), 7, 2)
+			continue
+		}
+		if reqMinimumCpus != 0 && amountUint < reqMinimumCpus {
+			ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
+			continue
+		}
+		if reqMaximumCpus != 0 && amountUint > reqMaximumCpus {
+			ui.Output(gui.Warning, fmt.Sprintf("Maximum vCPU requirement is %d.\nPress <OK> to proceed", reqMaximumCpus), 7, 2)
+			continue
+		}
+		break
 	}
 	return amountUint
-}
-
-func UiConfirmation(ui *gui.DialogUi, buf *bytes.Buffer, height int) {
-	buf.WriteString("\n\nPress <OK> to proceed or <CTRL+C> to exit")
-	ui.SetSize(height, 100)
-	ui.Msgbox(buf.String())
 }

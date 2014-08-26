@@ -39,6 +39,8 @@ func init() {
 
 func main() {
 	ui := dialog_ui.NewDialogUi()
+	ui.Shadow(false)
+	ui.SetCancelLabel("Exit")
 	gui.UiValidateUser(ui, 0)
 	gui.UiWelcomeMsg(ui, "MyProduct")
 	data := &deployer.CommonData{
