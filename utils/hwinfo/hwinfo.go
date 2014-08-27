@@ -40,7 +40,6 @@ func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error)
 				return nil, err
 			}
 			lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
-
 		}
 	}
 

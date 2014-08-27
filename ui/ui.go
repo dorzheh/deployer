@@ -1,6 +1,7 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -131,8 +132,20 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 
 func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NIC) (map[string]*hwinfo.NIC, error) {
 	newMap := make(map[string]*hwinfo.NIC)
+	allowedNics := make([]*hwinfo.NIC, 0)
+	for _, n := range info {
+		if hwinfo.DeniedNIC(n, &data.NIC) {
+			continue
+		}
+		if n.Type == hwinfo.NicTypePhys {
+			if !hwinfo.AllowedNIC(n, &data.NIC) {
+				continue
+			}
+		}
+		allowedNics = append(allowedNics, n)
+	}
 	for _, net := range data.Networks.Default {
-		nic, err := uiGetNicInfo(ui, data, &info, net.Name)
+		nic, err := uiGetNicInfo(ui, data, &allowedNics, net.Name)
 		if err != nil {
 			return nil, err
 		}
@@ -164,42 +177,16 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NI
 
 func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, info *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
 	var temp []string
-	index := 0
+	index := 1
 	for _, n := range *info {
-		found := false
-		for _, nic := range data.NIC.Denied {
-			if strings.Contains(n.Desc, nic.Vendor) && nic.Model != "" && strings.Contains(n.Desc, nic.Model) {
-				found = true
-				break
-			}
-		}
-		if found {
-			continue
-		}
-		if n.Type == hwinfo.NicTypePhys {
-			for _, nic := range data.NIC.Allowed {
-				if strings.Contains(n.Desc, nic.Vendor) {
-					found = true
-					if nic.Model != "" {
-						if strings.Contains(n.Desc, nic.Model) {
-							found = true
-						} else {
-							found = false
-						}
-					}
-				}
-			}
-			if found == false {
-				continue
-			}
-		}
-		index += 1
 		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
-
+		index += 1
 	}
 
 	sliceLength := len(temp)
-	fmt.Printf("INdex: %d\n", sliceLength)
+	if sliceLength == 0 {
+		return nil, errors.New("eligable NIC not found.Verify input_data_config.xml file")
+	}
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
 	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
