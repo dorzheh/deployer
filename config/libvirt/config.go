@@ -12,7 +12,6 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/post_processor/libvirt"
 	gui "github.com/dorzheh/deployer/ui"
-	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
 // InputData provides a static data
@@ -46,25 +45,25 @@ type Config struct {
 	// Common configuration
 	*deployer.CommonConfig
 
+	// Hostinfo driver
+	Hwdriver deployer.HostinfoDriver
+
 	// Common metadata stuff
 	Metadata *commonMetadata
 
 	// Path to metadata file (libvirt XML)
 	DestMetadataFile string
-
-	// HWinfor parser
-	HWInfo *hwinfo.Parser
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
 
-	c := &Config{common.CreateConfig(d), nil, "", nil}
+	c := &Config{common.CreateConfig(d), nil, nil, ""}
 	c.Metadata = new(commonMetadata)
 
 	driver := libvirt.NewDriver(c.SshConfig)
-	if c.Metadata.EmulatorPath, err = driver.Emulator(); err != nil {
+	if c.Metadata.EmulatorPath, err = driver.Emulator(d.Arch); err != nil {
 		return nil, err
 	}
 

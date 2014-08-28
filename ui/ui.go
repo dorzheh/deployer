@@ -130,10 +130,14 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NIC) (map[string]*hwinfo.NIC, error) {
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (map[string]*hwinfo.NIC, error) {
 	newMap := make(map[string]*hwinfo.NIC)
 	allowedNics := make([]*hwinfo.NIC, 0)
-	for _, n := range info {
+	nics, err := hidriver.NICs()
+	if err != nil {
+		return nil, err
+	}
+	for _, n := range nics {
 		if hwinfo.DeniedNIC(n, &data.NIC) {
 			continue
 		}
@@ -162,7 +166,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NI
 		}
 		if ui.Yesno() {
 			net := fmt.Sprintf("#%d", nextIndex)
-			nic, err := uiGetNicInfo(ui, data, &info, net)
+			nic, err := uiGetNicInfo(ui, data, &nics, net)
 			if err != nil {
 				return nil, err
 			}
@@ -175,10 +179,10 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, info []*hwinfo.NI
 	return newMap, nil
 }
 
-func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, info *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
+func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, nics *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
 	var temp []string
 	index := 1
-	for _, n := range *info {
+	for _, n := range *nics {
 		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
 		index += 1
 	}
@@ -195,20 +199,20 @@ func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, info *[]*hwinfo
 	}
 
 	index = ifaceNumInt - 1
-	nic := (*info)[index]
+	nic := (*nics)[index]
 	if nic.Type == hwinfo.NicTypePhys {
-		tempInfo := *info
+		tempInfo := *nics
 		tempInfo = append(tempInfo[:index], tempInfo[index+1:]...)
-		*info = tempInfo
+		*nics = tempInfo
 	}
 	return nic, nil
 }
 
-func UiGatherHWInfo(ui *gui.DialogUi, hw *hwinfo.Parser, sleepInSec string, remote bool) error {
+func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInSec string, remote bool) error {
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {
-		errCh <- hw.Parse()
+		errCh <- hidriver.Init()
 	}()
 	sleep, err := time.ParseDuration(sleepInSec)
 	if err != nil {
@@ -266,8 +270,9 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 		}
 		amountUint = uint(amountInt)
 		if amountUint > installedCpus {
-			ui.Output(gui.Warning, fmt.Sprintf("The host only has %d CPUs.\nPress <OK> to proceed", installedCpus), 7, 2)
-			continue
+			if !UiVCPUsOvercommit(ui, installedCpus) {
+				continue
+			}
 		}
 		if reqMinimumCpus != 0 && amountUint < reqMinimumCpus {
 			ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
@@ -280,4 +285,10 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 		break
 	}
 	return amountUint
+}
+
+func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus uint) bool {
+	ui.SetSize(7, 75)
+	ui.SetLabel(fmt.Sprintf("The host only has %d CPUs.Overcommiting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
+	return ui.Yesno()
 }

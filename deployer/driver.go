@@ -1,5 +1,9 @@
 package deployer
 
+import (
+	"github.com/dorzheh/deployer/utils/hwinfo"
+)
+
 type Driver interface {
 	// Creates appropriate domain
 	DefineDomain(string) error
@@ -21,5 +25,25 @@ type Driver interface {
 	DomainExists(string) bool
 
 	// Returns path to emulator(QEMU for example)
-	Emulator() (string, error)
+	Emulator(arch string) (string, error)
+}
+
+type HostinfoDriver interface {
+	// Initialize the driver (mostly needed for UiGatherHWInfo)
+	Init() error
+
+	// Returns amount of installed RAM
+	RAMSize() (uint, error)
+
+	// Returns available CPUs
+	CPUs() (uint, error)
+
+	// Returns information related to the host's CPU
+	CPUInfo() (*hwinfo.CPU, error)
+
+	// Returns amount of NUMA nodes and appropriate CPUs per NUMA node
+	NUMANodes() (map[uint][]uint, error)
+
+	// Returns info related to the host's NICs
+	NICs() ([]*hwinfo.NIC, error)
 }

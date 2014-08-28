@@ -1,6 +1,7 @@
 package libvirt
 
 import (
+	"fmt"
 	"sync"
 
 	"github.com/dorzheh/deployer/utils"
@@ -22,6 +23,7 @@ func NewDriver(config *ssh.Config) *Driver {
 func (d *Driver) DefineDomain(domainConfig string) error {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh define " + domainConfig); err != nil {
 		return err
 	}
@@ -31,6 +33,7 @@ func (d *Driver) DefineDomain(domainConfig string) error {
 func (d *Driver) StartDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh start " + name); err != nil {
 		return err
 	}
@@ -40,6 +43,7 @@ func (d *Driver) StartDomain(name string) error {
 func (d *Driver) DestroyDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh destroy " + name); err != nil {
 		return err
 	}
@@ -49,6 +53,7 @@ func (d *Driver) DestroyDomain(name string) error {
 func (d *Driver) UndefineDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh undefine " + name); err != nil {
 		return err
 	}
@@ -58,6 +63,7 @@ func (d *Driver) UndefineDomain(name string) error {
 func (d *Driver) SetAutostart(name string) error {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh autostart " + name); err != nil {
 		return err
 	}
@@ -67,15 +73,24 @@ func (d *Driver) SetAutostart(name string) error {
 func (d *Driver) DomainExists(name string) bool {
 	d.Lock()
 	defer d.Unlock()
+
 	if _, err := d.run("virsh dominfo " + name); err != nil {
 		return false
 	}
 	return true
 }
 
-func (d *Driver) Emulator() (string, error) {
+func (d *Driver) Emulator(arch string) (string, error) {
+	switch arch {
+	case "x86_64":
+	case "i686":
+	default:
+		return "", fmt.Errorf("Unsupported architecture(%s).Supported i686 and x86_64 only", arch)
+	}
+
 	d.Lock()
 	defer d.Unlock()
+
 	out, err := d.run("virsh capabilities")
 	if err != nil {
 		return "", err
@@ -86,6 +101,6 @@ func (d *Driver) Emulator() (string, error) {
 		return "", err
 	}
 
-	v, _ := m.ValuesForPath("capabilities.guest.arch", "-name:x86_64")
+	v, _ := m.ValuesForPath("capabilities.guest.arch", "-name:"+arch)
 	return v[0].(map[string]interface{})["emulator"].(string), nil
 }

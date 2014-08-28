@@ -5,21 +5,21 @@ import (
 
 	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
+	"github.com/dorzheh/deployer/hwinfo_driver/libvirt"
 	gui "github.com/dorzheh/deployer/ui"
-	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
 func ResourcesConfig(d *deployer.CommonData, i *InputData, c *Config, xid *xmlinput.XMLInputData) error {
 	var err error
-	c.HWInfo, err = hwinfo.NewParser(filepath.Join(d.RootDir, "hwinfo.json"), i.Lshw, c.SshConfig)
+	c.Hwdriver, err = libvirt.NewHostinfoDriver(filepath.Join(d.RootDir, "hwinfo.json"), i.Lshw, c.SshConfig)
 	if err != nil {
 		return err
 	}
-	if err := gui.UiGatherHWInfo(d.Ui, c.HWInfo, "1s", c.RemoteMode); err != nil {
+	if err := gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
 		return err
 	}
 	if xid.CPU.Config {
-		cpus, err := c.HWInfo.CPUs()
+		cpus, err := c.Hwdriver.CPUs()
 		if err != nil {
 			return err
 		}
@@ -29,7 +29,7 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, c *Config, xid *xmlin
 	}
 
 	if xid.RAM.Config {
-		ram, err := c.HWInfo.RAMSize()
+		ram, err := c.Hwdriver.RAMSize()
 		if err != nil {
 			return err
 		}
@@ -39,12 +39,7 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, c *Config, xid *xmlin
 	}
 
 	if xid.Networks.Config {
-		ni, err := c.HWInfo.NICInfo()
-		if err != nil {
-			return err
-		}
-
-		nets, err := gui.UiNetworks(d.Ui, xid, ni)
+		nets, err := gui.UiNetworks(d.Ui, xid, c.Hwdriver)
 		if err != nil {
 			return err
 		}
