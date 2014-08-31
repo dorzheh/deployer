@@ -214,7 +214,7 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 		for {
 			ui.SetSize(8, len(msg)+5)
 			ui.SetLabel(msg)
-			passwd1 = ui.Passwordbox()
+			passwd1 = ui.Passwordbox(true)
 			if passwd1 != "" {
 				return
 			}
@@ -225,7 +225,7 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 			for {
 				ui.SetSize(8, len(msg)+5)
 				ui.SetLabel(msg)
-				passwd2 = ui.Passwordbox()
+				passwd2 = ui.Passwordbox(true)
 				if passwd2 != "" {
 					break
 				}
