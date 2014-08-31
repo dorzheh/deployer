@@ -156,7 +156,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer
 		newMap[net.Name] = nic
 	}
 
-	nextIndex := len(data.Networks.Default)
+	nextIndex := len(data.Networks.Default) + 1
 	for nextIndex <= int(data.Networks.Max) {
 		ui.SetSize(5, 60)
 		if nextIndex == 0 {
@@ -166,7 +166,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer
 		}
 		if ui.Yesno() {
 			net := fmt.Sprintf("#%d", nextIndex)
-			nic, err := uiGetNicInfo(ui, data, &nics, net)
+			nic, err := uiGetNicInfo(ui, data, &allowedNics, net)
 			if err != nil {
 				return nil, err
 			}
@@ -288,7 +288,7 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 }
 
 func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus uint) bool {
-	ui.SetSize(7, 75)
-	ui.SetLabel(fmt.Sprintf("The host only has %d CPUs.Overcommiting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
+	ui.SetSize(7, 85)
+	ui.SetLabel(fmt.Sprintf("WARNING:The host only has %d CPUs.Overcommitting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
 	return ui.Yesno()
 }
