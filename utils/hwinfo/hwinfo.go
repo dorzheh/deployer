@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
@@ -156,7 +157,11 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 	}
 
 	nics := make([]*NIC, 0)
-	deep := []string{"children.children.children.children", "children"}
+	deep := []string{"children.children.children.children.children",
+		"children.children.children.children",
+		"children.children.children",
+		"children.children",
+		"children"}
 	for _, m := range out {
 		for _, d := range deep {
 			r, _ := m.ValuesForPath(d)
@@ -180,7 +185,8 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							if _, err := p.run(fmt.Sprintf("[ -d /sys/class/net/%s/master ]", ch["logicalname"].(string))); err == nil {
+							logicalname := ch["logicalname"].(string)
+							if _, err := p.run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", logicalname, logicalname)); err == nil {
 								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
@@ -211,6 +217,7 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 			nics = append(nics, br)
 		}
 	}
+	sort.Sort(sortByPCI(nics))
 	return nics, nil
 }
 
@@ -251,3 +258,9 @@ func (p *Parser) RAMSize() (uint, error) {
 	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize, &col3)
 	return ramsize / 1024, nil
 }
+
+type sortByPCI []*NIC
+
+func (s sortByPCI) Len() int           { return len(s) }
+func (s sortByPCI) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
+func (s sortByPCI) Less(i, j int) bool { return s[i].PCIAddr < s[j].PCIAddr }

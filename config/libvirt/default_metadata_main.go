@@ -3,8 +3,8 @@ package libvirt
 var defaultMetdata = []byte(`<domain type='kvm'>
   <name>{{.DomainName}}</name>
   <uuid></uuid>
-  <memory unit='MiB'>{{.RAM}}</memory>
-  <currentMemory unit='MiB'>{{.RAM}}</currentMemory>
+  <memory>{{.RAM}}</memory>
+  <currentMemory>{{.RAM}}</currentMemory>
    <cpu mode='custom' match='exact'>
     <model fallback='allow'>Westmere</model>
     <feature policy='require' name='pdpe1gb'/>

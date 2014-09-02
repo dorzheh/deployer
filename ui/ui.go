@@ -189,7 +189,7 @@ func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, nics *[]*hwinfo
 
 	sliceLength := len(temp)
 	if sliceLength == 0 {
-		return nil, errors.New("eligable NIC not found.Verify input_data_config.xml file")
+		return nil, errors.New("no supported NIC found.Verify input_data_config.xml file")
 	}
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
@@ -230,8 +230,13 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 
 func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximumRamInMb uint) uint {
 	var amountUint uint
+	maxIsSet := true
+	if reqMaximumRamInMb == 0 {
+		maxIsSet = false
+		reqMaximumRamInMb = installedRamInMb
+	}
 	for {
-		msg := fmt.Sprintf("Virtual Machine RAM allocation (installed on the host: %dMb)", installedRamInMb)
+		msg := fmt.Sprintf("Enter VM RAM size(minimum %dMB, maximum %dMB)", reqMinimumRamInMb, reqMaximumRamInMb)
 		ui.SetSize(8, len(msg)+10)
 		ui.SetLabel(msg)
 		amountStr := ui.Inputbox("")
@@ -241,15 +246,15 @@ func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximum
 		}
 		amountUint = uint(amountInt)
 		if amountUint > installedRamInMb {
-			ui.Output(gui.Warning, fmt.Sprintf("The host only has %dMb of RAM.\nPress <OK> to proceed", installedRamInMb), 7, 2)
+			ui.Output(gui.Warning, "Required RAM exceeds host machine available memory.\nPress <OK> to proceed", 7, 2)
 			continue
 		}
-		if reqMinimumRamInMb != 0 && amountUint < reqMinimumRamInMb {
-			ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMb.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
+		if amountUint < reqMinimumRamInMb {
+			ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMB.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
 			continue
 		}
-		if reqMaximumRamInMb != 0 && amountUint > reqMaximumRamInMb {
-			ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dMb.\nPress <OK> to proceed", reqMaximumRamInMb), 7, 2)
+		if maxIsSet && amountUint > reqMaximumRamInMb {
+			ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dMB.\nPress <OK> to proceed", reqMaximumRamInMb), 7, 2)
 			continue
 		}
 		break
@@ -259,8 +264,13 @@ func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximum
 
 func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint) uint {
 	var amountUint uint
+	maxIsSet := true
+	if reqMaximumCpus == 0 {
+		maxIsSet = false
+		reqMaximumCpus = installedCpus
+	}
 	for {
-		msg := fmt.Sprintf("Virtual Machine vCPU allocation (installed on the host: %d)", installedCpus)
+		msg := fmt.Sprintf("Enter VM number of vCPUs(minimum %d, maximum %d)", reqMinimumCpus, reqMaximumCpus)
 		ui.SetSize(8, len(msg)+10)
 		ui.SetLabel(msg)
 		amountStr := ui.Inputbox("")
@@ -274,12 +284,12 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 				continue
 			}
 		}
-		if reqMinimumCpus != 0 && amountUint < reqMinimumCpus {
+		if amountUint < reqMinimumCpus {
 			ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
 			continue
 		}
-		if reqMaximumCpus != 0 && amountUint > reqMaximumCpus {
-			ui.Output(gui.Warning, fmt.Sprintf("Maximum vCPU requirement is %d.\nPress <OK> to proceed", reqMaximumCpus), 7, 2)
+		if maxIsSet && amountUint > reqMaximumCpus {
+			ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).\nPress <OK> to proceed", reqMaximumCpus), 7, 2)
 			continue
 		}
 		break
