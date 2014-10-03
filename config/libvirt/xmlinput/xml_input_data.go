@@ -10,7 +10,7 @@ type XMLInputData struct {
 	CPU      `xml:"CPU"`
 	RAM      `xml:"RAM"`
 	Networks `xml:"Networks"`
-	NIC      `xml:"NIC"`
+	NICs     `xml:"NICs"`
 }
 
 type CPU struct {
@@ -38,18 +38,19 @@ type Networks struct {
 }
 
 type Allow struct {
-	Vendor string `xml:"vendor,attr"`
-	Model  string `xml:",innerxml"`
+	Vendor string `xml:"Vendor"`
+	Model  string `xml:"Model"`
+	Mode   string `xml:"Mode"`
 }
 
 type Deny struct {
-	Vendor string `xml:"vendor,attr"`
-	Model  string `xml:",innerxml"`
+	Vendor string `xml:"Vendor"`
+	Model  string `xml:"Model"`
 }
 
-type NIC struct {
-	Allowed []Allow `xml:"NIC>Allow"`
-	Denied  []Deny  `xml:"NIC>Deny"`
+type NICs struct {
+	Allowed []Allow `xml:"NICs>Allow"`
+	Denied  []Deny  `xml:"NICs>Deny"`
 }
 
 func ParseXML(xmlpath string) (*XMLInputData, error) {

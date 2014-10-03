@@ -46,7 +46,7 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, c *Config, xid *xmlin
 			return err
 		}
 
-		c.Metadata.Networks, err = SetNetworkData(nets, i.NetworkDataTemplatesDir)
+		c.Metadata.Networks, err = SetNetworkData(nets, xid.Allowed, i.NetworkDataTemplatesDir)
 		if err != nil {
 			return err
 		}

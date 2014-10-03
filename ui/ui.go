@@ -138,11 +138,11 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer
 		return nil, err
 	}
 	for _, n := range nics {
-		if hwinfo.DeniedNIC(n, &data.NIC) {
+		if hwinfo.DeniedNIC(n, &data.NICs) {
 			continue
 		}
 		if n.Type == hwinfo.NicTypePhys {
-			if !hwinfo.AllowedNIC(n, &data.NIC) {
+			if !hwinfo.AllowedNIC(n, &data.NICs) {
 				continue
 			}
 		}

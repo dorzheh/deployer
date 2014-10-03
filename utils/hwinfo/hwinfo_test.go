@@ -93,7 +93,7 @@ func TestNICsInfoLocal(t *testing.T) {
 	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.NICInfo(nil)
+	_, err = p.NICInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestNICsInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := p.NICInfo(nil)
+	info, err := p.NICInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -121,7 +121,7 @@ func TestNICInfoRemote(t *testing.T) {
 	if err := p.Parse(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.NICInfo(nil)
+	_, err = p.NICInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func TestNICInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := p.NICInfo(nil)
+	info, err := p.NICInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -140,8 +140,8 @@ func TestNICInfoRemote(t *testing.T) {
 func printNICInfo(info []*NIC) {
 	fmt.Println("==== Slice Content ======")
 	for _, n := range info {
-		fmt.Printf("NIC type => %v\nNIC name => %v\nNIC PCI addr => %v\nNIC desc => %v\nNIC driver => %v\n",
-			string(n.Type), n.Name, n.PCIAddr, n.Desc, n.Driver)
+		fmt.Printf("NIC type => %v\nNIC name => %v\nNIC PCI addr => %v\nNIC vendor => %v\nNIC model => %v\nNIC desc => %v\nNIC driver => %v\n",
+			string(n.Type), n.Name, n.PCIAddr, n.Vendor, n.Model, n.Desc, n.Driver)
 		fmt.Println("==================")
 	}
 }

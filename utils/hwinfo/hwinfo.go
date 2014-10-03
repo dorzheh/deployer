@@ -134,11 +134,17 @@ type NIC struct {
 	// NIC driver(bridge,openvswitch...)
 	Driver string
 
-	// Description
-	Desc string
+	// Vendor
+	Vendor string
+
+	// Model
+	Model string
 
 	// PCI Address
 	PCIAddr string
+
+	// Description
+	Desc string
 
 	// Port type
 	Type NicType
@@ -190,6 +196,8 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
+							nic.Vendor = vendor
+							nic.Model = prod
 							nic.Desc = vendor + " " + prod
 							nic.Type = NicTypePhys
 						}
@@ -253,9 +261,8 @@ func (p *Parser) RAMSize() (uint, error) {
 	if err != nil {
 		return 0, err
 	}
-	var col3 string
 	var ramsize uint
-	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize, &col3)
+	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize)
 	return ramsize / 1024, nil
 }
 

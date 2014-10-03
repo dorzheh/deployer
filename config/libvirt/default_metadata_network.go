@@ -13,6 +13,12 @@ var TmpltBridgedOVS = `<interface type='bridge'>
 	  <driver name='vhost'/>
 </interface>`
 
+var TmpltDirect = `<interface type='direct'>
+      <source dev='{{.IfaceName}}' mode='private'/>
+      <model type='virtio'/>
+    </interface>
+`
+
 var TmpltSriovPassthrough = `<interface type='hostdev' managed='yes'>
       <source>
         <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>

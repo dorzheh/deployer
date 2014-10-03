@@ -1,6 +1,10 @@
-Configuration example:
+package xmlinput
 
-<?xml version="1.0" encoding="UTF-8"?>
+import (
+	"testing"
+)
+
+var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <InputData>
 	<CPU>
 		<Config>true</Config>
@@ -35,7 +39,6 @@ Configuration example:
 		<Allow> 
 		    <Vendor>Intel</Vendor>
 			<Model></Model>
-			<!-- Available modes: passthrough or direct -->
 			<Mode>passthrough</Mode>
 		</Allow>
 		<Allow>
@@ -49,4 +52,15 @@ Configuration example:
 			 <Model></Model>
 		</Deny>
 	</NICs>
-</InputData>
+</InputData>`)
+
+func TestParse(t *testing.T) {
+	d, err := Parse(xmldata)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, nic := range d.Allowed {
+		t.Logf("\nNIC Vendor =>%s\nNIC Model => %s\nNIC Mode => %s\n",
+			nic.Vendor, nic.Model, nic.Mode)
+	}
+}
