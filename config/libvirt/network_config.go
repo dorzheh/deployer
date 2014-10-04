@@ -37,7 +37,7 @@ type DirectData struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func SetNetworkData(ni map[string]*hwinfo.NIC, nics []xmlinput.Allow, templatesDir string) (string, error) {
+func SetNetworkData(ni map[string]*hwinfo.NIC, nics []*xmlinput.Allow, templatesDir string) (string, error) {
 	var data string
 	for _, port := range ni {
 		switch port.Type {
@@ -46,7 +46,7 @@ func SetNetworkData(ni map[string]*hwinfo.NIC, nics []xmlinput.Allow, templatesD
 			var err error
 
 			for _, nic := range nics {
-				switch bindingMode(port, &nic) {
+				switch bindingMode(port, nic) {
 				case "passthrough":
 					tempData, err = ProcessTemplatePassthrough(port.PCIAddr)
 					if err != nil {

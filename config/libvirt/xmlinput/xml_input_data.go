@@ -32,9 +32,9 @@ type Network struct {
 }
 
 type Networks struct {
-	Config  bool      `xml:"Networks>Config"`
-	Max     uint      `xml:"Networks>Max"`
-	Default []Network `xml:"Networks>Default>Network"`
+	Config  bool       `xml:"Networks>Config"`
+	Max     uint       `xml:"Networks>Max"`
+	Default []*Network `xml:"Networks>Default>Network"`
 }
 
 type Allow struct {
@@ -49,8 +49,8 @@ type Deny struct {
 }
 
 type NICs struct {
-	Allowed []Allow `xml:"NICs>Allow"`
-	Denied  []Deny  `xml:"NICs>Deny"`
+	Allowed []*Allow `xml:"NICs>Allow"`
+	Denied  []*Deny  `xml:"NICs>Deny"`
 }
 
 func ParseXML(xmlpath string) (*XMLInputData, error) {
