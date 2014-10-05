@@ -34,11 +34,11 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, c *Config, xid *xmlin
 			return err
 		}
 		c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, xid.RAM.Min, xid.RAM.Max)
+		c.Metadata.RAM *= 1024
 	} else if xid.RAM.Default > 0 {
 		c.Metadata.RAM = xid.RAM.Default
+		c.Metadata.RAM *= 1024
 	}
-	// represent it in KB
-	c.Metadata.RAM *= 1024
 
 	if xid.Networks.Config {
 		nets, err := gui.UiNetworks(d.Ui, xid, c.Hwdriver)

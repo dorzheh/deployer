@@ -182,7 +182,7 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 					nic.Name = name
 					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
 					switch driver {
-					case "tun":
+					case "tun", "veth":
 						continue
 					case "openvswitch":
 						nic.Desc = "Open vSwitch interface"

@@ -59,6 +59,7 @@ func TestParse(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
 	for _, nic := range d.Allowed {
 		t.Logf("\nNIC Vendor =>%s\nNIC Model => %s\nNIC Mode => %s\n",
 			nic.Vendor, nic.Model, nic.Mode)
