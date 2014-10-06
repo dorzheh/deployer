@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/config/common"
+	"github.com/dorzheh/deployer/config/libvirt/bundle"
 	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/post_processor/libvirt"
@@ -21,6 +22,9 @@ type InputData struct {
 
 	// Path to the basic configuration file (see xmlinput package)
 	InputDataXMLFile string
+
+	// Path to the bundle configuration file (see bundle package)
+	BundleDataXMLFile string
 
 	// Path to directory containing appropriate templates intended
 	// for overriding default configuration
@@ -53,13 +57,15 @@ type Config struct {
 
 	// Path to metadata file (libvirt XML)
 	DestMetadataFile string
+
+	BundleConf *bundle.Config
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
 
-	c := &Config{common.CreateConfig(d), nil, nil, ""}
+	c := &Config{common.CreateConfig(d), nil, nil, "", nil}
 	c.Metadata = new(commonMetadata)
 
 	driver := libvirt.NewDriver(c.SshConfig)
@@ -76,12 +82,13 @@ func CreateConfig(d *deployer.CommonData, i *InputData) (*Config, error) {
 	if err := ioutil.WriteFile(c.DestMetadataFile, defaultMetdata, 0); err != nil {
 		return nil, err
 	}
+
 	if fd, err := os.Stat(i.InputDataXMLFile); err == nil && !fd.IsDir() {
 		xid, err := xmlinput.ParseXML(i.InputDataXMLFile)
 		if err != nil {
 			return nil, err
 		}
-		if err := ResourcesConfig(d, i, c, xid); err != nil {
+		if err := ResourcesConfig(d, i, xid, c); err != nil {
 			return nil, err
 		}
 	}
