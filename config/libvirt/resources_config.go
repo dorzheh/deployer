@@ -28,7 +28,6 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, xid *xmlinput.XMLInpu
 		}
 		c.Metadata.CPUs = c.BundleConf.CPUs
 		c.Metadata.RAM = c.BundleConf.RAM * 1024
-		return nil
 	} else {
 		if xid.CPU.Config {
 			cpus, err := c.Hwdriver.CPUs()
@@ -51,7 +50,6 @@ func ResourcesConfig(d *deployer.CommonData, i *InputData, xid *xmlinput.XMLInpu
 			c.Metadata.RAM = xid.RAM.Default * 1024
 		}
 	}
-
 	if xid.Networks.Config {
 		nets, err := gui.UiNetworks(d.Ui, xid, c.Hwdriver)
 		if err != nil {

@@ -33,28 +33,23 @@ func GetConfig(d *deployer.CommonData, hidriver deployer.HostinfoDriver,
 	}
 
 	config := new(Config)
-	advConf := false
-	if amountOfConfigs > 1 {
-		for {
-			c, err := uiBundleConfig(d.Ui, configs)
-			if err != nil {
-				return nil, err
-			}
-			if c == nil {
-				advConf = true
-				break
-			}
-			if c.CPUs > installedCpus {
-				if !ui.UiVCPUsOvercommit(d.Ui, installedCpus) {
-					continue
-				}
-			}
-			return c, nil
+	for {
+		c, err := uiBundleConfig(d.Ui, configs)
+		if err != nil {
+			return nil, err
 		}
+		if c == nil {
+			break
+		}
+		if c.CPUs > installedCpus {
+			if !ui.UiVCPUsOvercommit(d.Ui, installedCpus) {
+				continue
+			}
+		}
+		return c, nil
 	}
-	if advConf {
-		config.RAM = ui.UiRAMSize(d.Ui, hostRamsizeMb, xid.RAM.Min, xid.RAM.Max)
-		config.CPUs = ui.UiCPUs(d.Ui, installedCpus, xid.CPU.Min, xid.CPU.Max)
-	}
+
+	config.RAM = ui.UiRAMSize(d.Ui, hostRamsizeMb, xid.RAM.Min, xid.RAM.Max)
+	config.CPUs = ui.UiCPUs(d.Ui, installedCpus, xid.CPU.Min, xid.CPU.Max)
 	return config, nil
 }
