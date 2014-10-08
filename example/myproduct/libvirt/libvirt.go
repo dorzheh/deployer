@@ -47,6 +47,11 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 }
 
 func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Builder, err error) {
+	if err = d.Ui.Pb.SetSleep("10s"); err != nil {
+		return
+	}
+	d.Ui.Pb.SetStep(15)
+
 	imageData := &deployer.ImageBuilderData{
 		ImagePath:   c.config.Metadata.ImagePath,
 		RootfsMp:    d.RootfsMp,
@@ -80,6 +85,11 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 }
 
 func (c *FlowCreator) CreatePostProcessor(d *deployer.CommonData) (p deployer.PostProcessor, err error) {
+	if err = d.Ui.Pb.SetSleep("3s"); err != nil {
+		return
+	}
+	d.Ui.Pb.SetStep(10)
+
 	p = &libvirtpost.PostProcessor{
 		Driver:      libvirtpost.NewDriver(c.config.SshConfig),
 		StartDomain: false,

@@ -2,7 +2,6 @@ package deployer
 
 import (
 	"runtime"
-	"time"
 )
 
 // BuildProgress is responsible for running appropriate builders
@@ -21,14 +20,10 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 		}
 		errChan <- nil
 	}()
-	var duration time.Duration
-	duration, err = time.ParseDuration("10s")
-	if err != nil {
-		return
-	}
+
 	progressBarTitle := c.VaName + " installation in progress (artifacts building stage)"
 	progressBarMsg := "\n\nPlease wait..."
-	err = c.Ui.Progress(progressBarTitle, progressBarMsg, duration, 15, errChan)
+	err = c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan)
 	return
 }
 

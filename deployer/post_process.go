@@ -1,7 +1,5 @@
 package deployer
 
-import "time"
-
 func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) error {
 	if c.Ui == nil {
 		return p.PostProcess(artifacts)
@@ -12,11 +10,8 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 	go func() {
 		errChan <- p.PostProcess(artifacts)
 	}()
-	duration, err := time.ParseDuration("3s")
-	if err != nil {
-		return err
-	}
+
 	progressBarTitle := c.VaName + " installation in progress (post-processing stage)"
 	progressBarMsg := "\n\nPlease wait..."
-	return c.Ui.Progress(progressBarTitle, progressBarMsg, duration, 15, errChan)
+	return c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan)
 }

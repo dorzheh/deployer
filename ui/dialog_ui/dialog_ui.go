@@ -18,12 +18,52 @@ const (
 	None         = ""
 )
 
+type Pb struct {
+	sleep time.Duration
+	step  int
+}
+
+func (p *Pb) SetSleep(s string) (err error) {
+	p.sleep, err = time.ParseDuration(s)
+	return
+}
+
+func (p *Pb) SetStep(s int) {
+	p.step = s
+}
+
+func (p *Pb) Sleep() time.Duration {
+	return p.sleep
+}
+
+func (p *Pb) Step() int {
+	return p.step
+}
+
+func (p *Pb) IncreaseSleep(s string) error {
+	sleep, err := time.ParseDuration(s)
+	if err != nil {
+		return err
+	}
+	p.sleep += sleep
+	return nil
+}
+
+func (p *Pb) IncreaseStep(s int) {
+	p.step += s
+}
+
+func (p *Pb) DecreaseStep(s int) {
+	p.step -= s
+}
+
 type DialogUi struct {
 	*Dialog
+	Pb *Pb
 }
 
 func NewDialogUi() *DialogUi {
-	return &DialogUi{New(CONSOLE, 0)}
+	return &DialogUi{New(CONSOLE, 0), &Pb{0, 0}}
 }
 
 ///// Functions providing verification services /////
