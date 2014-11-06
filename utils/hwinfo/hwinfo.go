@@ -173,16 +173,23 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 			r, _ := m.ValuesForPath(d)
 			for _, n := range r {
 				ch := n.(map[string]interface{})
-				if ch["description"] == "Ethernet interface" {
-					name := ch["logicalname"].(string)
+				if ch["description"] == "Ethernet interface" ||
+					ch["description"] == "Ethernet controller" {
+					name, ok := ch["logicalname"].(string)
+					if !ok {
+						name = "N/A"
+					}
 					if name == "ovs-system" {
 						continue
 					}
 					nic := new(NIC)
 					nic.Name = name
-					driver := ch["configuration"].(map[string]interface{})["driver"].(string)
+					driver, ok := ch["configuration"].(map[string]interface{})["driver"].(string)
+					if !ok {
+						driver = "N/A"
+					}
 					switch driver {
-					case "tun", "veth":
+					case "tun", "veth", "macvlan":
 						continue
 					case "openvswitch":
 						nic.Desc = "Open vSwitch interface"
@@ -191,8 +198,7 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							logicalname := ch["logicalname"].(string)
-							if _, err := p.run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", logicalname, logicalname)); err == nil {
+							if _, err := p.run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
 								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
