@@ -1,6 +1,7 @@
 package xmlinput
 
 import (
+	"fmt"
 	"testing"
 )
 
@@ -60,8 +61,10 @@ func TestParse(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	fmt.Printf("%v\n", d)
+
 	for _, nic := range d.Allowed {
-		t.Logf("\nNIC Vendor =>%s\nNIC Model => %s\nNIC Mode => %s\n",
+		fmt.Printf("\nNIC Vendor =>%s\nNIC Model => %s\nNIC Mode => %s\n",
 			nic.Vendor, nic.Model, nic.Mode)
 	}
 }

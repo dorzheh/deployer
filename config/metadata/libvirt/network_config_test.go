@@ -4,31 +4,31 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
+	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
-var expectedSetNetworkDataDirect = `<interface type='direct'>
+const expectedSetNetworkDataDirect = `<interface type='direct'>
       <source dev='eth0' mode='private'/>
       <model type='virtio'/>
     </interface>
 `
 
-var expectedSetNetworkDataPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
+const expectedSetNetworkDataPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
     <source>
       <address type='pci' domain='0x0000' bus='0x05' slot='0x00' function='0x0'/>
     </source>
   </hostdev>
 `
 
-var expectedSetNetworkDataBridged = `<interface type='bridge'>
+const expectedSetNetworkDataBridged = `<interface type='bridge'>
       <source bridge='br0'/>
 	  <model type='virtio'/>
 	  <driver name='vhost'/>
  </interface>
 `
 
-var expectedSetNetworkDataBridgedOVS = `<interface type='bridge'>
+const expectedSetNetworkDataBridgedOVS = `<interface type='bridge'>
       <source bridge='br1-ovs'/>
       <virtualport type='openvswitch'/>
 	  <model type='virtio'/>
@@ -50,7 +50,8 @@ func TestSetNetworkDataDirect(t *testing.T) {
 	}
 
 	nics := []*xmlinput.Allow{&xmlinput.Allow{Vendor: "Broadcom", Model: "", Mode: "direct"}}
-	str, err := SetNetworkData(info, nics, "")
+	d := new(meta)
+	str, err := d.SetNetworkData(info, nics, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +75,8 @@ func TestSetNetworkDataPassthrough(t *testing.T) {
 	}
 
 	nics := []*xmlinput.Allow{&xmlinput.Allow{Vendor: "Intel", Model: "", Mode: "passthrough"}}
-	str, err := SetNetworkData(info, nics, "")
+	d := new(meta)
+	str, err := d.SetNetworkData(info, nics, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +99,8 @@ func TestSetNetworkDataBridged(t *testing.T) {
 		},
 	}
 
-	str, err := SetNetworkData(info, nil, "")
+	d := new(meta)
+	str, err := d.SetNetworkData(info, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -120,7 +123,8 @@ func TestSetNetworkDataOVS(t *testing.T) {
 		},
 	}
 
-	str, err := SetNetworkData(info, nil, "")
+	d := new(meta)
+	str, err := d.SetNetworkData(info, nil, "")
 	if err != nil {
 		t.Fatal(err)
 	}

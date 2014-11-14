@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
+	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"

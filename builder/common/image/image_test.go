@@ -8,17 +8,19 @@ import (
 	"github.com/dorzheh/infra/comm/sshfs"
 )
 
-const imagePath = "/tmp/testImage"
-const rootfsMp = "/tmp/mnt"
-const topology = `<?xml version="1.0" encoding="UTF-8"?>
-<Platforms>
-  <Topology>
-        <Name>TestImage</Name>
-        <Type>1</Type>
-        <HddSizeGb>1</HddSizeGb>
+const (
+	imagePath = "/tmp/testImage"
+	rootfsMp  = "/tmp/mnt"
+)
+
+const storage = `<?xml version="1.0" encoding="UTF-8"?>
+<Storage>
+  <Config>
+	<Disk>
+        <SizeGb>1</SizeGb>
         <Bootable>true</Bootable>
         <FdiskCmd>o\nn\np\n1\n\n+800M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
-        <Description>Test platform toplogy</Description>
+        <Description>Test configuration</Description>
         <Partition>
            <Sequence>1</Sequence>
            <SizeMb>800</SizeMb>
@@ -35,8 +37,9 @@ const topology = `<?xml version="1.0" encoding="UTF-8"?>
            <FileSystem>swap</FileSystem>
            <FileSystemArgs></FileSystemArgs>
         </Partition>
-  </Topology>
-</Platforms>
+	</Disk>
+  </Config>
+</Storage>
 `
 
 var u = &Utils{
@@ -44,12 +47,12 @@ var u = &Utils{
 	Kpartx: "/tmp/kpartx",
 }
 
-func getToplogy() (*Topology, error) {
-	p, err := ParseConfig([]byte(topology))
+func getConfig() (*Config, error) {
+	p, err := ParseConfig([]byte(storage))
 	if err != nil {
 		return nil, err
 	}
-	return p.TypeToTopology(0)
+	return p.IndexToConfig(0)
 }
 
 func TestLocalImage(t *testing.T) {
@@ -59,41 +62,43 @@ func TestLocalImage(t *testing.T) {
 	}
 	defer os.RemoveAll(rootfsMp)
 
-	t.Log("=> getToplogy")
-	topo, err := getToplogy()
+	t.Log("=> getConfig")
+	config, err := getConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	t.Log("=> New")
-	img, err := New(imagePath, rootfsMp, topo, u, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// interrupt handler
-	img.ReleaseOnInterrupt()
-
-	defer func() {
-		t.Log("=> Release")
-		if err := img.Release(); err != nil {
+	for _, disk := range config.Disks {
+		t.Logf("=> new disk description => %s", disk.Description)
+		img, err := New(disk, rootfsMp, u, nil)
+		if err != nil {
 			t.Fatal(err)
 		}
-		t.Log("=> MakeBootable")
-		if err := img.MakeBootable(); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("=>Cleanup")
-		if err := img.Cleanup(); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("=> Remove")
-		os.Remove(imagePath)
-	}()
 
-	t.Log("=> Parse")
-	if err := img.Parse(); err != nil {
-		t.Fatal(err)
+		// interrupt handler
+		img.ReleaseOnInterrupt()
+
+		defer func() {
+			t.Log("=> Release")
+			if err := img.Release(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=> MakeBootable")
+			if err := img.MakeBootable(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=>Cleanup")
+			if err := img.Cleanup(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=> Remove")
+			os.Remove(imagePath)
+		}()
+
+		t.Log("=> Parse")
+		if err := img.Parse(); err != nil {
+			t.Fatal(err)
+		}
 	}
 }
 
@@ -104,8 +109,8 @@ func TestRemoteImage(t *testing.T) {
 	}
 	defer os.RemoveAll(rootfsMp)
 
-	t.Log("=> getToplogy")
-	topo, err := getToplogy()
+	t.Log("=> getConfig")
+	config, err := getConfig()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,32 +123,34 @@ func TestRemoteImage(t *testing.T) {
 	}
 	sshfsConf := &sshfs.Config{sshConf, "", ""}
 
-	t.Log("=> New")
-	img, err := New(imagePath, rootfsMp, topo, u, sshfsConf)
-	if err != nil {
-		t.Fatal(err)
-	}
-	img.ReleaseOnInterrupt()
+	for _, disk := range config.Disks {
+		t.Logf("=> new disk description => %s", disk.Description)
+		img, err := New(disk, rootfsMp, u, sshfsConf)
+		if err != nil {
+			t.Fatal(err)
+		}
+		img.ReleaseOnInterrupt()
 
-	defer func() {
-		t.Log("=> Release")
-		if err := img.Release(); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("=> MakeBootable")
-		if err := img.MakeBootable(); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("=>Cleanup")
-		if err := img.Cleanup(); err != nil {
-			t.Fatal(err)
-		}
-		t.Log("=> Remove")
-		os.Remove(imagePath)
-	}()
+		defer func() {
+			t.Log("=> Release")
+			if err := img.Release(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=> MakeBootable")
+			if err := img.MakeBootable(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=>Cleanup")
+			if err := img.Cleanup(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=> Remove")
+			os.Remove(imagePath)
+		}()
 
-	t.Log("=> Parse")
-	if err := img.Parse(); err != nil {
-		t.Fatal(err)
+		t.Log("=> Parse")
+		if err := img.Parse(); err != nil {
+			t.Fatal(err)
+		}
 	}
 }

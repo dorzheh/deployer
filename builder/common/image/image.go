@@ -40,8 +40,8 @@ type loopDevice struct {
 
 // the structure represents loop device manipulation
 type image struct {
-	// path to the image
-	imgpath string
+	// storage configuration file
+	config *Disk
 
 	// path to the root directory where the image will be mounted
 	slashpath string
@@ -50,9 +50,6 @@ type image struct {
 	// due to the fact that the remote deployment mode only
 	// it indicates whether image creation occurs locally or remotely
 	localmount string
-
-	// platform configuration file (image config)
-	conf *Topology
 
 	// do we need to partition and format the image
 	needToFormat bool
@@ -82,17 +79,16 @@ type Utils struct {
 // path to temporary directory where the vHDD image supposed to be mounted
 // and path to vHDD image.
 // Returns a pointer to the structure and error/nil
-func New(pathToRawImage, rootfsMp string, imageConfig *Topology,
-	bins *Utils, rconf *sshfs.Config) (i *image, err error) {
-	needToFormat := false
+func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config) (i *image, err error) {
 	i = new(image)
-	if rconf == nil {
+	i.needToFormat = false
+	if remoteConfig == nil {
 		i.run = utils.RunFunc(nil)
 		i.slashpath = rootfsMp
 		i.utils = bins
 	} else {
-		i.run = utils.RunFunc(rconf.Common)
-		i.client, err = sshfs.NewClient(rconf)
+		i.run = utils.RunFunc(remoteConfig.Common)
+		i.client, err = sshfs.NewClient(remoteConfig)
 		if err != nil {
 			return
 		}
@@ -107,16 +103,18 @@ func New(pathToRawImage, rootfsMp string, imageConfig *Topology,
 			return
 		}
 	}
-	i.imgpath = pathToRawImage
-	if _, err = i.run("ls" + pathToRawImage); err != nil {
-		if err = i.create(imageConfig.HddSizeGb); err != nil {
+
+	i.config = config
+	if _, err = i.run("ls" + config.Path); err != nil {
+		if err = i.create(); err != nil {
 			return
 		}
-		needToFormat = true
+		if config.Partitions != nil {
+			i.needToFormat = true
+		}
 	}
-	i.conf = imageConfig
-	i.needToFormat = needToFormat
-	i.loopDevice = &loopDevice{}
+
+	i.loopDevice = new(loopDevice)
 	i.loopDevice.amountOfMappers = 0
 	return
 }
@@ -144,7 +142,7 @@ func (i *image) Parse() error {
 		if err := i.partTableMakefs(); err != nil {
 			return err
 		}
-	} else {
+	} else if i.config.Partitions != nil {
 		if err := i.addMappers(); err != nil {
 			return err
 		}
@@ -216,8 +214,7 @@ func (i *image) Cleanup() error {
 // MakeBootable is responsible for making RAW disk bootable.
 // The target disk could be either local or remote image
 func (i *image) MakeBootable() error {
-	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s",
-		i.imgpath, i.utils.Grub)
+	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config, i.utils.Grub)
 	if out, err := i.run(cmd); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
@@ -255,7 +252,7 @@ func (i *image) bind() (loopDevice string, err error) {
 	if err != nil {
 		return
 	}
-	cmd := fmt.Sprintf("losetup %s %s", loopDevice, i.imgpath)
+	cmd := fmt.Sprintf("losetup %s %s", loopDevice, i.config.Path)
 	if out, er := i.run(cmd); err != nil {
 		err = fmt.Errorf("%s [%v]", out, er)
 		return
@@ -265,7 +262,7 @@ func (i *image) bind() (loopDevice string, err error) {
 
 // partTable creates partition table on the RAW disk
 func (i *image) partTableMakefs() error {
-	i.run(fmt.Sprintf("echo -e  \"%s\"|%s %s", i.conf.FdiskCmd, "fdisk", i.loopDevice.name))
+	i.run(fmt.Sprintf("echo -e  \"%s\"|%s %s", i.config.FdiskCmd, "fdisk", i.loopDevice.name))
 	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
 		return err
@@ -273,7 +270,7 @@ func (i *image) partTableMakefs() error {
 	if err := i.validatePconf(len(mappers)); err != nil {
 		return err
 	}
-	for index, part := range i.conf.Partitions {
+	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
 		if strings.ToLower(part.FileSystem) == "swap" {
@@ -303,7 +300,7 @@ func (i *image) addMappers() error {
 	if err := i.validatePconf(len(mappers)); err != nil {
 		return err
 	}
-	for index, part := range i.conf.Partitions {
+	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
 		if strings.ToLower(part.FileSystem) != "swap" {
@@ -345,16 +342,16 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 
 // validatePconf is responsible for platform configuration file validation
 func (i *image) validatePconf(amountOfMappers int) error {
-	if amountOfMappers != len(i.conf.Partitions) {
+	if amountOfMappers != len(i.config.Partitions) {
 		return fmt.Errorf("amount of partitions defined = %v, actual amount is %v",
-			len(i.conf.Partitions), amountOfMappers)
+			len(i.config.Partitions), amountOfMappers)
 	}
 	return nil
 }
 
 // create is intended for creating RAW image
-func (i *image) create(hddSize int) error {
-	out, err := i.run(fmt.Sprintf("dd if=/dev/zero of=%s count=1 bs=1 seek=%vG", i.imgpath, hddSize))
+func (i *image) create() error {
+	out, err := i.run(fmt.Sprintf("dd if=/dev/zero of=%s count=1 bs=1 seek=%vG", i.config.Path, i.config.SizeGb))
 	if err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}

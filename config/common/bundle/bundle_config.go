@@ -3,7 +3,7 @@ package bundle
 import (
 	"errors"
 
-	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
+	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/ui"
 )

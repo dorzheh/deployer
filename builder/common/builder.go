@@ -37,11 +37,12 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	if err := os.MkdirAll(b.RootfsMp, 0755); err != nil {
 		return nil, err
 	}
-	defer func() error {
-		return os.RemoveAll(b.RootfsMp)
+	defer func() {
+		os.RemoveAll(b.RootfsMp)
 	}()
+
 	// create new image artifact
-	img, err := image.New(b.ImagePath, b.RootfsMp, b.ImageConfig, b.Utils, b.SshfsConfig)
+	img, err := image.New(b.ImageConfig, b.RootfsMp, b.Utils, b.SshfsConfig)
 	if err != nil {
 		return nil, err
 	}
@@ -62,7 +63,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	if err := img.Parse(); err != nil {
 		return nil, err
 	}
-	// create and customize rootfs
+	// customize rootfs
 	if b.Filler != nil {
 		if err := b.Filler.MakeRootfs(b.RootfsMp); err != nil {
 			return nil, err
@@ -74,8 +75,8 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}
 
 	return &deployer.CommonArtifact{
-		Name: b.ImageConfig.Name,
-		Path: b.ImagePath,
+		Name: filepath.Base(b.ImageConfig.Path),
+		Path: b.ImageConfig.Path,
 		Type: deployer.ImageArtifact,
 	}, nil
 }
@@ -126,6 +127,10 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 // The common usage of InstanceBuiler: running deployer on a cloud instance
 type InstanceBuilder struct {
 	Filler image.Rootfs
+}
+
+func (b *InstanceBuilder) Id() string {
+	return "InstanceBuilder"
 }
 
 func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {

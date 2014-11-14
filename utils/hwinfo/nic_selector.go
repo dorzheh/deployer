@@ -3,7 +3,7 @@ package hwinfo
 import (
 	"strings"
 
-	"github.com/dorzheh/deployer/config/libvirt/xmlinput"
+	"github.com/dorzheh/deployer/config/common/xmlinput"
 )
 
 func DeniedNIC(n *NIC, nics *xmlinput.NICs) bool {

@@ -17,18 +17,15 @@ type Builder interface {
 // ImageBuilderData represents the common data
 // needed by appropriate image builder
 type ImageBuilderData struct {
-	// ImagePath - path to the image artifact
-	ImagePath string
+	// ImageConfig - XML metadata containing image topology configuration
+	ImageConfig *image.Disk
+
+	// Filler - implementation of image.Rootfs interface
+	Filler image.Rootfs
 
 	// RootfsMp - path to the mount point where the image
 	// artifact will be mounted during customization
 	RootfsMp string
-
-	// ImageConfig - XML metadata containing image topology configuration
-	ImageConfig *image.Topology
-
-	// Filler - implementation of image.Rootfs interface
-	Filler image.Rootfs
 }
 
 // MetadataBuilderData represents the common data

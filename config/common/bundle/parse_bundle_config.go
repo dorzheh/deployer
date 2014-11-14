@@ -7,16 +7,19 @@
 //			<Name>Test1</Name>
 //			<CPUs>2</CPUs>
 //     		<RAM>4096<RAM>
+//			<StorageConfigIndex>0<StorageConfigIndex>
 //  	</Config>
 //  	<Config>
 //			<Name>Test2</Name>
 //			<CPUs>2</CPUs>
 //			<RAM>8192<RAM>
+//			<StorageConfigIndex>1<StorageConfigIndex>
 //  	</Config>
 //  	<Config>
 //			<Name>Test3</Name>
 //			<CPUs>8</CPUs>
 //     		<RAM>16384<RAM>
+//			<StorageConfigIndex>2<StorageConfigIndex>
 //  	</Config>
 //<Bundle>
 
@@ -26,12 +29,15 @@ import (
 	"bytes"
 	"encoding/xml"
 	"io/ioutil"
+
+	"github.com/dorzheh/deployer/builder/common/image"
 )
 
 type Config struct {
-	Name string `xml:"Name"`
-	CPUs uint   `xml:"CPUs"`
-	RAM  uint   `xml:"RAM"`
+	Name               string            `xml:"Name"`
+	CPUs               uint              `xml:"CPUs"`
+	RAM                uint              `xml:"RAM"`
+	StorageConfigIndex image.ConfigIndex `xml:"StorageConfigIndex"`
 }
 
 type Bundle struct {

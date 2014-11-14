@@ -25,12 +25,7 @@ var defaultMetdata = []byte(`<domain type='kvm'>
   <on_crash>restart</on_crash>
   <devices>
     <emulator>{{.EmulatorPath}}</emulator>
-    <disk type='file' device='disk'>
-      <driver name='qemu' type='raw' cache='none'/>
-      <source file='{{.ImagePath}}'/>
-      <target dev='vda' bus='virtio'/>
-      <address type='pci' domain='0x0000' bus='0x00' slot='0x05' function='0x0'/>
-    </disk>
+   {{.Storage}}
     <controller type='ide' index='0'>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x01' function='0x1'/>
     </controller>

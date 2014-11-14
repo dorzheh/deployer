@@ -17,7 +17,7 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 		case *deployer.CommonArtifact:
 			if a.GetType() == deployer.MetadataArtifact {
 				defer a.Destroy()
-				domain := strings.Split(a.GetName(), ".")[0]
+				domain := strings.Split(a.GetName(), "-metadata")[0]
 				if err := p.Driver.DefineDomain(a.GetPath()); err != nil {
 					return err
 				}
