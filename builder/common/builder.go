@@ -18,7 +18,7 @@ type ImageBuilder struct {
 	// deployer.ImageBuilderData represents common data
 	*deployer.ImageBuilderData
 
-	// image.RemoteConfig represents remote configuration
+	// SshfsConfig represents remote configuration
 	// facility needed by the builder
 	SshfsConfig *sshfs.Config
 
