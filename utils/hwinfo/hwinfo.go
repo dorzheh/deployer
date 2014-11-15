@@ -11,10 +11,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/clbanning/mxj"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/utils/lshw"
-	"github.com/dorzheh/mxj"
 )
 
 type Parser struct {

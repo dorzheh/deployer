@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"sync"
 
+	"github.com/clbanning/mxj"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
-	"github.com/dorzheh/mxj"
 )
 
 type Driver struct {

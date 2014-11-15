@@ -1,0 +1,43 @@
+{
+	"ImportPath": "github.com/dorzheh/deployer",
+	"GoVersion": "go1.3.3",
+	"Deps": [
+		{
+			"ImportPath": "code.google.com/p/go.crypto/ssh",
+			"Comment": "null-215",
+			"Rev": "2a61df2221b6be21be1c1ded77821b0f71b29584"
+		},
+		{
+			"ImportPath": "github.com/clbanning/mxj",
+			"Rev": "4e32e60445df3e63f753b0ce13cd9a29feea5f94"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/go-dialog",
+			"Rev": "9877635035f9c398706c68b8790c3588be5c514e"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/infra/comm/common",
+			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/infra/comm/ssh",
+			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/infra/comm/sshfs",
+			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/infra/utils/ioutils",
+			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+		},
+		{
+			"ImportPath": "github.com/dorzheh/infra/utils/lshw",
+			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+		},
+		{
+			"ImportPath": "github.com/fatih/structs",
+			"Rev": "ebbcf66cbe3b86b7065f7801cbcb6a3134884868"
+		}
+	]
+}
