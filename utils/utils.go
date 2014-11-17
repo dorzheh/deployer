@@ -140,11 +140,11 @@ func ParseXMLFile(xmlpath string, data interface{}) (interface{}, error) {
 	return ParseXMLBuff(fb, data)
 }
 
-func ParseXMLBuff(fb []byte, any interface{}) (interface{}, error) {
+func ParseXMLBuff(fb []byte, data interface{}) (interface{}, error) {
 	buf := bytes.NewBuffer(fb)
 	decoded := xml.NewDecoder(buf)
-	if err := decoded.Decode(any); err != nil {
+	if err := decoded.Decode(data); err != nil {
 		return nil, err
 	}
-	return any, nil
+	return data, nil
 }
