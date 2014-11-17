@@ -1,72 +1,48 @@
 package xmlinput
 
-import (
-	"bytes"
-	"encoding/xml"
-	"io/ioutil"
-)
-
 type XMLInputData struct {
-	CPU      `xml:"CPU"`
-	RAM      `xml:"RAM"`
-	Networks `xml:"Networks"`
-	NICs     `xml:"NICs"`
+	CPU      `xml:"cpu"`
+	RAM      `xml:"ram"`
+	Networks `xml:"networks"`
+	NICs     `xml:"nics"`
 }
 
 type CPU struct {
-	Config  bool `xml:"CPU>Config"`
-	Min     uint `xml:"CPU>Min"`
-	Max     uint `xml:"CPU>Max"`
-	Default uint `xml:"CPU>Default"`
+	Config  bool `xml:"cpu>config"`
+	Min     uint `xml:"cpu>min"`
+	Max     uint `xml:"cpu>max"`
+	Default uint `xml:"cpu>default"`
 }
 
 type RAM struct {
-	Config  bool `xml:"RAM>Config"`
-	Min     uint `xml:"RAM>Min"`
-	Max     uint `xml:"RAM>Max"`
-	Default uint `xml:"RAM>Default"`
+	Config  bool `xml:"ram>config"`
+	Min     uint `xml:"ram>min"`
+	Max     uint `xml:"ram>max"`
+	Default uint `xml:"ram>default"`
 }
 
 type Network struct {
-	Name string `xml:"Name"`
+	Name string `xml:"name"`
 }
 
 type Networks struct {
-	Config  bool       `xml:"Networks>Config"`
-	Max     uint       `xml:"Networks>Max"`
-	Default []*Network `xml:"Networks>Default>Network"`
+	Config  bool       `xml:"networks>config"`
+	Max     uint       `xml:"networks>max"`
+	Default []*Network `xml:"networks>default>network"`
 }
 
 type Allow struct {
-	Vendor string `xml:"Vendor"`
-	Model  string `xml:"Model"`
-	Mode   string `xml:"Mode"`
+	Vendor string `xml:"vendor"`
+	Model  string `xml:"model"`
+	Mode   string `xml:"mode"`
 }
 
 type Deny struct {
-	Vendor string `xml:"Vendor"`
-	Model  string `xml:"Model"`
+	Vendor string `xml:"vendor"`
+	Model  string `xml:"model"`
 }
 
 type NICs struct {
-	Allowed []*Allow `xml:"NICs>Allow"`
-	Denied  []*Deny  `xml:"NICs>Deny"`
-}
-
-func ParseXML(xmlpath string) (*XMLInputData, error) {
-	fb, err := ioutil.ReadFile(xmlpath)
-	if err != nil {
-		return nil, err
-	}
-	return Parse(fb)
-}
-
-func Parse(fb []byte) (*XMLInputData, error) {
-	buf := bytes.NewBuffer(fb)
-	p := new(XMLInputData)
-	decoded := xml.NewDecoder(buf)
-	if err := decoded.Decode(p); err != nil {
-		return nil, err
-	}
-	return p, nil
+	Allowed []*Allow `xml:"nics>allow"`
+	Denied  []*Deny  `xml:"nics>deny"`
 }

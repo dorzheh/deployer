@@ -2,8 +2,10 @@ package utils
 
 import (
 	"bytes"
+	"encoding/xml"
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -128,4 +130,21 @@ func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
 		}
 	}
 	return dir, nil
+}
+
+func ParseXMLFile(xmlpath string, data interface{}) (interface{}, error) {
+	fb, err := ioutil.ReadFile(xmlpath)
+	if err != nil {
+		return nil, err
+	}
+	return ParseXMLBuff(fb, data)
+}
+
+func ParseXMLBuff(fb []byte, any interface{}) (interface{}, error) {
+	buf := bytes.NewBuffer(fb)
+	decoded := xml.NewDecoder(buf)
+	if err := decoded.Decode(any); err != nil {
+		return nil, err
+	}
+	return any, nil
 }

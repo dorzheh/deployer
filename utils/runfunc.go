@@ -35,6 +35,7 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 			return "", err
 		}
 		defer c.ConnClose()
+		//IMPORTANT! Make sure that "Defaults !requiretty" is set in sudoers on remote system
 		outstr, errstr, err := c.Run("sudo " + command)
 		if err != nil {
 			return "", fmt.Errorf("executing %s : %s [%s]", command, errstr, err)

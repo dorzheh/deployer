@@ -36,7 +36,7 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 		return err
 	}
 
-	return myprodcommon.NameToType(d.Ui, c.config.BundleConfig.Name)
+	return myprodcommon.NameToType(d.Ui, c.config.Metadata.DomainName)
 }
 
 func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Builder, err error) {

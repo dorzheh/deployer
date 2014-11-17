@@ -3,32 +3,32 @@
 // Configuration example:
 //
 //<?xml version="1.0" encoding="UTF-8"?>
-//<Storage>
-//  <Config>
-//	 <Disk>
-//	  	<SizeGb>5</HddSizeGb>
-//    	<Bootable>true</Bootable>
-//	 	 <FdiskCmd>n\np\n1\n\n+3045M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
-//   	 <Description>Topology for release xxxx</Description>
-//  	 <Partition>
-//	 	    <Sequence>1</Sequence>
-//	 	    <SizeMb>3045</SizeMb>
-//   	    <Label>SLASH</Label>
-//   	    <MountPoint>/</MountPoint>
-//   	    <FileSystem>ext4</FileSystem>
-//	 	    <FileSystemArgs></FileSystemArgs>
-//	 	 </Partition>
-//	 	 <Partition>
-//	 	    <Sequence>2</Sequence>
-//	 	    <SizeMb>400</SizeMb>
-//   	    <Label>SWAP</Label>
-//   	    <MountPoint>SWAP</MountPoint>
-//   	    <FileSystem>swap</FileSystem>
-//	 	    <FileSystemArgs></FileSystemArgs>
-//	 	 </Partition>
-// 	 </Disk>
-// </Config>
-//</Storage>`
+//<storage>
+//  <config>
+//	 <disk>
+//	  	<size_gb>5</size_gb>
+//    	<bootable>true</bootable>
+//	 	 <fdisk_cmd>n\np\n1\n\n+3045M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</fdisk_cmd>
+//   	 <description>Topology for release xxxx</description>
+//  	 <partition>
+//	 	    <sequence>1</sequence>
+//	 	    <size_mb>3045</size_mb>
+//   	    <label>SLASH</label>
+//   	    <mount_point>/</mount_point>
+//   	    <file_system>ext4</file_system>
+//	 	    <file_system_args></file_system_args>
+//	 	 </partition>
+//	 	 <partition>
+//	 	    <sequence>2</sequence>
+//	 	    <size_mb>400</size_mb>
+//   	    <label>SWAP</label>
+//   	    <mount_point>SWAP</mount_point>
+//   	    <file_system>swap</file_system>
+//	 	    <file_system_args></file_system_args>
+//	 	 </partition>
+// 	 </disk>
+// </config>
+//</storage>`
 
 package image
 
@@ -42,29 +42,29 @@ import (
 type ConfigIndex uint8
 
 type Storage struct {
-	Configs []*Config `xml:"Config"`
+	Configs []*Config `xml:"config"`
 }
 
 type Config struct {
-	Disks []*Disk `xml:"Disk"`
+	Disks []*Disk `xml:"disk"`
 }
 
 type Disk struct {
 	Path        string
-	SizeGb      int         `xml:"SizeGb"`
-	Bootable    bool        `xml:"Bootable"`
-	FdiskCmd    string      `xml: "FdiskCmd"`
-	Description string      `xml:"Description"`
-	Partitions  []Partition `xml:"Partition"`
+	SizeGb      int         `xml:"size_gb"`
+	Bootable    bool        `xml:"bootable"`
+	FdiskCmd    string      `xml:"fdisk_cmd"`
+	Description string      `xml:"description"`
+	Partitions  []Partition `xml:"partition"`
 }
 
 type Partition struct {
-	Sequence       string `xml:"Sequence"`
-	SizeMb         int    `xml:"SizeMb"`
-	Label          string `xml:"Label"`
-	MountPoint     string `xml:"MountPoint"`
-	FileSystem     string `xml:"FileSystem"`
-	FileSystemArgs string `xml:"FileSystemArgs"`
+	Sequence       string `xml:"sequence"`
+	SizeMb         int    `xml:"size_mb"`
+	Label          string `xml:"label"`
+	MountPoint     string `xml:"mount_point"`
+	FileSystem     string `xml:"file_system"`
+	FileSystemArgs string `xml:"file_system_args"`
 	Description    string `xml:"description"`
 }
 

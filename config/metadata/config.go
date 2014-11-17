@@ -1,9 +1,7 @@
 package metadata
 
 import (
-	//"errors"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/common/image"
@@ -12,10 +10,11 @@ import (
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
-type Metaconfigurator interface {
+type MetadataConfigurator interface {
 	// storage configuration and templates directory
 	// returns metadata entry related to storage and error
 	SetStorageData(*image.Config, string) (string, error)
@@ -42,6 +41,9 @@ type InputData struct {
 
 	// Path to the storage configuration file (see image package)
 	StorageConfigFile string
+
+	// Bundle parser
+	BundleParser *bundle.Parser
 
 	// Path to directory containing appropriate templates intended
 	// for overriding default configuration
@@ -70,21 +72,18 @@ type Config struct {
 	// Hostinfo driver
 	Hwdriver deployer.HostinfoDriver
 
+	// Storage configuration
+	StorageConfig *image.Config
+
 	// Common metadata stuff
 	Metadata *CommonMetadata
 
 	// Path to metadata file
 	DestMetadataFile string
-
-	// Storage configuration
-	StorageConfig *image.Config
-
-	// bundle configuration(in case predefined configuration is used)
-	BundleConfig *bundle.Config
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData,
-	c *Config, driver deployer.Driver, metaconf Metaconfigurator) (*Config, error) {
+	c *Config, driver deployer.Driver, metaconf MetadataConfigurator) (*Config, error) {
 
 	var err error
 
@@ -96,28 +95,30 @@ func CreateConfig(d *deployer.CommonData, i *InputData,
 		return nil, err
 	}
 
-	if fd, err := os.Stat(i.InputDataConfigFile); err != nil || fd.IsDir() {
-		return nil, err
-	}
-
-	xid, err := xmlinput.ParseXML(i.InputDataConfigFile)
+	xmlout, err := utils.ParseXMLFile(i.InputDataConfigFile, new(xmlinput.XMLInputData))
 	if err != nil {
 		return nil, err
 	}
+
+	xid := xmlout.(*xmlinput.XMLInputData)
 	if err := gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
 		return nil, err
 	}
 
 	var storageConfigIndex image.ConfigIndex = 0
-	if fd, err := os.Stat(i.BundleDataConfigFile); err == nil && !fd.IsDir() {
-		c.BundleConfig, err = bundle.GetConfig(d, c.Hwdriver, xid, i.BundleDataConfigFile)
+	var m map[string]interface{}
+	if i.BundleParser != nil {
+		m, err = i.BundleParser.Parse(d, c.Hwdriver, xid)
 		if err != nil {
 			return nil, err
 		}
-		c.Metadata.CPUs = c.BundleConfig.CPUs
-		c.Metadata.RAM = c.BundleConfig.RAM * 1024
-		storageConfigIndex = c.BundleConfig.StorageConfigIndex
-	} else {
+		if m != nil {
+			c.Metadata.CPUs = m["cpus"].(uint)
+			c.Metadata.RAM = m["ram"].(uint) * 1024
+			storageConfigIndex = m["storage_config_index"].(image.ConfigIndex)
+		}
+	}
+	if m == nil {
 		if xid.CPU.Config {
 			cpus, err := c.Hwdriver.CPUs()
 			if err != nil {
