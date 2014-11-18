@@ -8,6 +8,7 @@ import (
 
 	"github.com/dorzheh/deployer/builder/common"
 	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/config/common/bundle"
 	"github.com/dorzheh/deployer/config/metadata"
 	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt"
 	"github.com/dorzheh/deployer/deployer"
@@ -21,22 +22,26 @@ type FlowCreator struct {
 	SrcMetadataFile     string
 	StorageConfigFile   string
 	InputDataConfigFile string
+	BundleConfigFile    string
 	config              *metadata.Config
 }
 
 func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
-	data := &metadata.InputData{
-		Lshw:                filepath.Join(d.RootDir, "install", d.Arch, "bin/lshw"),
-		InputDataConfigFile: c.InputDataConfigFile,
-		StorageConfigFile:   c.StorageConfigFile,
-	}
-
 	var err error
+
+	data := new(metadata.InputData)
+	data.Lshw = filepath.Join(d.RootDir, "install", d.Arch, "bin/lshw")
+	data.InputDataConfigFile = c.InputDataConfigFile
+	data.StorageConfigFile = c.StorageConfigFile
+	data.BundleParser, err = bundle.NewParser(c.BundleConfigFile, new(bundle.DefaultBundle))
+	if err != nil {
+		return err
+	}
 	if c.config, err = libvirtconf.CreateConfig(d, data); err != nil {
 		return err
 	}
 
-	return myprodcommon.NameToType(d.Ui, c.config.Metadata.DomainName)
+	return myprodcommon.NameToType(d.Ui, c.config.Bundle["name"].(string))
 }
 
 func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Builder, err error) {

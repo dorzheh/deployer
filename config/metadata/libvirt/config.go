@@ -24,7 +24,7 @@ type meta struct{}
 func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Config, error) {
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
-	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, ""}
+	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil}
 	c.Hwdriver, err = hwinfodrvr.NewHostinfoDriver(filepath.Join(d.RootDir, "hwinfo.json"), i.Lshw, c.SshConfig)
 	if err != nil {
 		return nil, err

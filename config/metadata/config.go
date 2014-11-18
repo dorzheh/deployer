@@ -80,6 +80,9 @@ type Config struct {
 
 	// Path to metadata file
 	DestMetadataFile string
+
+	// Bundle config
+	Bundle map[string]interface{}
 }
 
 func CreateConfig(d *deployer.CommonData, i *InputData,
@@ -113,6 +116,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData,
 			return nil, err
 		}
 		if m != nil {
+			c.Bundle = m
 			c.Metadata.CPUs = m["cpus"].(uint)
 			c.Metadata.RAM = m["ram"].(uint) * 1024
 			storageConfigIndex = m["storage_config_index"].(image.ConfigIndex)
