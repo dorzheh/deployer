@@ -16,64 +16,64 @@ import (
 
 // Represents Item to inject
 type InjectItem struct {
-	Name        string      `xml:"Name"`
-	BkpName     string      `xml:"BkpName"`
-	Action      string      `xml:"Action"`
-	Type        string      `xml:"Type"`
-	Location    string      `xml:"Location"`
-	Permissions os.FileMode `xml:"Permissions"`
-	UID         int         `xml:"OwnerId"`
-	GID         int         `xml:"GroupId"`
+	Name        string      `xml:"name"`
+	BkpName     string      `xml:"bkp_name"`
+	Action      string      `xml:"action"`
+	Type        string      `xml:"type"`
+	Location    string      `xml:"location"`
+	Permissions os.FileMode `xml:"permissions"`
+	UID         int         `xml:"owner_id"`
+	GID         int         `xml:"group_id"`
 }
 
 // Represents a slice of Items for injection
 type InjectItems struct {
-	XMLName  xml.Name     `xml:"InjectItems"`
-	InjItems []InjectItem `xml:"InjectItem"`
+	XMLName  xml.Name     `xml:"inject_items"`
+	InjItems []InjectItem `xml:"inject_item"`
 }
 
 // Represents services
 type Service struct {
-	Name   string `xml:"Name"`
-	Type   string `xml:"Type"`
-	Action string `xml:"Action"`
-	Status string `xml:"Status"`
-	Chroot bool   `xml:"Chroot"`
+	Name   string `xml:"name"`
+	Type   string `xml:"type"`
+	Action string `xml:"action"`
+	Status string `xml:"status"`
+	Chroot bool   `xml:"chroot"`
 }
 
 // Represents a slice of services
 type Services struct {
-	XMLName xml.Name  `xml:"Services"`
-	Srvcs   []Service `xml:"Service"`
+	XMLName xml.Name  `xml:"services"`
+	Srvcs   []Service `xml:"service"`
 }
 
 // Represents packages
 type Package struct {
-	Name   string `xml:"Name"`
-	Type   string `xml:"Type"`
-	Action string `xml:"Action"`
-	Chroot bool   `xml:"Chroot"`
+	Name   string `xml:"name"`
+	Type   string `xml:"type"`
+	Action string `xml:"action"`
+	Chroot bool   `xml:"chroot"`
 }
 
 // Represents a slice of packages
 type Packages struct {
-	XMLName xml.Name  `xml:"Packages"`
-	Pkgs    []Package `xml:"Package"`
+	XMLName xml.Name  `xml:"packages"`
+	Pkgs    []Package `xml:"package"`
 }
 
 // Represents a file content
 type FileContent struct {
-	Path       string `xml:"Path"`
-	BkpName    string `xml:"BkpName"`
-	Action     string `xml:"Action"`
-	OldPattern string `xml:"OldPattern"`
-	NewPattern string `xml:"NewPattern"`
+	Path       string `xml:"path"`
+	BkpName    string `xml:"bkp_name"`
+	Action     string `xml:"action"`
+	OldPattern string `xml:"old_pattern"`
+	NewPattern string `xml:"new_pattern"`
 }
 
 // Represents a slice of files to modify
 type FilesContent struct {
-	XMLName  xml.Name      `xml:"Files"`
-	FContent []FileContent `xml:"File"`
+	XMLName  xml.Name      `xml:"files"`
+	FContent []FileContent `xml:"file"`
 }
 
 // ImageCustomize treating image customization according to XML config files
