@@ -116,14 +116,14 @@ func Customize(pathToSlash, pathToPlatformDir string) error {
 // Make it to support manipulation
 // over chroot
 // Example:
-//<Packages>
-//	<Package>
-//      <Name>tunctl</Name>
-//      <Type>rpm</Type>
-//	<Action>install</Action>
-//	<Chroot>false</Chroot>
-//	</Package>
-//</Packages>
+//<packages>
+//	<package>
+//     <name>tunctl</name>
+//     <type>rpm</type>
+//	   <action>install</action>
+//	   <chroot>false</chroot>
+//	</package>
+//</packages>
 func packageManip(pathToXml, pathToSlash string) error {
 	// read the XML file to a buffer
 	dataBuf, err := ioutil.ReadFile(pathToXml)
@@ -177,18 +177,18 @@ func packageManip(pathToXml, pathToSlash string) error {
 // 3) in case the file found parses it and inject appropriate stuff
 //    according to the file.
 // Example:
-//<InjectItems>
-//	<InjectItem>
-//      	<Name>file1</Name>
-//	 	<BkpName>file1.adcva</BkpName>
-//	  	<Action>upload</Action>
-//      	<Type>file</Type>
-// 		<Location>/opt</Location>
-//		<Permissions>0755</Permissions>
-//  		<OwnerID>0</OwnerID>
-//		<GroupID>0</GroupID>
-//	</InjectItem>
-//</InjectItems
+//<inject_items>
+//	<inject_item>
+//      <name>file1</name>
+//	 	<bkp_name>file1.adcva</bkp_name>
+//	  	<action>upload</action>
+//      <type>file</type>
+// 		<location>/opt</location>
+//		<permissions>0755</permissions>
+//  	<owner_id>0</owner_id>
+//		<group_id>0</group_id>
+//	</inject_item>
+//</inject_items
 func injectManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
@@ -297,28 +297,28 @@ func injectManip(pathToXml, pathToSlash string) error {
 // (in case we need modify service state on an off-line image) or
 // without chrooting (in case we are deploying upon a running system)
 // Example:
-//<Services>
-//	<Service>
-//     		 <Name>iptables</Name>
-//      	 <Type>sysv</Type>
-//      	 <Status>off</Status>
-//		 <Action></Action>
-//	</Service>
-//	<Service>
-//     		 <Name>ip6tables</Name>
-//      	 <Type>sysv</Type>
-//      	<Status>off</Status>
-//		<Action></Action>
-//		<Chroot>false</Chroot>
-//	</Service>
-//	<Service>
-//     		 <Name>ssh</Name>
-//      	<Type>upstart</Type>
-//      	<Status></Status>
-//		<Action>reload</Action>
-//		<Chroot>false</Chroot>
-//	</Service>
-//</Services>
+//<services>
+//	<service>
+//     <name>iptables</name>
+//     <type>sysv</type>
+//     <status>off</status>
+//	   <action></action>
+//	</service>
+//	<service>
+//     <name>ip6tables</name>
+//     <type>sysv</type>
+//     <status>off</status>
+//	   <action></action>
+//	   <chroot>false</chroot>
+//	</service>
+//	<service>
+//     <name>ssh</name>
+//     <type>upstart</type>
+//     <status></status>
+//	   <action>reload</action>
+//	   <chroot>false</chroot>
+//	</service>
+//</services>
 func serviceManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
@@ -403,22 +403,22 @@ func serviceManip(pathToXml, pathToSlash string) error {
 // filesContentManip manipulates with the content of the files
 // according to appropriate XML configuration file
 // Example:
-//<Files>
-//	<File>
-//		<Path>/etc/sysconfig/selinux</Path>
-//		<BkpName>/etc/sysconfig/selinux.adcva</BkpName>
-//		<Action>replace</Action>
-//		<OldPattern>SELINUX=\S+</OldPattern>
-//		<NewPattern>SELINUX=disabled</NewPattern>
-//	</File>
-//	<File>
-//		<Path>/etc/passwd</Path>
-//		<BkpName>/etc/passwd.bak</BkpName>
-//		<Action>append</Action>
-//		<OldPattern></OldPattern>
-//		<NewPattern>test:x:111:111::/root:/bin/bash</NewPattern>
-//	</File>
-//</Files>
+//<files>
+//	<file>
+//		<path>/etc/sysconfig/selinux</path>
+//		<bkp_name>/etc/sysconfig/selinux.adcva</bkp_name>
+//		<action>replace</action>
+//		<old_pattern>SELINUX=\S+</old_pattern>
+//		<new_pattern>SELINUX=disabled</new_pattern>
+//	</file>
+//	<file>
+//		<path>/etc/passwd</path>
+//		<bkp_name>/etc/passwd.bak</bkp_name>
+//		<action>append</action>
+//		<old_pattern></old_pattern>
+//		<new_pattern>test:x:111:111::/root:/bin/bash</new_pattern>
+//	</file>
+//</files>
 func filesContentManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
