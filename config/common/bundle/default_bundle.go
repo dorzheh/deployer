@@ -82,7 +82,7 @@ func (b *DefaultBundle) Parse(d *deployer.CommonData, hidriver deployer.Hostinfo
 		m["name"] = c.Name
 		m["cpus"] = c.CPUs
 		m["ram"] = c.RAM
-		m["storage_config_ndex"] = c.StorageConfigIndex
+		m["storage_config_index"] = c.StorageConfigIndex
 		return m, nil
 	}
 	return nil, nil

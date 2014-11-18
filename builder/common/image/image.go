@@ -214,7 +214,7 @@ func (i *image) Cleanup() error {
 // MakeBootable is responsible for making RAW disk bootable.
 // The target disk could be either local or remote image
 func (i *image) MakeBootable() error {
-	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config, i.utils.Grub)
+	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config.Path, i.utils.Grub)
 	if out, err := i.run(cmd); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}

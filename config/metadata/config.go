@@ -144,7 +144,15 @@ func CreateConfig(d *deployer.CommonData, i *InputData,
 		}
 	}
 
-	c.StorageConfig, err = common.StorageConfig(i.StorageConfigFile, filepath.Join(c.ExportDir, d.VaName), storageConfigIndex)
+	// imagePath is a path to the main disk of the appliance.In case the appliance needs more than a single disk,
+	// appropriate suffix will be added to each disk.For example, if path to the main disk is /mypath/disk
+	// and the guest will be equipped with 3 disks , upcoming disks will be /mypath/disk_1 and /mypath/disk_2
+	imagePath := filepath.Join(c.ExportDir, d.VaName)
+	c.StorageConfig, err = common.StorageConfig(i.StorageConfigFile, imagePath, storageConfigIndex)
+	if err != nil {
+		return nil, err
+	}
+
 	c.Metadata.Storage, err = metaconf.SetStorageData(c.StorageConfig, i.TemplatesDir)
 	if err != nil {
 		return nil, err
