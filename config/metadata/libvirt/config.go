@@ -94,21 +94,24 @@ type PassthroughData struct {
 
 type BridgedOVSData struct {
 	OVSBridge string
+	Driver    string
 }
 
 type BridgedData struct {
 	Bridge string
+	Driver string
 }
 
 type DirectData struct {
 	IfaceName string
+	Driver    string
 }
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(ni map[string]*hwinfo.NIC, nics []*xmlinput.Allow, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(ni map[*xmlinput.Network]*hwinfo.NIC, nics []*xmlinput.Allow, templatesDir string) (string, error) {
 	var data string
-	for _, port := range ni {
+	for network, port := range ni {
 		switch port.Type {
 		case hwinfo.NicTypePhys:
 			var tempData []byte
@@ -126,7 +129,7 @@ func (m meta) SetNetworkData(ni map[string]*hwinfo.NIC, nics []*xmlinput.Allow, 
 					if err == nil {
 						TmpltDirect = string(buf)
 					}
-					tempData, err = utils.ProcessTemplate(TmpltDirect, &DirectData{port.Name})
+					tempData, err = utils.ProcessTemplate(TmpltDirect, &DirectData{port.Name, network.Driver})
 					if err != nil {
 						return "", err
 					}
@@ -141,7 +144,7 @@ func (m meta) SetNetworkData(ni map[string]*hwinfo.NIC, nics []*xmlinput.Allow, 
 			if err == nil {
 				TmpltBridgedOVS = string(buf)
 			}
-			tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name})
+			tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name, network.Driver})
 			if err != nil {
 				return "", err
 			}
@@ -152,7 +155,7 @@ func (m meta) SetNetworkData(ni map[string]*hwinfo.NIC, nics []*xmlinput.Allow, 
 			if err == nil {
 				TmpltBridged = string(buf)
 			}
-			tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name})
+			tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name, network.Driver})
 			if err != nil {
 				return "", err
 			}

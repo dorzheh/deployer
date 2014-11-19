@@ -130,8 +130,8 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (map[string]*hwinfo.NIC, error) {
-	newMap := make(map[string]*hwinfo.NIC)
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (map[*xmlinput.Network]*hwinfo.NIC, error) {
+	newMap := make(map[*xmlinput.Network]*hwinfo.NIC)
 	allowedNics := make([]*hwinfo.NIC, 0)
 	nics, err := hidriver.NICs()
 	if err != nil {
@@ -148,12 +148,16 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer
 		}
 		allowedNics = append(allowedNics, n)
 	}
+
 	for _, net := range data.Networks.Default {
 		nic, err := uiGetNicInfo(ui, data, &allowedNics, net.Name)
 		if err != nil {
 			return nil, err
 		}
-		newMap[net.Name] = nic
+		if net.Driver == "" {
+			net.Driver = data.Networks.DefaultDriver
+		}
+		newMap[net] = nic
 	}
 
 	nextIndex := len(data.Networks.Default) + 1
@@ -170,7 +174,11 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer
 			if err != nil {
 				return nil, err
 			}
-			newMap[net] = nic
+
+			n := new(xmlinput.Network)
+			n.Name = net
+			n.Driver = data.Networks.DefaultDriver
+			newMap[n] = nic
 		} else {
 			break
 		}

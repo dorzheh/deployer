@@ -21,7 +21,7 @@ type MetadataConfigurator interface {
 
 	// network interfaces information, allowed NICs, templates directory
 	// returns metadata entry related to the network interfaces configuration and error
-	SetNetworkData(map[string]*hwinfo.NIC, []*xmlinput.Allow, string) (string, error)
+	SetNetworkData(map[*xmlinput.Network]*hwinfo.NIC, []*xmlinput.Allow, string) (string, error)
 
 	// default metadata is used by the deployer in case user didn't provide any template
 	// returns entry related to default metadata

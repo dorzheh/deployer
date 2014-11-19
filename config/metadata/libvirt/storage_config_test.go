@@ -8,32 +8,32 @@ import (
 )
 
 var data = []byte(`<?xml version="1.0" encoding="UTF-8"?>
-<Storage>
-  <Config>
-	 <Disk>
-	  	<SizeGb>1</SizeGb>
-    	<Bootable>true</Bootable>
-	 	 <FdiskCmd>n\np\n1\n\n+800M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</FdiskCmd>
-   	 <Description>Topology for release xxxx</Description>
-  	 	 <Partition>
-	 	    <Sequence>1</Sequence>
-	 	    <SizeMb>800</SizeMb>
-   	    <Label>SLASH</Label>
-   	    <MountPoint>/</MountPoint>
-   	    <FileSystem>ext4</FileSystem>
-	 	    <FileSystemArgs></FileSystemArgs>
-	 	 </Partition>
-	 	 <Partition>
-	 	    <Sequence>2</Sequence>
-	 	    <SizeMb>200</SizeMb>
-   	    <Label>SWAP</Label>
-   	    <MountPoint>SWAP</MountPoint>
-   	    <FileSystem>swap</FileSystem>
-	 	    <FileSystemArgs></FileSystemArgs>
-	 	 </Partition>
- 	 </Disk>
- </Config>
-</Storage>`)
+<storage>
+  <config>
+	 <disk>
+	  	<size_gb>1</size_gb>
+    	<bootable>true</bootable>
+	 	<fdisk_cmd>n\np\n1\n\n+800M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</fdisk_cmd>
+   	 	<description>Topology for release xxxx</description>
+  	 	<partition>
+	 	    <sequence>1</sequence>
+	 	    <size_mb>800</size_mb>
+   	    	<label>SLASH</label>
+   	    	<mount_point>/</mount_point>
+   	    	<file_system>ext4</file_system>
+	 	    <file_system_args></file_system_args>
+	 	</partition>
+	 	<partition>
+	 		<sequence>2</sequence>
+		 	<size_mb>200</size_mb>
+   		    <label>SWAP</label>
+   		    <mount_point>SWAP</mount_point>
+   		    <file_system>swap</file_system>
+		 	<file_system_args></file_system_args>
+	 	 </partition>
+ 	 </disk>
+ </config>
+</storage>`)
 
 const expectedSetStorageData = `<disk type='file' device='disk'>
 	<driver name='qemu' type='raw' cache='none'/>

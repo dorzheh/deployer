@@ -22,13 +22,15 @@ type RAM struct {
 }
 
 type Network struct {
-	Name string `xml:"name"`
+	Name   string `xml:"name"`
+	Driver string `xml:"vnic_driver"`
 }
 
 type Networks struct {
-	Config  bool       `xml:"networks>config"`
-	Max     uint       `xml:"networks>max"`
-	Default []*Network `xml:"networks>default>network"`
+	Config        bool       `xml:"networks>config"`
+	Max           uint       `xml:"networks>max"`
+	DefaultDriver string     `xml:"networks>default>vnic_driver"`
+	Default       []*Network `xml:"networks>default>network"`
 }
 
 type Allow struct {

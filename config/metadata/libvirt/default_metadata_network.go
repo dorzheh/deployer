@@ -2,7 +2,7 @@ package libvirt
 
 var TmpltBridged = `<interface type='bridge'>
       <source bridge='{{.Bridge}}'/>
-	  <model type='virtio'/>
+	  <model type='{{.Driver}}'/>
 	  <driver name='vhost'/>
  </interface>`
 
@@ -10,12 +10,12 @@ var TmpltBridgedOVS = `<interface type='bridge'>
       <source bridge='{{.OVSBridge}}'/>
       <virtualport type='openvswitch'/>
 	  <model type='virtio'/>
-	  <driver name='vhost'/>
+	  <driver name='{{.Driver}}'/>
 </interface>`
 
 var TmpltDirect = `<interface type='direct'>
       <source dev='{{.IfaceName}}' mode='private'/>
-      <model type='virtio'/>
+      <model type='{{.Driver}}'/>
     </interface>
 `
 
