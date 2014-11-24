@@ -40,7 +40,6 @@ var defaultMetdata = []byte(`<domain type='kvm'>
     <graphics type='vnc' port='-1' autoport='yes'/>
     <video>
       <model type='cirrus' vram='9216' heads='1'/>
-  <model type='cirrus' vram='9216' heads='1'/>
       <address type='pci' domain='0x0000' bus='0x00' slot='0x02' function='0x0'/>
     </video>
     <memballoon model='virtio'>

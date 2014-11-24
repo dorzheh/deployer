@@ -7,7 +7,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"sort"
 	"strconv"
 	"strings"
 
@@ -151,7 +150,7 @@ type NIC struct {
 }
 
 // NICInfo gathers information related to installed NICs
-func (p *Parser) NICInfo() ([]*NIC, error) {
+func (p *Parser) NICInfo() (NICList, error) {
 	if _, err := os.Stat(p.cacheFile); err != nil {
 		if err = p.Parse(); err != nil {
 			return nil, err
@@ -162,7 +161,8 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 		return nil, err
 	}
 
-	nics := make([]*NIC, 0)
+	//nics := make([]*NIC, 0)
+	list := NewNICList()
 	deep := []string{"children.children.children.children.children",
 		"children.children.children.children",
 		"children.children.children",
@@ -209,7 +209,7 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 						}
 					}
 					nic.Driver = driver
-					nics = append(nics, nic)
+					list.Add(nic)
 				}
 			}
 		}
@@ -228,11 +228,11 @@ func (p *Parser) NICInfo() ([]*NIC, error) {
 				Desc:   "Bridge interface",
 				Type:   NicTypeBridge,
 			}
-			nics = append(nics, br)
+			list.Add(br)
 		}
 	}
-	sort.Sort(sortByPCI(nics))
-	return nics, nil
+	list.SortByPCI()
+	return list, nil
 }
 
 func (p *Parser) NUMANodes() (map[uint][]uint, error) {
@@ -271,9 +271,3 @@ func (p *Parser) RAMSize() (uint, error) {
 	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize)
 	return ramsize / 1024, nil
 }
-
-type sortByPCI []*NIC
-
-func (s sortByPCI) Len() int           { return len(s) }
-func (s sortByPCI) Swap(i, j int)      { s[i], s[j] = s[j], s[i] }
-func (s sortByPCI) Less(i, j int) bool { return s[i].PCIAddr < s[j].PCIAddr }

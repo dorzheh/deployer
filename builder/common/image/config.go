@@ -51,11 +51,11 @@ type Config struct {
 
 type Disk struct {
 	Path        string
-	SizeGb      int         `xml:"size_gb"`
-	Bootable    bool        `xml:"bootable"`
-	FdiskCmd    string      `xml:"fdisk_cmd"`
-	Description string      `xml:"description"`
-	Partitions  []Partition `xml:"partition"`
+	SizeGb      int          `xml:"size_gb"`
+	Bootable    bool         `xml:"bootable"`
+	FdiskCmd    string       `xml:"fdisk_cmd"`
+	Description string       `xml:"description"`
+	Partitions  []*Partition `xml:"partition"`
 }
 
 type Partition struct {

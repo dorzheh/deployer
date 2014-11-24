@@ -3,7 +3,6 @@
 package libvirt
 
 import (
-	"errors"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -109,57 +108,48 @@ type DirectData struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(ni map[*xmlinput.Network]*hwinfo.NIC, nics []*xmlinput.Allow, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping map[*xmlinput.Network]hwinfo.NICList, templatesDir string) (string, error) {
 	var data string
-	for network, port := range ni {
-		switch port.Type {
-		case hwinfo.NicTypePhys:
-			var tempData []byte
-			var err error
+	for network, list := range mapping {
+		for _, mode := range network.Modes {
+			for _, port := range list {
+				switch port.Type {
+				case hwinfo.NicTypePhys:
+					if mode.Type == xmlinput.ConTypePassthrough || mode.Type == xmlinput.ConTypeDirect {
+						out, err := treatPhysical(port, mode, templatesDir)
+						if err != nil {
+							return "", err
+						}
+						data += out
+					}
 
-			for _, nic := range nics {
-				switch bindingMode(port, nic) {
-				case "passthrough":
-					tempData, err = ProcessTemplatePassthrough(port.PCIAddr)
-					if err != nil {
-						return "", err
+				case hwinfo.NicTypeOVS:
+					if mode.Type == xmlinput.ConTypeBridged {
+						buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
+						if err == nil {
+							TmpltBridgedOVS = string(buf)
+						}
+						tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name, mode.VnicDriver})
+						if err != nil {
+							return "", err
+						}
+						data += string(tempData) + "\n"
 					}
-				case "direct":
-					buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
-					if err == nil {
-						TmpltDirect = string(buf)
+
+				case hwinfo.NicTypeBridge:
+					if mode.Type == xmlinput.ConTypeBridged {
+						buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridged))
+						if err == nil {
+							TmpltBridged = string(buf)
+						}
+						tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name, mode.VnicDriver})
+						if err != nil {
+							return "", err
+						}
+						data += string(tempData) + "\n"
 					}
-					tempData, err = utils.ProcessTemplate(TmpltDirect, &DirectData{port.Name, network.Driver})
-					if err != nil {
-						return "", err
-					}
-				default:
-					return "", errors.New("supported modes - direct or passthrough")
 				}
 			}
-			data += string(tempData) + "\n"
-
-		case hwinfo.NicTypeOVS:
-			buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
-			if err == nil {
-				TmpltBridgedOVS = string(buf)
-			}
-			tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name, network.Driver})
-			if err != nil {
-				return "", err
-			}
-			data += string(tempData) + "\n"
-
-		case hwinfo.NicTypeBridge:
-			buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridged))
-			if err == nil {
-				TmpltBridged = string(buf)
-			}
-			tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name, network.Driver})
-			if err != nil {
-				return "", err
-			}
-			data += string(tempData) + "\n"
 		}
 	}
 	return data, nil
@@ -175,10 +165,25 @@ func ProcessTemplatePassthrough(pci string) ([]byte, error) {
 	return utils.ProcessTemplate(TmpltPassthrough, d)
 }
 
-func bindingMode(port *hwinfo.NIC, nconf *xmlinput.Allow) string {
-	if nconf.Model == "" && strings.Contains(port.Vendor, nconf.Vendor) ||
-		strings.Contains(port.Model, nconf.Model) {
-		return nconf.Mode
+func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, templatesDir string) (string, error) {
+	var err error
+	var tempData []byte
+
+	switch mode.Type {
+	case xmlinput.ConTypePassthrough:
+		tempData, err = ProcessTemplatePassthrough(port.PCIAddr)
+		if err != nil {
+			return "", err
+		}
+	case xmlinput.ConTypeDirect:
+		buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
+		if err == nil {
+			TmpltDirect = string(buf)
+		}
+		tempData, err = utils.ProcessTemplate(TmpltDirect, &DirectData{port.Name, mode.VnicDriver})
+		if err != nil {
+			return "", err
+		}
 	}
-	return ""
+	return string(tempData) + "\n", nil
 }

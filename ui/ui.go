@@ -13,6 +13,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/deployer/utils/hwfilter"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 	sshconf "github.com/dorzheh/infra/comm/common"
 	infrautils "github.com/dorzheh/infra/utils"
@@ -121,99 +122,148 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 
 		sleep, _ := time.ParseDuration("1s")
 		err := ui.Wait("Trying to establish SSH connection to remote host.\nPlease wait...", sleep, errCh)
-		if err != nil {
-			ui.Output(gui.Warning, "Unable to establish SSH connection.\nPress <OK> to proceed", 7, 2)
-		} else {
+		if err == nil {
 			break
 		}
+		ui.Output(gui.Warning, "Unable to establish SSH connection.\nPress <OK> to proceed", 7, 2)
 	}
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (map[*xmlinput.Network]*hwinfo.NIC, error) {
-	newMap := make(map[*xmlinput.Network]*hwinfo.NIC)
-	allowedNics := make([]*hwinfo.NIC, 0)
-	nics, err := hidriver.NICs()
-	if err != nil {
-		return nil, err
-	}
-	for _, n := range nics {
-		if hwinfo.DeniedNIC(n, &data.NICs) {
-			continue
-		}
-		if n.Type == hwinfo.NicTypePhys {
-			if !hwinfo.AllowedNIC(n, &data.NICs) {
-				continue
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinfo.NICList) (map[*xmlinput.Network]hwinfo.NICList, error) {
+	newMap := make(map[*xmlinput.Network]hwinfo.NICList)
+	for _, net := range data.Networks {
+		var modes []xmlinput.ConnectionMode
+		if net.UiModeBinding != nil {
+			mode, err := uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
+			if err != nil {
+				return nil, err
+			}
+			modes = append(modes, mode)
+		} else {
+			for _, mode := range net.Modes {
+				modes = append(modes, mode.Type)
 			}
 		}
-		allowedNics = append(allowedNics, n)
-	}
 
-	for _, net := range data.Networks.Default {
-		nic, err := uiGetNicInfo(ui, data, &allowedNics, net.Name)
+		retainedNics, modePassthrough, err := hwfilter.NicsByType(allowedNics, modes)
 		if err != nil {
 			return nil, err
 		}
-		if net.Driver == "" {
-			net.Driver = data.Networks.DefaultDriver
-		}
-		newMap[net] = nic
-	}
 
-	nextIndex := len(data.Networks.Default) + 1
-	for nextIndex <= int(data.Networks.Max) {
-		ui.SetSize(5, 60)
-		if nextIndex == 0 {
-			ui.SetLabel("Would you like to configure network?")
-		} else {
-			ui.SetLabel("Would you like to configure additional network?")
-		}
-		if ui.Yesno() {
-			net := fmt.Sprintf("#%d", nextIndex)
-			nic, err := uiGetNicInfo(ui, data, &allowedNics, net)
+		var nicList hwinfo.NICList
+		switch {
+		case net.MaxIfaces > 1:
+			nicList, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
+			if err != nil {
+				return nil, err
+			}
+		default:
+			nicList, err = uiSelectSingleNic(ui, retainedNics, &allowedNics, modePassthrough, net.Name)
 			if err != nil {
 				return nil, err
 			}
 
-			n := new(xmlinput.Network)
-			n.Name = net
-			n.Driver = data.Networks.DefaultDriver
-			newMap[n] = nic
-		} else {
-			break
 		}
-		nextIndex++
+		newMap[net] = nicList
 	}
 	return newMap, nil
 }
 
-func uiGetNicInfo(ui *gui.DialogUi, data *xmlinput.XMLInputData, nics *[]*hwinfo.NIC, network string) (*hwinfo.NIC, error) {
+func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *hwinfo.NICList, modePassthrough bool, network *xmlinput.Network) (hwinfo.NICList, error) {
 	var temp []string
-	index := 1
-	for _, n := range *nics {
-		temp = append(temp, strconv.Itoa(index), fmt.Sprintf("%-14s %-10s", n.Name, n.Desc))
-		index += 1
+	keeper := make(map[string]*hwinfo.NIC)
+	indexInt := 1
+	for _, nic := range selectedList {
+		indexStr := strconv.Itoa(indexInt)
+		temp = append(temp, indexStr, nic.Name+" "+nic.Desc, "off")
+		keeper[indexStr] = nic
+		indexInt++
 	}
 
 	sliceLength := len(temp)
 	if sliceLength == 0 {
-		return nil, errors.New("no supported NIC found.Verify input_data_config.xml file")
+		return nil, errors.New("Make sure that XML file representing xmlinput is configured properly")
+	}
+
+	var selected []string
+	for {
+		ui.SetSize(sliceLength+5, 95)
+		ui.SetLabel(fmt.Sprintf("Select interfaces for network \"%s\"", network.Name))
+		selected = ui.Checklist(sliceLength, temp[0:]...)
+		if uint(len(selected)) > network.MaxIfaces {
+			continue
+		}
+		break
+	}
+
+	finalList := hwinfo.NewNICList()
+	for _, index := range selected {
+		nic := keeper[index]
+		finalList.Add(nic)
+		if modePassthrough && nic.Type == hwinfo.NicTypePhys {
+			i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
+			if err != nil {
+				return nil, err
+			}
+			fullList.Remove(i)
+		}
+	}
+	return finalList, nil
+}
+
+func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *hwinfo.NICList, modePassthrough bool, network string) (hwinfo.NICList, error) {
+	var temp []string
+	keeper := make(map[string]*hwinfo.NIC)
+	indexInt := 1
+	for _, nic := range selectedList {
+		indexStr := strconv.Itoa(indexInt)
+		temp = append(temp, indexStr, fmt.Sprintf("%-14s %-10s", nic.Name, nic.Desc))
+		keeper[indexStr] = nic
+		indexInt++
+	}
+
+	sliceLength := len(temp)
+	if sliceLength == 0 {
+		return nil, errors.New("Make sure that XML file representing xmlinput is configured properly")
 	}
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
-	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
-	if err != nil {
-		return nil, err
+	ifaceNum := ui.Menu(sliceLength, temp[0:]...)
+	nic := keeper[ifaceNum]
+	if modePassthrough && nic.Type == hwinfo.NicTypePhys {
+		i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
+		if err != nil {
+			return nil, err
+		}
+		fullList.Remove(i)
 	}
 
-	index = ifaceNumInt - 1
-	nic := (*nics)[index]
-	if nic.Type == hwinfo.NicTypePhys {
-		tempInfo := *nics
-		tempInfo = append(tempInfo[:index], tempInfo[index+1:]...)
-		*nics = tempInfo
+	finalList := hwinfo.NewNICList()
+	finalList.Add(nic)
+	return finalList, nil
+}
+
+func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) (xmlinput.ConnectionMode, error) {
+	sliceLength := len(modes)
+	if sliceLength == 0 {
+		return xmlinput.ConTypeError, errors.New("ui_mode_selection is not set")
 	}
-	return nic, nil
+
+	var temp []string
+	index := 1
+	for _, mode := range modes {
+		temp = append(temp, strconv.Itoa(index), mode.Appear)
+		index++
+	}
+
+	ui.SetSize(sliceLength+8, 50)
+	ui.SetLabel(fmt.Sprintf("Network interface type for network \"%s\"", network))
+	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
+	if err != nil {
+		return xmlinput.ConTypeError, err
+	}
+	return modes[ifaceNumInt-1].Type, nil
 }
 
 func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInSec string, remote bool) error {

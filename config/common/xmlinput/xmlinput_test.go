@@ -1,6 +1,11 @@
-Configuration example:
+package xmlinput
 
-<?xml version="1.0" encoding="UTF-8"?>
+import (
+	"fmt"
+	"testing"
+)
+
+var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <input_data>
   <cpu>
   <configure>true</configure>
@@ -103,4 +108,11 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<!-- Denied vendors and models -->
 	<deny vendor="Broadcom" model=""/>
   </nics>
-</input_data>
+</input_data>`)
+
+func TestParseXMLInputBad(t *testing.T) {
+	_, err := ParseXMLInputMock(bad_xmldata)
+	if err == nil {
+		t.Fatalf("supposed to produce an error")
+	}
+}
