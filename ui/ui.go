@@ -156,7 +156,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 
 		var list hwinfo.NICList
 		switch {
-		case net.MaxIfaces > 1:
+		case net.MaxIfaces > 1 && retainedNics.Length() > 1:
 			list, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
 			if err != nil {
 				return nil, err

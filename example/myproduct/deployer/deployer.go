@@ -1,6 +1,7 @@
 package main
 
 import (
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -14,6 +15,7 @@ import (
 
 var (
 	defaultProductName = ""
+	prodType           = ""
 	rootDir            = ""
 	arch               = ""
 )
@@ -31,10 +33,24 @@ func init() {
 	var absPath string
 	absPath, _ = filepath.Abs(os.Args[0])
 	var pathArr []string = strings.Split(absPath, "/")
-	defaultProductName = pathArr[len(pathArr)-5]
 	rootDir = strings.Join(pathArr[0:len(pathArr)-4], "/")
 	newPath := "$PATH:" + rootDir + "/install/" + arch + "/bin"
 	os.Setenv("PATH", (os.ExpandEnv(newPath)))
+	buf, err := ioutil.ReadFile(filepath.Join(rootDir, ".product"))
+	if err != nil {
+		panic(err)
+	}
+
+	for _, str := range strings.Split(string(buf), "\n") {
+		res := strings.Split(str, "=")
+		switch res[0] {
+		case "Product":
+			prodType = res[1]
+		case "Name":
+			defaultProductName = res[1]
+		default:
+		}
+	}
 }
 
 func main() {
@@ -42,7 +58,7 @@ func main() {
 	ui.Shadow(false)
 	ui.SetCancelLabel("Exit")
 	gui.UiValidateUser(ui, 0)
-	gui.UiWelcomeMsg(ui, "MyProduct")
+	gui.UiWelcomeMsg(ui, defaultProductName)
 	data := &deployer.CommonData{
 		RootDir:          rootDir,
 		RootfsMp:         filepath.Join(rootDir, "rootfs_mnt"),
@@ -52,5 +68,5 @@ func main() {
 		Ui:               ui,
 	}
 
-	gui.UiDeploymentResult(ui, "MyProduct installation completed successfully", myproduct.Deploy(data))
+	gui.UiDeploymentResult(ui, "MyProduct installation completed successfully", myproduct.Deploy(data, prodType))
 }

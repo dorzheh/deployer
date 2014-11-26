@@ -45,8 +45,9 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 }
 
 func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Builder, err error) {
-	if err = d.Ui.Pb.SetSleep("10s"); err != nil {
-		return
+	if c.config.RemoteMode {
+		d.Ui.Pb.IncreaseSleep("10s")
+		d.Ui.Pb.DecreaseStep(4)
 	}
 	d.Ui.Pb.SetStep(15)
 
@@ -64,9 +65,9 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 		Kpartx: filepath.Join(d.RootDir, "install", d.Arch, "bin/kpartx"),
 	}
 
-	for _, diskconf := range c.config.StorageConfig.Disks {
+	for _, disk := range c.config.StorageConfig.Disks {
 		imageData := &deployer.ImageBuilderData{
-			ImageConfig: diskconf,
+			ImageConfig: disk,
 			RootfsMp:    d.RootfsMp,
 			Filler:      c.Filler,
 		}
@@ -86,11 +87,8 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 }
 
 func (c *FlowCreator) CreatePostProcessor(d *deployer.CommonData) (p deployer.PostProcessor, err error) {
-	if err = d.Ui.Pb.SetSleep("3s"); err != nil {
-		return
-	}
+	d.Ui.Pb.SetSleep("2s")
 	d.Ui.Pb.SetStep(10)
-
 	p = &libvirtpost.PostProcessor{
 		Driver:      libvirtpost.NewDriver(c.config.SshConfig),
 		StartDomain: false,
