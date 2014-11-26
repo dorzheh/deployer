@@ -18,6 +18,7 @@ import (
 
 type Parser struct {
 	run       func(string) (string, error)
+	parseFunc func() error
 	cacheFile string
 	cmd       string
 }
@@ -27,34 +28,15 @@ type Parser struct {
 func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error) {
 	i := new(Parser)
 	i.run = utils.RunFunc(sshconf)
-	if lshwpath == "" {
-		out, err := i.run("which lshw")
-		if err != nil {
-			return nil, fmt.Errorf("%s [%v]", out, err)
-		}
-		lshwpath = out
-	} else {
-		if sshconf != nil {
-			dir, err := utils.UploadBinaries(sshconf, lshwpath)
-			if err != nil {
-				return nil, err
-			}
-			lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
-		}
-	}
-
-	lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
-	l, err := lshw.New(lshwpath, lshwconf)
-	if err != nil {
-		return nil, err
-	}
-	i.cmd = l.Cmd()
-	i.cacheFile = cacheFile
+	i.parseFunc = parse(i, cacheFile, lshwpath, sshconf)
 	return i, nil
 }
 
 // Parse parses lshw output
 func (i *Parser) Parse() error {
+	if err := i.parseFunc(); err != nil {
+		return err
+	}
 	out, err := i.run(i.cmd)
 	if err != nil {
 		return err
@@ -270,4 +252,33 @@ func (p *Parser) RAMSize() (uint, error) {
 	var ramsize uint
 	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize)
 	return ramsize / 1024, nil
+}
+
+func parse(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func() error {
+	return func() error {
+		if lshwpath == "" {
+			out, err := i.run("which lshw")
+			if err != nil {
+				return fmt.Errorf("%s [%v]", out, err)
+			}
+			lshwpath = out
+		} else {
+			if sshconf != nil {
+				dir, err := utils.UploadBinaries(sshconf, lshwpath)
+				if err != nil {
+					return err
+				}
+				lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
+			}
+		}
+
+		lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
+		l, err := lshw.New(lshwpath, lshwconf)
+		if err != nil {
+			return err
+		}
+		i.cmd = l.Cmd()
+		i.cacheFile = cacheFile
+		return nil
+	}
 }
