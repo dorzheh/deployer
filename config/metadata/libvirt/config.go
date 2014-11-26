@@ -29,7 +29,7 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 		return nil, err
 	}
 
-	c.Metadata = new(metadata.CommonMetadata)
+	c.Metadata = new(metadata.Metadata)
 	postdriver := libvirt.NewDriver(c.SshConfig)
 	if c.Metadata.EmulatorPath, err = postdriver.Emulator(d.Arch); err != nil {
 		return nil, err
@@ -108,9 +108,10 @@ type DirectData struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(mapping map[*xmlinput.Network]hwinfo.NICList, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir string) (string, error) {
 	var data string
-	for network, list := range mapping {
+	for i, network := range mapping.Networks {
+		list := mapping.NICLists[i]
 		for _, mode := range network.Modes {
 			for _, port := range list {
 				switch port.Type {

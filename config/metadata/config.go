@@ -11,22 +11,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/utils/hwfilter"
-	"github.com/dorzheh/deployer/utils/hwinfo"
 )
-
-type MetadataConfigurator interface {
-	// storage configuration and templates directory
-	// returns metadata entry related to storage and error
-	SetStorageData(*image.Config, string) (string, error)
-
-	// network interfaces information, templates directory
-	// returns metadata entry related to the network interfaces configuration and error
-	SetNetworkData(map[*xmlinput.Network]hwinfo.NICList, string) (string, error)
-
-	// default metadata is used by the deployer in case user didn't provide any template
-	// returns entry related to default metadata
-	DefaultMetadata() []byte
-}
 
 // InputData provides a static data
 type InputData struct {
@@ -50,9 +35,9 @@ type InputData struct {
 	TemplatesDir string
 }
 
-// commonMetadata contains elements that will processed
+// Metadata contains elements that will processed
 // by the template library and used by Libvirt XML metadata
-type CommonMetadata struct {
+type Metadata struct {
 	DomainName   string
 	CPUs         uint
 	RAM          uint
@@ -76,7 +61,7 @@ type Config struct {
 	StorageConfig *image.Config
 
 	// Common metadata stuff
-	Metadata *CommonMetadata
+	Metadata *Metadata
 
 	// Path to metadata file
 	DestMetadataFile string
@@ -85,11 +70,8 @@ type Config struct {
 	Bundle map[string]interface{}
 }
 
-func CreateConfig(d *deployer.CommonData, i *InputData,
-	c *Config, driver deployer.Driver, metaconf MetadataConfigurator) (*Config, error) {
-
+func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.Driver, metaconf deployer.MetadataConfigurator) (*Config, error) {
 	var err error
-
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
 	c.DestMetadataFile = filepath.Join(c.ExportDir, d.VaName+"-metadata")

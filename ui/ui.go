@@ -130,8 +130,11 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinfo.NICList) (map[*xmlinput.Network]hwinfo.NICList, error) {
-	newMap := make(map[*xmlinput.Network]hwinfo.NICList)
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinfo.NICList) (*deployer.OutputNetworkData, error) {
+	netMetaData := new(deployer.OutputNetworkData)
+	netMetaData.Networks = make([]*xmlinput.Network, 0)
+	netMetaData.NICLists = make([]hwinfo.NICList, 0)
+
 	for _, net := range data.Networks {
 		var modes []xmlinput.ConnectionMode
 		if net.UiModeBinding != nil {
@@ -151,23 +154,25 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 			return nil, err
 		}
 
-		var nicList hwinfo.NICList
+		var list hwinfo.NICList
 		switch {
 		case net.MaxIfaces > 1:
-			nicList, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
+			list, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
 			if err != nil {
 				return nil, err
 			}
 		default:
-			nicList, err = uiSelectSingleNic(ui, retainedNics, &allowedNics, modePassthrough, net.Name)
+			list, err = uiSelectSingleNic(ui, retainedNics, &allowedNics, modePassthrough, net.Name)
 			if err != nil {
 				return nil, err
 			}
 
 		}
-		newMap[net] = nicList
+		netMetaData.Networks = append(netMetaData.Networks, net)
+		netMetaData.NICLists = append(netMetaData.NICLists, list)
 	}
-	return newMap, nil
+
+	return netMetaData, nil
 }
 
 func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *hwinfo.NICList, modePassthrough bool, network *xmlinput.Network) (hwinfo.NICList, error) {

@@ -76,6 +76,9 @@ func deniedNIC(hwnics *hwinfo.NIC, nics *xmlinput.NICs) bool {
 }
 
 func allowedNIC(n *hwinfo.NIC, nics *xmlinput.NICs) bool {
+	if nics.Allowed == nil {
+		return true
+	}
 	for _, nic := range nics.Allowed {
 		if nic.Model == "" && strings.Contains(n.Vendor, nic.Vendor) {
 			return true
