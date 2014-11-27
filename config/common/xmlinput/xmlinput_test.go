@@ -52,10 +52,6 @@ func TestParseXMLInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-
-	if d.Networks[0].UiModeBinding == nil {
-		println("nil")
-	}
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",
 			nic.Vendor, nic.Model)

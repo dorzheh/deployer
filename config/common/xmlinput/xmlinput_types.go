@@ -20,14 +20,14 @@ type CPU struct {
 	Configure bool `xml:"cpu>configure"`
 	Min       uint `xml:"cpu>min"`
 	Max       uint `xml:"cpu>max"`
-	Default   uint `xml:"cpu>default"`
+	Default   uint `xml:"cpu>default_value"`
 }
 
 type RAM struct {
 	Configure bool `xml:"ram>configure"`
 	Min       uint `xml:"ram>min"`
 	Max       uint `xml:"ram>max"`
-	Default   uint `xml:"ram>default"`
+	Default   uint `xml:"ram>default_value"`
 }
 
 type Network struct {

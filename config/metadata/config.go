@@ -108,7 +108,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 			if err != nil {
 				return nil, err
 			}
-			c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus, xid.CPU.Min, xid.CPU.Max)
+			c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus, xid.CPU.Default, xid.CPU.Min, xid.CPU.Max)
 		} else if xid.CPU.Default > 0 {
 			c.Metadata.CPUs = xid.CPU.Default
 		}
@@ -117,7 +117,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 			if err != nil {
 				return nil, err
 			}
-			c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, xid.RAM.Min, xid.RAM.Max)
+			c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, xid.RAM.Default, xid.RAM.Min, xid.RAM.Max)
 			c.Metadata.RAM *= 1024
 		} else if xid.RAM.Default > 0 {
 			c.Metadata.RAM = xid.RAM.Default * 1024

@@ -295,18 +295,22 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 	return ui.Wait(msg, sleep, errCh)
 }
 
-func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximumRamInMb uint) uint {
+func UiRAMSize(ui *gui.DialogUi, installedRamInMb, defaultRamInMb, reqMinimumRamInMb, reqMaximumRamInMb uint) uint {
 	var amountUint uint
 	maxIsSet := true
 	if reqMaximumRamInMb == 0 {
 		maxIsSet = false
 		reqMaximumRamInMb = installedRamInMb
 	}
+	var defaultRamInMbStr string
+	if defaultRamInMb != 0 {
+		defaultRamInMbStr = strconv.Itoa(int(defaultRamInMb))
+	}
 	for {
 		msg := fmt.Sprintf("Enter VM RAM size(minimum %dMB, maximum %dMB)", reqMinimumRamInMb, reqMaximumRamInMb)
 		ui.SetSize(8, len(msg)+10)
 		ui.SetLabel(msg)
-		amountStr := ui.Inputbox("")
+		amountStr := ui.Inputbox(defaultRamInMbStr)
 		amountInt, err := strconv.Atoi(amountStr)
 		if err != nil {
 			continue
@@ -329,18 +333,22 @@ func UiRAMSize(ui *gui.DialogUi, installedRamInMb, reqMinimumRamInMb, reqMaximum
 	return amountUint
 }
 
-func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint) uint {
+func UiCPUs(ui *gui.DialogUi, installedCpus, defaultCpus, reqMinimumCpus, reqMaximumCpus uint) uint {
 	var amountUint uint
 	maxIsSet := true
 	if reqMaximumCpus == 0 {
 		maxIsSet = false
 		reqMaximumCpus = installedCpus
 	}
+	var defaultCpusStr string
+	if defaultCpus != 0 {
+		defaultCpusStr = strconv.Itoa(int(defaultCpus))
+	}
 	for {
 		msg := fmt.Sprintf("Enter VM number of vCPUs(minimum %d, maximum %d)", reqMinimumCpus, reqMaximumCpus)
 		ui.SetSize(8, len(msg)+10)
 		ui.SetLabel(msg)
-		amountStr := ui.Inputbox("")
+		amountStr := ui.Inputbox(defaultCpusStr)
 		amountInt, err := strconv.Atoi(amountStr)
 		if err != nil {
 			continue
