@@ -143,9 +143,9 @@ func (d *Dialog) exec(dType string, allowLabel bool) string {
 	for _, arg = range d.afterSize {
 		cmd.Args = append(cmd.Args, arg)
 	}
-
-	cmd.Args = append(cmd.Args, "--title", d.title)
-
+	if d.title != "" {
+		cmd.Args = append(cmd.Args, "--title", d.title)
+	}
 	if d.environment == CONSOLE {
 		cmd.Args = append(cmd.Args, "--stdout")
 	} else {
@@ -184,22 +184,19 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	if allowLabel == true {
 		cmd.Args = append(cmd.Args, d.label)
 	}
-
 	for _, arg = range d.beforeSize {
 		cmd.Args = append(cmd.Args, arg)
 	}
-
 	if d.environment != KDE {
 		cmd.Args = append(cmd.Args, strconv.Itoa(d.height))
 		cmd.Args = append(cmd.Args, strconv.Itoa(d.width))
 	}
-
 	for _, arg = range d.afterSize {
 		cmd.Args = append(cmd.Args, arg)
 	}
-
-	cmd.Args = append(cmd.Args, "--title", d.title)
-
+	if d.title != "" {
+		cmd.Args = append(cmd.Args, "--title", d.title)
+	}
 	if d.environment == CONSOLE {
 		cmd.Args = append(cmd.Args, "--stdout")
 	} else {
@@ -271,6 +268,22 @@ func (d *Dialog) Checklist(listHeight int, tagItemStatus ...string) []string {
 		d.afterSize = append(d.afterSize, param)
 	}
 	str = d.exec("checklist", true)
+	for _, item := range strings.Split(str, " ") {
+		list = append(list, strings.Replace(item, "\"", "", -1))
+	}
+	return list
+}
+
+func (d *Dialog) Mixedform(title string, tagItemStatus ...string) []string {
+	var str string
+	var list []string
+	d.afterSize = append(d.afterSize, "0")
+	for _, param := range tagItemStatus {
+		d.afterSize = append(d.afterSize, param)
+	}
+
+	d.beforeSize = append(d.beforeSize, title)
+	str = d.exec("mixedform", false)
 	for _, item := range strings.Split(str, " ") {
 		list = append(list, strings.Replace(item, "\"", "", -1))
 	}

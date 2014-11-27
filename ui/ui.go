@@ -181,7 +181,7 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 	indexInt := 1
 	for _, nic := range selectedList {
 		indexStr := strconv.Itoa(indexInt)
-		temp = append(temp, indexStr, nic.Name+" "+nic.Desc, "off")
+		temp = append(temp, indexStr, fmt.Sprintf("%-14s %-10s", nic.Name, nic.Desc), "off")
 		keeper[indexStr] = nic
 		indexInt++
 	}
@@ -196,6 +196,10 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 		ui.SetSize(sliceLength+5, 95)
 		ui.SetLabel(fmt.Sprintf("Select interfaces for network \"%s\"", network.Name))
 		selected = ui.Checklist(sliceLength, temp[0:]...)
+		// for some reason Checklist returns slice of length 1 even nothing was selected
+		if selected[0] == "" {
+			continue
+		}
 		if uint(len(selected)) > network.MaxIfaces {
 			continue
 		}
@@ -341,12 +345,8 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 		if err != nil {
 			continue
 		}
+
 		amountUint = uint(amountInt)
-		if amountUint > installedCpus {
-			if !UiVCPUsOvercommit(ui, installedCpus) {
-				continue
-			}
-		}
 		if amountUint < reqMinimumCpus {
 			ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
 			continue
@@ -354,6 +354,11 @@ func UiCPUs(ui *gui.DialogUi, installedCpus, reqMinimumCpus, reqMaximumCpus uint
 		if maxIsSet && amountUint > reqMaximumCpus {
 			ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).\nPress <OK> to proceed", reqMaximumCpus), 7, 2)
 			continue
+		}
+		if amountUint > installedCpus {
+			if !UiVCPUsOvercommit(ui, installedCpus) {
+				continue
+			}
 		}
 		break
 	}
