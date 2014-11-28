@@ -284,8 +284,8 @@ func (d *Dialog) Mixedform(title string, tagItemStatus ...string) []string {
 
 	d.beforeSize = append(d.beforeSize, title)
 	str = d.exec("mixedform", false)
-	for _, item := range strings.Split(str, " ") {
-		list = append(list, strings.Replace(item, "\"", "", -1))
+	for _, item := range strings.SplitAfter(str, "\n") {
+		list = append(list, strings.TrimSpace(item))
 	}
 	return list
 }
