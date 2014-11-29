@@ -18,7 +18,7 @@ import (
 
 type Parser struct {
 	run       func(string) (string, error)
-	parseFunc func() error
+	parse     func() error
 	cacheFile string
 	cmd       string
 }
@@ -28,13 +28,13 @@ type Parser struct {
 func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error) {
 	i := new(Parser)
 	i.run = utils.RunFunc(sshconf)
-	i.parseFunc = parse(i, cacheFile, lshwpath, sshconf)
+	i.parse = parseFunc(i, cacheFile, lshwpath, sshconf)
 	return i, nil
 }
 
 // Parse parses lshw output
 func (i *Parser) Parse() error {
-	if err := i.parseFunc(); err != nil {
+	if err := i.parse(); err != nil {
 		return err
 	}
 	out, err := i.run(i.cmd)
@@ -254,7 +254,7 @@ func (p *Parser) RAMSize() (uint, error) {
 	return ramsize / 1024, nil
 }
 
-func parse(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func() error {
+func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func() error {
 	return func() error {
 		if lshwpath == "" {
 			out, err := i.run("which lshw")
