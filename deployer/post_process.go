@@ -1,5 +1,7 @@
 package deployer
 
+// PostProcessProgress is responsible for representing a progress
+// during post-processing of appropriate artifact.
 func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) error {
 	if c.Ui == nil {
 		return p.PostProcess(artifacts)

@@ -5,7 +5,7 @@ import (
 )
 
 // BuildProgress is responsible for running appropriate builders
-// and representing a progress bar providing information about the build progress
+// and representing a progress bar providing information about the build progress.
 func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err error) {
 	if c.Ui == nil {
 		return Build(builders)
@@ -14,11 +14,7 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	defer close(errChan)
 	go func() {
 		artifacts, err = Build(builders)
-		if err != nil {
-			errChan <- err
-			return
-		}
-		errChan <- nil
+		errChan <- err
 	}()
 
 	progressBarTitle := c.VaName + " installation in progress (artifacts building stage)"
@@ -27,12 +23,15 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 	return
 }
 
-// buildResult contains result of a build
+// buildResult contains result of a build.
 type buildResult struct {
 	artifact Artifact
 	err      error
 }
 
+// Build iterates over a slice of builders and runs
+// each builder in a separated goroutine.
+// Returns a slice of artifacts.
 func Build(builders []Builder) ([]Artifact, error) {
 	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
 
@@ -43,6 +42,7 @@ func Build(builders []Builder) ([]Artifact, error) {
 	for _, b := range builders {
 		go func(b Builder) {
 			artifact, err := b.Run()
+			// Forwards created artifact to the channel.
 			ch <- &buildResult{artifact, err}
 		}(b)
 	}

@@ -6,17 +6,19 @@ import (
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
+// MetadataConfigurator is the interface that has to be implemented
+// in order to manipulate appropriate metadata.
 type MetadataConfigurator interface {
-	// storage configuration and templates directory
-	// returns metadata entry related to storage and error
+	// Storage configuration and templates directory.
+	// Returns storage related metadata entry and error.
 	SetStorageData(*image.Config, string) (string, error)
 
-	// network interfaces information, templates directory
-	// returns metadata entry related to the network interfaces configuration and error
+	// Network interfaces information, templates directory.
+	// Returns metadata entry related to the network interfaces configuration and error.
 	SetNetworkData(*OutputNetworkData, string) (string, error)
 
-	// default metadata is used by deployer in case user didn't provide any template
-	// returns entry related to default metadata
+	// Default metadata is used by deployer in case user didn't provide any template.
+	// Returns entry related to default metadata.
 	DefaultMetadata() []byte
 }
 

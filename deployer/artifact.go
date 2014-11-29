@@ -13,22 +13,23 @@ const (
 	MetadataArtifact
 )
 
-// Artifact is the interface to a real artifact implementation
-// Any artifact object must implement this interface
+// Artifact is the interface to a real artifact implementation.
+// Any artifact object must implement this interface.
 type Artifact interface {
-	// Artifact ID
+	// Artifact ID.
 	GetName() string
 
-	// Path to artifact
+	// Path to artifact.
 	GetPath() string
 
-	// Artifact type (either ImageArtifact or MetadataArtifact)
+	// Artifact type (either ImageArtifact or MetadataArtifact).
 	GetType() ArtifactType
 
-	// Destroys the artifact
+	// Destroys the artifact.
 	Destroy() error
 }
 
+// CommonArtifact represents an artifact properties.
 type CommonArtifact struct {
 	Name      string
 	Path      string
@@ -36,18 +37,22 @@ type CommonArtifact struct {
 	SshConfig *ssh.Config
 }
 
+// GetName returns artifact's name.
 func (a *CommonArtifact) GetName() string {
 	return a.Name
 }
 
+// GetPath returns artifact's path.
 func (a *CommonArtifact) GetPath() string {
 	return a.Path
 }
 
+// GetType returns artifact's type (metadata or image).
 func (a *CommonArtifact) GetType() ArtifactType {
 	return a.Type
 }
 
+// Destroy is responsible for removing appropriate artifact.
 func (a *CommonArtifact) Destroy() error {
 	run := utils.RunFunc(a.SshConfig)
 	if _, err := run("rm -f " + a.Path); err != nil {
