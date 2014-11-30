@@ -9,8 +9,8 @@ var TmpltBridged = `<interface type='bridge'>
 var TmpltBridgedOVS = `<interface type='bridge'>
       <source bridge='{{.OVSBridge}}'/>
       <virtualport type='openvswitch'/>
-	  <model type='virtio'/>
-	  <driver name='{{.Driver}}'/>
+	  <model type='{{.Driver}}'/>
+	  <driver name='vhost'/>
 </interface>`
 
 var TmpltDirect = `<interface type='direct'>
