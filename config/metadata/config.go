@@ -10,6 +10,7 @@ import (
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwfilter"
 )
 
@@ -153,4 +154,31 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 		}
 	}
 	return c, nil
+}
+
+func ProcessNetworkTemplate(network *xmlinput.Network, defaultTemplate string, tmpltData interface{}, templatesDir string) (string, error) {
+	var customTemplate string
+
+	if network.Tmplt == nil {
+		customTemplate = defaultTemplate
+	} else {
+		var templatePath string
+		if templatesDir != "" {
+			templatePath = filepath.Join(templatesDir, network.Tmplt.FileName)
+		} else {
+			templatePath = filepath.Join(network.Tmplt.Dir, network.Tmplt.FileName)
+		}
+
+		buf, err := ioutil.ReadFile(templatePath)
+		if err != nil {
+			return "", err
+		}
+		customTemplate = string(buf)
+	}
+
+	tempData, err := utils.ProcessTemplate(customTemplate, tmpltData)
+	if err != nil {
+		return "", err
+	}
+	return string(tempData) + "\n", nil
 }

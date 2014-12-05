@@ -81,12 +81,6 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 
 // --- metadata configuration: network --- //
 
-const (
-	TmpltFileBridgedOVS = "template_bridged_ovs.xml"
-	TmpltFileBridged    = "template_bridged.xml"
-	TmpltFileDirect     = "template_direct.xml"
-)
-
 type PassthroughData struct {
 	Bus      string
 	Slot     string
@@ -119,7 +113,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 				switch port.Type {
 				case hwinfo.NicTypePhys:
 					if mode.Type == xmlinput.ConTypePassthrough || mode.Type == xmlinput.ConTypeDirect {
-						out, err := treatPhysical(port, mode, templatesDir)
+						out, err := treatPhysical(port, mode, network, templatesDir)
 						if err != nil {
 							return "", err
 						}
@@ -128,28 +122,22 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 
 				case hwinfo.NicTypeOVS:
 					if mode.Type == xmlinput.ConTypeBridged {
-						buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
-						if err == nil {
-							TmpltBridgedOVS = string(buf)
-						}
-						tempData, err := utils.ProcessTemplate(TmpltBridgedOVS, &BridgedOVSData{port.Name, mode.VnicDriver})
+						tempData, err := metadata.ProcessNetworkTemplate(network, TmpltBridgedOVS,
+							&BridgedOVSData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
 							return "", err
 						}
-						data += string(tempData) + "\n"
+						data += tempData
 					}
 
 				case hwinfo.NicTypeBridge:
 					if mode.Type == xmlinput.ConTypeBridged {
-						buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridged))
-						if err == nil {
-							TmpltBridged = string(buf)
-						}
-						tempData, err := utils.ProcessTemplate(TmpltBridged, &BridgedData{port.Name, mode.VnicDriver})
+						tempData, err := metadata.ProcessNetworkTemplate(network, TmpltBridged,
+							&BridgedData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
 							return "", err
 						}
-						data += string(tempData) + "\n"
+						data += tempData
 					}
 				}
 			}
@@ -158,35 +146,34 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 	return data, nil
 }
 
-func ProcessTemplatePassthrough(pci string) ([]byte, error) {
+func ProcessTemplatePassthrough(pci string) (string, error) {
 	pciSlice := strings.Split(pci, ":")
 	d := new(PassthroughData)
 	d.Bus = pciSlice[1]
 	temp := strings.Split(pciSlice[2], ".")
 	d.Slot = temp[0]
 	d.Function = temp[1]
-	return utils.ProcessTemplate(TmpltPassthrough, d)
+	data, err := utils.ProcessTemplate(TmpltPassthrough, d)
+	if err != nil {
+		return "", err
+	}
+	return string(data), nil
 }
 
-func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, templatesDir string) (string, error) {
+func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, network *xmlinput.Network, templatesDir string) (string, error) {
 	var err error
-	var tempData []byte
+	var tempData string
 
 	switch mode.Type {
 	case xmlinput.ConTypePassthrough:
-		tempData, err = ProcessTemplatePassthrough(port.PCIAddr)
-		if err != nil {
+		if tempData, err = ProcessTemplatePassthrough(port.PCIAddr); err != nil {
 			return "", err
 		}
 	case xmlinput.ConTypeDirect:
-		buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileBridgedOVS))
-		if err == nil {
-			TmpltDirect = string(buf)
-		}
-		tempData, err = utils.ProcessTemplate(TmpltDirect, &DirectData{port.Name, mode.VnicDriver})
-		if err != nil {
+		if tempData, err = metadata.ProcessNetworkTemplate(network, TmpltDirect,
+			&DirectData{port.Name, mode.VnicDriver}, templatesDir); err != nil {
 			return "", err
 		}
 	}
-	return string(tempData) + "\n", nil
+	return tempData, nil
 }

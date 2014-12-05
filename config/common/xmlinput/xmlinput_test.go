@@ -22,6 +22,12 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   <networks>
     <configure>true</configure>
 	<network name="Management" max_ifaces="1" mandatory="true">
+		<!-- In common cases the templates provided by deployer are good enough -->
+		<!-- however you may provide your own templates -->
+		<!-- template_name is the name of your template file and -->
+		<!-- dir is where your file is located -->
+		<!-- in order to be able provide the path further set dir=""-->
+		<template name="mngmnt_network.tmplt" dir="/opt/mytemplates"/>
 	    <mode type="bridged" vnic_driver="e1000"/>
 		<mode type="direct" vnic_driver="e1000"/>
 	</network>
@@ -48,7 +54,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 </input_data>`)
 
 func TestParseXMLInput(t *testing.T) {
-	d, err := ParseXMLInputMock(xmldata)
+	d, err := ParseXMLInputBuf(xmldata)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,7 +113,7 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 </input_data>`)
 
 func TestParseXMLInputBad(t *testing.T) {
-	_, err := ParseXMLInputMock(bad_xmldata)
+	_, err := ParseXMLInputBuf(bad_xmldata)
 	if err == nil {
 		t.Fatalf("supposed to produce an error")
 	}

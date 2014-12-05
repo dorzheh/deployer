@@ -34,6 +34,7 @@ type Network struct {
 	Name          string        `xml:"name,attr"`
 	MaxIfaces     uint          `xml:"max_ifaces,attr"`
 	Mandatory     bool          `xml:"mandatory,attr"`
+	Tmplt         *Template     `xml:"template"`
 	Modes         []*Mode       `xml:"mode"`
 	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
 }
@@ -41,6 +42,11 @@ type Network struct {
 type Nets struct {
 	Configure bool       `xml:"networks>configure"`
 	Networks  []*Network `xml:"networks>network"`
+}
+
+type Template struct {
+	FileName string `xml:"file_name,attr"`
+	Dir      string `xml:"dir,attr"`
 }
 
 type Mode struct {
