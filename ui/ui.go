@@ -135,7 +135,20 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 	netMetaData.Networks = make([]*xmlinput.Network, 0)
 	netMetaData.NICLists = make([]hwinfo.NICList, 0)
 
-	for _, net := range data.Networks {
+	for i, net := range data.Networks {
+		if !net.Mandatory {
+			ui.SetSize(5, 60)
+			if i == 0 {
+				ui.SetLabel(fmt.Sprintf("Would you like to configure network (%s)?", net.Name))
+			} else {
+				ui.SetLabel("Would you like to configure additional network?")
+			}
+			if !ui.Yesno() {
+				// do not configure rest of the networks
+				break
+			}
+		}
+
 		var modes []xmlinput.ConnectionMode
 		if net.UiModeBinding != nil {
 			mode, err := uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
@@ -168,10 +181,10 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 			}
 
 		}
+
 		netMetaData.Networks = append(netMetaData.Networks, net)
 		netMetaData.NICLists = append(netMetaData.NICLists, list)
 	}
-
 	return netMetaData, nil
 }
 

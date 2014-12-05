@@ -33,6 +33,7 @@ type RAM struct {
 type Network struct {
 	Name          string        `xml:"name,attr"`
 	MaxIfaces     uint          `xml:"max_ifaces,attr"`
+	Mandatory     bool          `xml:"mandatory,attr"`
 	Modes         []*Mode       `xml:"mode"`
 	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
 }

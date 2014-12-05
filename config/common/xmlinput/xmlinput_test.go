@@ -21,11 +21,11 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </ram>
   <networks>
     <configure>true</configure>
-	<network name="Management" max_ifaces="1">
+	<network name="Management" max_ifaces="1" mandatory="true">
 	    <mode type="bridged" vnic_driver="e1000"/>
 		<mode type="direct" vnic_driver="e1000"/>
 	</network>
-	<network name="Traffic" max_ifaces="9"> 
+	<network name="Traffic" max_ifaces="9" mandatory="true"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<ui_mode_selection>
@@ -33,7 +33,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 			<appearance mode_type="passthrough" appear="pass-through"/>
 		</ui_mode_selection>
 	</network>
-	<network name="Bkp" max_ifaces="2"> 
+	<network name="Bkp" max_ifaces="2" mandatory="false"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 	</network>
@@ -78,12 +78,12 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </ram>
   <networks>
     <configure>true</configure>
-	<network name="Management" max_ifaces="1">
+	<network name="Management" max_ifaces="1" mandatory="true">
 	    <mode type="bridged" vnic_driver="e1000"/>
 		<mode type="direct" vnic_driver="e1000"/>
 		<ui_mode_selection enable="false"/>
 	</network>
-	<network name="Traffic" max_ifaces="9"> 
+	<network name="Traffic" max_ifaces="9" mandatory="true"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<mode type="direct"/>
@@ -92,7 +92,7 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 			<appearance mode_type="passthrough" appear="passthrough"/>
 		</ui_mode_selection>
 	</network>
-	<network name="Bkp" max_ifaces="2"> 
+	<network name="Bkp" max_ifaces="2" mandatory="true"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 	</network>

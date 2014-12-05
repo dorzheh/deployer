@@ -49,7 +49,7 @@ func TestSetNetworkDataDirect(t *testing.T) {
 		},
 	}
 
-	nics := []*xmlinput.Allow{&xmlinput.Allow{Vendor: "Broadcom", Model: "", Mode: "direct"}}
+	nics := []*xmlinput.Allow{&xmlinput.Allow{Vendor: "Broadcom", Model: ""}}
 	d := new(meta)
 	str, err := d.SetNetworkData(info, nics, "")
 	if err != nil {

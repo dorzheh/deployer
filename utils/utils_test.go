@@ -15,7 +15,7 @@ func TestProcessTemplate(t *testing.T) {
 	d := &data{
 		DomainName: "test",
 		MemorySize: 1000,
-		Cpus:       2,
+		CPUs:       2,
 	}
 	out, err := ProcessTemplate(str, d)
 	if err != nil {
@@ -29,5 +29,5 @@ var str = `
   <uuid></uuid>
   <memory>{{.MemorySize}}</memory>
   <currentMemory>{{.MemorySize}}</currentMemory>
-  <vcpu>{{.Cpus}}</vcpu>
+  <vcpu>{{.CPUs}}</vcpu>
 `

@@ -35,13 +35,11 @@ func StorageConfig(storageConfigFile, pathToMainImage string, configIndex image.
 	amountOfDisks := len(conf.Disks)
 	for ; amountOfDisks != 0; amountOfDisks-- {
 		if deviceIndex == 0 {
-			conf.Disks[deviceIndex].Path = pathToMainImage
+			conf.Disks[deviceIndex].Path = fmt.Sprintf("%s.%s", pathToMainImage, conf.Disks[deviceIndex].Type)
 		} else {
-			conf.Disks[deviceIndex].Path = fmt.Sprintf("%s_%d", pathToMainImage, deviceIndex)
+			conf.Disks[deviceIndex].Path = fmt.Sprintf("%s_%d.%s", pathToMainImage, deviceIndex, conf.Disks[deviceIndex].Type)
 		}
-
 		deviceIndex++
 	}
-
 	return conf, nil
 }

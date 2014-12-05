@@ -39,6 +39,14 @@ import (
 	"io/ioutil"
 )
 
+type StorageType string
+
+const (
+	StorageTypeRAW   StorageType = "raw"
+	StorageTypeQCOW2 StorageType = "qcow2"
+	StorageTypeVMDK  StorageType = "vmdk"
+)
+
 type ConfigIndex uint8
 
 type Storage struct {
@@ -51,6 +59,7 @@ type Config struct {
 
 type Disk struct {
 	Path        string
+	Type        StorageType  `xml:"storage_type"`
 	SizeGb      int          `xml:"size_gb"`
 	Bootable    bool         `xml:"bootable"`
 	FdiskCmd    string       `xml:"fdisk_cmd"`

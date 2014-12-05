@@ -45,7 +45,7 @@ type DefaultBundleTest struct {
 
 func TestParseConfig(t *testing.T) {
 
-	p, err := NewParserMock(xmlstream, new(DefaultBundleTest))
+	p, err := NewParserBuff(xmlstream, new(DefaultBundleTest))
 	if err != nil {
 		t.Fatal(err)
 	}

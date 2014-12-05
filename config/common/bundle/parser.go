@@ -33,7 +33,7 @@ func (p *Parser) Parse(d *deployer.CommonData, hidriver deployer.HostinfoDriver,
 	return p.strategy.Parse(d, hidriver, xid)
 }
 
-func NewParserMock(bundleConfigStream []byte, s BundleStrategy) (*Parser, error) {
+func NewParserBuff(bundleConfigStream []byte, s BundleStrategy) (*Parser, error) {
 	if s == nil {
 		return nil, errors.New("bundle strategy is nil")
 	}

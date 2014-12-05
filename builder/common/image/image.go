@@ -82,10 +82,13 @@ type Utils struct {
 func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config) (i *image, err error) {
 	i = new(image)
 	i.needToFormat = false
+	var qemuImgError string
+
 	if remoteConfig == nil {
 		i.run = utils.RunFunc(nil)
 		i.slashpath = rootfsMp
 		i.utils = bins
+		qemuImgError = "please install qemu-img"
 	} else {
 		i.run = utils.RunFunc(remoteConfig.Common)
 		i.client, err = sshfs.NewClient(remoteConfig)
@@ -102,6 +105,16 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 		if err = setUtilNewPaths(i, bins); err != nil {
 			return
 		}
+		qemuImgError = "please install qemu-img on remote host"
+	}
+
+	if config.Type != StorageTypeRAW {
+		if _, err = i.run("which qemu-img"); err != nil {
+			err = errors.New(qemuImgError)
+			return
+		}
+		// set temporary name
+		config.Path = strings.Replace(config.Path, "."+string(config.Type), "", -1)
 	}
 
 	i.config = config
@@ -206,6 +219,11 @@ func (i *image) Cleanup() error {
 		// remove mount point
 		if out, err := i.run("rm -rf " + i.localmount); err != nil {
 			return fmt.Errorf("%s [%v]", out, err)
+		}
+	}
+	if i.config.Type != StorageTypeRAW {
+		if err := i.convert(); err != nil {
+			return err
 		}
 	}
 	return nil
@@ -389,4 +407,20 @@ func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 	}
 	sort.Strings(mappers)
 	return mappers, nil
+}
+
+// convert is responsible for converting RAW image to other format
+func (i *image) convert() error {
+	// set the new path - append extention
+	newPath := fmt.Sprintf("%s.%s", i.config.Path, i.config.Type)
+	if out, err := i.run(fmt.Sprintf("qemu-img convert -f raw -O %s %s %s", i.config.Type, i.config.Path, newPath)); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
+	}
+	// remove temporary image
+	if out, err := i.run("rm -rf " + i.config.Path); err != nil {
+		return fmt.Errorf("%s [%v]", out, err)
+	}
+	// expose the new path
+	i.config.Path = newPath
+	return nil
 }

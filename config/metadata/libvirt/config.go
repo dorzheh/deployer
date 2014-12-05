@@ -48,6 +48,7 @@ const (
 
 type DiskData struct {
 	ImagePath         string
+	StorageType       image.StorageType
 	BlockDeviceSuffix string
 }
 
@@ -66,6 +67,7 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 	for i, disk := range conf.Disks {
 		d := new(DiskData)
 		d.ImagePath = disk.Path
+		d.StorageType = disk.Type
 		d.BlockDeviceSuffix = blockDevicesSuffix[i]
 		tempData, err := utils.ProcessTemplate(TmpltStorage, d)
 		if err != nil {

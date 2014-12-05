@@ -6,6 +6,8 @@ import (
 	"github.com/dorzheh/deployer/utils"
 )
 
+// ParseXMLInputFile is responsible for parsing a given configuration file
+// representing appropriate input data to a srtuctured form
 func ParseXMLInput(config string) (*XMLInputData, error) {
 	d, err := utils.ParseXMLFile(config, new(XMLInputData))
 	if err != nil {
@@ -17,7 +19,9 @@ func ParseXMLInput(config string) (*XMLInputData, error) {
 	return d.(*XMLInputData), nil
 }
 
-func ParseXMLInputMock(data []byte) (*XMLInputData, error) {
+// ParseXMLInputBuf is responsible for parsing a given stream of bytes
+// representing appropriate input data to a srtuctured form
+func ParseXMLInputBuf(data []byte) (*XMLInputData, error) {
 	d, err := utils.ParseXMLBuff(data, new(XMLInputData))
 	if err != nil {
 		return nil, err

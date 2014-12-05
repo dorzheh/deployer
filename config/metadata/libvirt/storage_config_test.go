@@ -11,6 +11,7 @@ var data = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <storage>
   <config>
 	 <disk>
+	 	<storage_type>qcow2</storage_type>
 	  	<size_gb>1</size_gb>
     	<bootable>true</bootable>
 	 	<fdisk_cmd>n\np\n1\n\n+800M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</fdisk_cmd>
@@ -36,20 +37,20 @@ var data = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 </storage>`)
 
 const expectedSetStorageData = `<disk type='file' device='disk'>
-	<driver name='qemu' type='raw' cache='none'/>
-	<source file='/var/lib/libvirt/images/maindisk'/>
+	<driver name='qemu' type='qcow2' cache='none'/>
+	<source file='/var/lib/libvirt/images/maindisk.qcow2'/>
 	<target dev='vda' bus='virtio'/>
 	</disk>
 
 <disk type='file' device='disk'>
-	<driver name='qemu' type='raw' cache='none'/>
-	<source file='/var/lib/libvirt/images/maindisk_1'/>
+	<driver name='qemu' type='qcow2' cache='none'/>
+	<source file='/var/lib/libvirt/images/maindisk_1.qcow2'/>
 	<target dev='vdb' bus='virtio'/>
 	</disk>
 
 <disk type='file' device='disk'>
-	<driver name='qemu' type='raw' cache='none'/>
-	<source file='/var/lib/libvirt/images/maindisk_2'/>
+	<driver name='qemu' type='qcow2' cache='none'/>
+	<source file='/var/lib/libvirt/images/maindisk_2.qcow2'/>
 	<target dev='vdc' bus='virtio'/>
 	</disk>
 `
