@@ -19,3 +19,12 @@ func TestEmulator(t *testing.T) {
 	}
 	fmt.Printf("DEBUG: i686 emulator => %s\n", emu)
 }
+
+func TestVersion(t *testing.T) {
+	d := NewDriver(nil)
+	v, err := d.Version()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("DEBUG: driver version => %s\n", v)
+}

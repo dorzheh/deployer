@@ -28,6 +28,10 @@ type Driver interface {
 
 	// Returns path to emulator(QEMU for example).
 	Emulator(arch string) (string, error)
+
+	// Returns driver version (for example if the driver is libvirt the function
+	// will return libvirt API version)
+	Version() (string, error)
 }
 
 // HostinfoDriver is the interface that has to be implemented in order to

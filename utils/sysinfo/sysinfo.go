@@ -1,0 +1,51 @@
+package sysinfo
+
+// This package provides required methods gathering system information.
+// For example, comparing kernel version if  multiqueue support
+// in virtio network driver is required.
+
+import (
+	"fmt"
+
+	"github.com/dorzheh/deployer/utils"
+	ssh "github.com/dorzheh/infra/comm/common"
+)
+
+type Parser struct {
+	run func(string) (string, error)
+}
+
+func NewParser(config *ssh.Config) *Parser {
+	p := new(Parser)
+	p.run = utils.RunFunc(config)
+	return p
+}
+
+func (p *Parser) KernelVersion() (string, error) {
+	return p.run("uname -r")
+}
+
+func (p *Parser) KernelMajorMinorEqualOrGreaterThan(other string) bool {
+	current, err := p.KernelVersion()
+	if err != nil {
+		return false
+	}
+
+	var curMaj int
+	var curMin int
+	fmt.Sscanf(current, "%d.%d", &curMaj, &curMin)
+
+	var otherMaj int
+	var otherMin int
+	fmt.Sscanf(other, "%d.%d", &otherMaj, &otherMin)
+
+	switch {
+	case curMaj > otherMaj:
+		return true
+	case curMaj == otherMaj:
+		if curMin >= otherMin {
+			return true
+		}
+	}
+	return false
+}
