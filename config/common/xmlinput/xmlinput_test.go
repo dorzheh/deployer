@@ -27,8 +27,9 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<!-- template_name is the name of your template file and -->
 		<!-- dir is where your file is located -->
 		<!-- in order to be able provide the path further set dir=""-->
-		<template name="mngmnt_network.tmplt" dir="/opt/mytemplates"/>
-	    <mode type="bridged" vnic_driver="e1000"/>
+	    <mode type="bridged" vnic_driver="e1000">
+	    	 <template file_name="mngmnt_network.tmplt" dir="/opt/mytemplates"/>
+	    </mode>
 		<mode type="direct" vnic_driver="e1000"/>
 	</network>
 	<network name="Traffic" max_ifaces="9" mandatory="true"> 

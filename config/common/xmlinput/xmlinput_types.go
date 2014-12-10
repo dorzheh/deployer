@@ -4,6 +4,7 @@ type ConnectionMode string
 
 const (
 	ConTypeBridged     ConnectionMode = "bridged"
+	ConTypeOVS                        = "ovs"
 	ConTypeDirect                     = "direct"
 	ConTypePassthrough                = "passthrough"
 	ConTypeError                      = "error"
@@ -34,7 +35,6 @@ type Network struct {
 	Name          string        `xml:"name,attr"`
 	MaxIfaces     uint          `xml:"max_ifaces,attr"`
 	Mandatory     bool          `xml:"mandatory,attr"`
-	Tmplt         *Template     `xml:"template"`
 	Modes         []*Mode       `xml:"mode"`
 	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
 }
@@ -52,6 +52,7 @@ type Template struct {
 type Mode struct {
 	Type       ConnectionMode `xml:"type,attr"`
 	VnicDriver string         `xml:"vnic_driver,attr"`
+	Tmplt      *Template      `xml:"template"`
 }
 
 type Appearance struct {

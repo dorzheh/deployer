@@ -156,17 +156,17 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	return c, nil
 }
 
-func ProcessNetworkTemplate(network *xmlinput.Network, defaultTemplate string, tmpltData interface{}, templatesDir string) (string, error) {
+func ProcessNetworkTemplate(mode *xmlinput.Mode, defaultTemplate string, tmpltData interface{}, templatesDir string) (string, error) {
 	var customTemplate string
 
-	if network.Tmplt == nil {
+	if mode.Tmplt == nil {
 		customTemplate = defaultTemplate
 	} else {
 		var templatePath string
 		if templatesDir != "" {
-			templatePath = filepath.Join(templatesDir, network.Tmplt.FileName)
+			templatePath = filepath.Join(templatesDir, mode.Tmplt.FileName)
 		} else {
-			templatePath = filepath.Join(network.Tmplt.Dir, network.Tmplt.FileName)
+			templatePath = filepath.Join(mode.Tmplt.Dir, mode.Tmplt.FileName)
 		}
 
 		buf, err := ioutil.ReadFile(templatePath)

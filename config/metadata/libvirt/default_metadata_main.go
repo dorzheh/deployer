@@ -7,7 +7,6 @@ var defaultMetdata = []byte(`<domain type='kvm'>
   <currentMemory>{{.RAM}}</currentMemory>
    <cpu mode='custom' match='exact'>
     <model fallback='allow'>Westmere</model>
-    <feature policy='require' name='pdpe1gb'/>
   </cpu>
   <vcpu>{{.CPUs}}</vcpu>
   <os>

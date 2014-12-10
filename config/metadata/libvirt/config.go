@@ -113,7 +113,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 				switch port.Type {
 				case hwinfo.NicTypePhys:
 					if mode.Type == xmlinput.ConTypePassthrough || mode.Type == xmlinput.ConTypeDirect {
-						out, err := treatPhysical(port, mode, network, templatesDir)
+						out, err := treatPhysical(port, mode, templatesDir)
 						if err != nil {
 							return "", err
 						}
@@ -121,8 +121,8 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 					}
 
 				case hwinfo.NicTypeOVS:
-					if mode.Type == xmlinput.ConTypeBridged {
-						tempData, err := metadata.ProcessNetworkTemplate(network, TmpltBridgedOVS,
+					if mode.Type == xmlinput.ConTypeOVS {
+						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridgedOVS,
 							&BridgedOVSData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
 							return "", err
@@ -132,7 +132,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 
 				case hwinfo.NicTypeBridge:
 					if mode.Type == xmlinput.ConTypeBridged {
-						tempData, err := metadata.ProcessNetworkTemplate(network, TmpltBridged,
+						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridged,
 							&BridgedData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
 							return "", err
@@ -160,7 +160,7 @@ func ProcessTemplatePassthrough(pci string) (string, error) {
 	return string(data), nil
 }
 
-func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, network *xmlinput.Network, templatesDir string) (string, error) {
+func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, templatesDir string) (string, error) {
 	var err error
 	var tempData string
 
@@ -170,7 +170,7 @@ func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, network *xmlinput.Netw
 			return "", err
 		}
 	case xmlinput.ConTypeDirect:
-		if tempData, err = metadata.ProcessNetworkTemplate(network, TmpltDirect,
+		if tempData, err = metadata.ProcessNetworkTemplate(mode, TmpltDirect,
 			&DirectData{port.Name, mode.VnicDriver}, templatesDir); err != nil {
 			return "", err
 		}
