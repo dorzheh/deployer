@@ -16,7 +16,7 @@ func TestKernelVersion(t *testing.T) {
 
 func TestMajorMinorEqualOrGreaterThan(t *testing.T) {
 	p := NewParser(nil)
-	if p.MajorMinorEqualOrGreaterThan("3.20.0-39-generic") {
+	if p.KernelMajorMinorEqualOrGreaterThan("3.20.0-39-generic") {
 		fmt.Println("true")
 	} else {
 		fmt.Println("false")
