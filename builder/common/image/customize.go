@@ -57,8 +57,7 @@ const (
 )
 
 const (
-	INJ_TYPE_ALTEON_CONFIG = iota
-	INJ_TYPE_FILE
+	INJ_TYPE_FILE = iota
 	INJ_TYPE_DIR
 	INJ_TYPE_QUIT
 )
@@ -220,7 +219,6 @@ func packageManip(pathToXml, pathToSlash string) error {
 
 // injectStuff modifies a RAW image "on-the-fly"
 // by injecting appropriate stuff to the mounted vHDD
-// Also eligable for a "software only" Alteon installation
 // 1) it receives src and dst directories paths
 // 2) it looks for a file inject.config inside the src directory
 // 3) in case the file found parses it and inject appropriate stuff
@@ -229,7 +227,7 @@ func packageManip(pathToXml, pathToSlash string) error {
 //<inject_items>
 //	<inject_item>
 //      <name>file1</name>
-//	 	<bkp_name>file1.adcva</bkp_name>
+//	 	<bkp_name>file1.bkp</bkp_name>
 //	  	<action>upload</action>
 //      <type>file</type>
 // 		<location>/opt</location>
@@ -455,7 +453,7 @@ func serviceManip(pathToXml, pathToSlash string) error {
 //<files>
 //	<file>
 //		<path>/etc/sysconfig/selinux</path>
-//		<bkp_name>/etc/sysconfig/selinux.adcva</bkp_name>
+//		<bkp_name>/etc/sysconfig/selinux.bkp</bkp_name>
 //		<action>replace</action>
 //		<old_pattern>SELINUX=\S+</old_pattern>
 //		<new_pattern>SELINUX=disabled</new_pattern>
