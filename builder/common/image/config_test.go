@@ -16,6 +16,7 @@ var data = []byte(`<?xml version="1.0" encoding="UTF-8"?>
    	    <description>Topology for release xxxx</description>
   	 	<partition>
 	 	    <sequence>1</sequence>
+	 	    <boot_flag>true</boot_flag>
 	 	    <size_mb>3045</size_mb>
    	    	<label>SLASH</label>
    	    	<mount_point>/</mount_point>

@@ -13,17 +13,18 @@ const (
 	rootfsMp  = "/tmp/mnt"
 )
 
-const storage = `<?xml version="1.0" encoding="UTF-8"?>
+var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 <storage>
   <config>
 	<disk>
 		<storage_type>qcow2</storage_type>
         <size_gb>1</size_gb>
         <bootable>true</bootable>
-        <fdisk_cmd>o\nn\np\n1\n\n+800M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</fdisk_cmd>
+        <fdisk_cmd></fdisk_cmd>
         <description>Test configuration</description>
         <partition>
            <sequence>1</sequence>
+           <boot_flag>true</boot_flag>
            <size_mb>800</size_mb>
            <label>SLASH</label>
            <mount_point>/</mount_point>
@@ -32,7 +33,7 @@ const storage = `<?xml version="1.0" encoding="UTF-8"?>
         </partition>
         <partition>
            <sequence>2</sequence>
-           <size_mb>2024</size_mb>
+           <size_mb>-1</size_mb>
            <label>SWAP</label>
            <mount_point>SWAP</mount_point>
            <file_system>swap</file_system>
@@ -41,7 +42,7 @@ const storage = `<?xml version="1.0" encoding="UTF-8"?>
 	</disk>
   </config>
 </storage>
-`
+`)
 
 var u = &Utils{
 	Grub:   "/tmp/grub",
@@ -49,7 +50,7 @@ var u = &Utils{
 }
 
 func getConfig() (*Config, error) {
-	p, err := ParseConfig([]byte(storage))
+	p, err := ParseConfig(storage)
 	if err != nil {
 		return nil, err
 	}

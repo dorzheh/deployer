@@ -280,6 +280,10 @@ func (i *image) bind() (loopDevice string, err error) {
 
 // partTable creates partition table on the RAW disk
 func (i *image) partTableMakefs() error {
+	if i.config.FdiskCmd == "" {
+		i.generateFdiskCmd()
+	}
+
 	i.run(fmt.Sprintf("echo -e  \"%s\"|%s %s", i.config.FdiskCmd, "fdisk", i.loopDevice.name))
 	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
@@ -307,6 +311,47 @@ func (i *image) partTableMakefs() error {
 		}
 	}
 	return nil
+}
+
+// generateFdiskCmd constructs a command to be used by fdisk utility
+// to create partition table on our disk
+func (i *image) generateFdiskCmd() {
+	// extended partiotion sequence number
+	extendedPart := 4
+	// total amount of partitions
+	amountOfPartitions := len(i.config.Partitions)
+
+	// header of the command
+	i.config.FdiskCmd = `o\n`
+	for _, part := range i.config.Partitions {
+		switch {
+		// in case we are treating the last partition and need to allocate all the space left for it
+		case part.Sequence == amountOfPartitions && part.SizeMb == -1:
+			i.config.FdiskCmd += `n\n\n\n\n\n`
+		// in case we are treating a primary partition
+		case part.Sequence < extendedPart:
+			i.config.FdiskCmd += fmt.Sprintf(`n\np\n%d\n\n+%dM\n`, part.Sequence, part.SizeMb)
+		// in case partition sequence is 4 - create extended partiton and treat the partition
+		// with sequence 4 as a logical drive
+		case part.Sequence == extendedPart:
+			i.config.FdiskCmd += fmt.Sprintf(`n\ne\n\n\n\n+%dM\n`, part.SizeMb)
+		// default behaviour
+		default:
+			i.config.FdiskCmd += fmt.Sprintf(`n\n\n+%dM\n`, part.SizeMb)
+		}
+
+		// if this partitiona supposed to be "active"
+		if part.BootFlag {
+			i.config.FdiskCmd += fmt.Sprintf(`a\n%d\n`, part.Sequence)
+		}
+		// swap partition
+		if strings.ToLower(part.FileSystem) == "swap" {
+			i.config.FdiskCmd += fmt.Sprintf(`t\n%d\n82\n`, part.Sequence)
+		}
+
+	}
+	// write changes
+	i.config.FdiskCmd += `w`
 }
 
 // addMappers registers appropriate mappers

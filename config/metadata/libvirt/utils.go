@@ -19,7 +19,6 @@ func MultiQueueSupported(sshconfig *ssh.Config) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		println(curVersion, multiQueueLibvirtVersion)
 		if curVersion >= multiQueueLibvirtVersion {
 			return true, nil
 		}

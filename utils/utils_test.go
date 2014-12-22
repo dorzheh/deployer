@@ -8,7 +8,7 @@ import (
 type data struct {
 	DomainName string
 	MemorySize uint
-	Cpus       uint
+	CPUs       uint
 }
 
 func TestProcessTemplate(t *testing.T) {

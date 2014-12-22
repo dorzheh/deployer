@@ -68,7 +68,8 @@ type Disk struct {
 }
 
 type Partition struct {
-	Sequence       string `xml:"sequence"`
+	Sequence       int    `xml:"sequence"`
+	BootFlag       bool   `xml: "boot_flag"`
 	SizeMb         int    `xml:"size_mb"`
 	Label          string `xml:"label"`
 	MountPoint     string `xml:"mount_point"`
