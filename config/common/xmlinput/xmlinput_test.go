@@ -31,6 +31,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	    	 <template file_name="mngmnt_network.tmplt" dir="/opt/mytemplates"/>
 	    </mode>
 		<mode type="direct" vnic_driver="e1000"/>
+        <mode type="ovs" vnic_driver="virtio"/>   
 	</network>
 	<network name="Traffic" max_ifaces="9" mandatory="true"> 
 		<mode type="bridged" vnic_driver="virtio"/>
@@ -58,6 +59,11 @@ func TestParseXMLInput(t *testing.T) {
 	d, err := ParseXMLInputBuf(xmldata)
 	if err != nil {
 		t.Fatal(err)
+	}
+	for _, n := range d.Networks {
+		for _, m := range n.Modes {
+			fmt.Printf("%v\n", m.Type)
+		}
 	}
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",

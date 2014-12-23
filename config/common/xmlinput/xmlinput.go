@@ -43,8 +43,7 @@ func verify(data *XMLInputData) error {
 					seenDirect = true
 				case ConTypePassthrough:
 					seenPassthrough = true
-				case ConTypeBridged:
-				case ConTypeOVS:
+				case ConTypeBridged, ConTypeOVS:
 				default:
 					return errors.New("unexpected mode " + string(mode.Type))
 				}

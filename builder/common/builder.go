@@ -48,16 +48,18 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}
 	// interrupt handler
 	img.ReleaseOnInterrupt()
-	defer func() error {
+	defer func() {
 		if err := img.Release(); err != nil {
-			return err
+			panic(err)
 		}
 		if b.ImageConfig.Bootable {
 			if err := img.MakeBootable(); err != nil {
-				return err
+				panic(err)
 			}
 		}
-		return img.Cleanup()
+		if err := img.Cleanup(); err != nil {
+			panic(err)
+		}
 	}()
 	// parse the image
 	if err := img.Parse(); err != nil {

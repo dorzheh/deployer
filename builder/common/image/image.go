@@ -185,7 +185,7 @@ func (i *image) Release() error {
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
-		mounted, err := mounted(i, i.loopDevice.mappers[index].name, i.loopDevice.mappers[index].mountPoint)
+		mounted, err := isMounted(i.loopDevice.mappers[index].name)
 		if err != nil {
 			return err
 		}
@@ -193,8 +193,9 @@ func (i *image) Release() error {
 			if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
 				return fmt.Errorf("%s [%v]", out, err)
 			}
-			i.loopDevice.amountOfMappers--
 		}
+		i.loopDevice.amountOfMappers--
+		index--
 	}
 	// unbind mappers and image
 	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
@@ -289,9 +290,7 @@ func (i *image) partTableMakefs() error {
 	if err != nil {
 		return err
 	}
-	if err := i.validatePconf(len(mappers)); err != nil {
-		return err
-	}
+
 	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
@@ -318,6 +317,8 @@ func (i *image) partTableMakefs() error {
 func (i *image) generateFdiskCmd() {
 	// extended partiotion sequence number
 	extendedPart := 4
+	// first logical drive
+	logicalDrive := 5
 	// total amount of partitions
 	amountOfPartitions := len(i.config.Partitions)
 
@@ -327,7 +328,14 @@ func (i *image) generateFdiskCmd() {
 		switch {
 		// in case we are treating the last partition and need to allocate all the space left for it
 		case part.Sequence == amountOfPartitions && part.SizeMb == -1:
-			i.config.FdiskCmd += `n\n\n\n\n\n`
+			if part.Sequence > extendedPart {
+				i.config.FdiskCmd += fmt.Sprintf(`n\nl\n%d\n\n\n`, logicalDrive)
+				logicalDrive++
+			} else if part.Sequence < extendedPart {
+				i.config.FdiskCmd += fmt.Sprintf(`n\np\n%d\n\n\n`, part.Sequence)
+			} else if part.Sequence == extendedPart {
+				i.config.FdiskCmd += `n\np\n\n\n`
+			}
 		// in case we are treating a primary partition
 		case part.Sequence < extendedPart:
 			i.config.FdiskCmd += fmt.Sprintf(`n\np\n%d\n\n+%dM\n`, part.Sequence, part.SizeMb)
@@ -339,7 +347,6 @@ func (i *image) generateFdiskCmd() {
 		default:
 			i.config.FdiskCmd += fmt.Sprintf(`n\n\n+%dM\n`, part.SizeMb)
 		}
-
 		// if this partitiona supposed to be "active"
 		if part.BootFlag {
 			i.config.FdiskCmd += fmt.Sprintf(`a\n%d\n`, part.Sequence)
@@ -348,7 +355,6 @@ func (i *image) generateFdiskCmd() {
 		if strings.ToLower(part.FileSystem) == "swap" {
 			i.config.FdiskCmd += fmt.Sprintf(`t\n%d\n82\n`, part.Sequence)
 		}
-
 	}
 	// write changes
 	i.config.FdiskCmd += `w`
@@ -358,9 +364,6 @@ func (i *image) generateFdiskCmd() {
 func (i *image) addMappers() error {
 	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
-		return err
-	}
-	if err := i.validatePconf(len(mappers)); err != nil {
 		return err
 	}
 	for index, part := range i.config.Partitions {
@@ -382,7 +385,7 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
 	// check if the volume is already mounted
-	mounted, err := mounted(i, mapperDeviceName, mountPoint)
+	mounted, err := isMounted(mapperDeviceName)
 	if err != nil {
 		return err
 	}
@@ -400,15 +403,6 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 	)
 	// advance amount of mappers
 	i.loopDevice.amountOfMappers++
-	return nil
-}
-
-// validatePconf is responsible for platform configuration file validation
-func (i *image) validatePconf(amountOfMappers int) error {
-	if amountOfMappers != len(i.config.Partitions) {
-		return fmt.Errorf("amount of partitions defined = %v, actual amount is %v",
-			len(i.config.Partitions), amountOfMappers)
-	}
 	return nil
 }
 
@@ -461,7 +455,7 @@ func (i *image) convert() error {
 	if out, err := i.run(fmt.Sprintf("qemu-img convert -f raw -O %s %s %s", i.config.Type, i.config.Path, newPath)); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
-	// remove temporary image
+	//remove temporary image
 	if out, err := i.run("rm -rf " + i.config.Path); err != nil {
 		return fmt.Errorf("%s [%v]", out, err)
 	}
