@@ -40,9 +40,15 @@ func NicsByType(nics hwinfo.NICList, types []xmlinput.ConnectionMode) (hwinfo.NI
 		for _, nic := range nics {
 			switch contype {
 			case xmlinput.ConTypeBridged:
-				if nic.Type == hwinfo.NicTypeBridge || nic.Type == hwinfo.NicTypeOVS {
+				if nic.Type == hwinfo.NicTypeBridge {
 					list.Add(nic)
 				}
+
+			case xmlinput.ConTypeOVS:
+				if nic.Type == hwinfo.NicTypeOVS {
+					list.Add(nic)
+				}
+
 			case xmlinput.ConTypeDirect:
 				if nic.Type == hwinfo.NicTypePhys {
 					list.Add(nic)

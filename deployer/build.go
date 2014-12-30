@@ -2,6 +2,7 @@ package deployer
 
 import (
 	"runtime"
+	"time"
 )
 
 // BuildProgress is responsible for running appropriate builders
@@ -39,7 +40,12 @@ func Build(builders []Builder) ([]Artifact, error) {
 	ch := make(chan *buildResult, len(builders))
 	defer close(ch)
 
+	dur, err := time.ParseDuration("1s")
+	if err != nil {
+		return nil, err
+	}
 	for _, b := range builders {
+		time.Sleep(dur)
 		go func(b Builder) {
 			artifact, err := b.Run()
 			// Forwards created artifact to the channel.
