@@ -185,14 +185,8 @@ func (i *image) Release() error {
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
-		mounted, err := isMounted(i.loopDevice.mappers[index].name)
-		if err != nil {
-			return err
-		}
-		if mounted {
-			if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
-				return fmt.Errorf("%s [%v]", out, err)
-			}
+		if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
+			return fmt.Errorf("%s [%v]", out, err)
 		}
 		i.loopDevice.amountOfMappers--
 		index--
