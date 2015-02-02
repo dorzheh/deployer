@@ -13,14 +13,12 @@ import (
 	"github.com/clbanning/mxj"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
-	"github.com/dorzheh/infra/utils/lshw"
 )
 
 type Parser struct {
 	run       func(string) (string, error)
 	parse     func() error
 	cacheFile string
-	cmd       string
 }
 
 // NewParser constructs new lshw parser
@@ -37,7 +35,7 @@ func (i *Parser) Parse() error {
 	if err := i.parse(); err != nil {
 		return utils.FormatError(err)
 	}
-	out, err := i.run(i.cmd)
+	out, err := i.run("lshw -class network -class cpu -json")
 	if err != nil {
 		return utils.FormatError(err)
 	}
@@ -271,12 +269,6 @@ func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func(
 				lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
 			}
 		}
-		lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
-		l, err := lshw.New(lshwpath, lshwconf)
-		if err != nil {
-			return utils.FormatError(err)
-		}
-		i.cmd = l.Cmd()
 		i.cacheFile = cacheFile
 		return nil
 	}
