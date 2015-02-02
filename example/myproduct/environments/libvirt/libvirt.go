@@ -14,6 +14,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	myprodcommon "github.com/dorzheh/deployer/example/myproduct/common"
 	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt"
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/comm/sshfs"
 )
 
@@ -35,10 +36,10 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 	data.StorageConfigFile = c.StorageConfigFile
 	data.BundleParser, err = bundle.NewParser(c.BundleConfigFile, new(bundle.DefaultBundle))
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	if c.config, err = libvirtconf.CreateConfig(d, data); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 
 	return myprodcommon.NameToType(d.Ui, c.config.Bundle["name"].(string))

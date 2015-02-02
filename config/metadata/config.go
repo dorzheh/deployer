@@ -40,8 +40,8 @@ type InputData struct {
 // by the template library and used by Libvirt XML metadata
 type Metadata struct {
 	DomainName   string
-	CPUs         uint
-	RAM          uint
+	CPUs         int
+	RAM          int
 	EmulatorPath string
 	Storage      string
 	Networks     string
@@ -78,15 +78,15 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	c.DestMetadataFile = filepath.Join(c.ExportDir, d.VaName+"-metadata")
 	// always create default metadata
 	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	xid, err := xmlinput.ParseXMLInput(i.InputDataConfigFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	if err := gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	var storageConfigIndex image.ConfigIndex = 0
@@ -94,63 +94,52 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	if i.BundleParser != nil {
 		m, err = i.BundleParser.Parse(d, c.Hwdriver, xid)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 		if m != nil {
 			c.Bundle = m
-			c.Metadata.CPUs = m["cpus"].(uint)
-			c.Metadata.RAM = m["ram"].(uint) * 1024
+			c.Metadata.CPUs = m["cpus"].(int)
+			c.Metadata.RAM = m["ram_mb"].(int) * 1024
 			storageConfigIndex = m["storage_config_index"].(image.ConfigIndex)
 		}
 	}
+
+	var conf *gui.VmConfig
 	if m == nil {
-		if xid.CPU.Configure {
-			cpus, err := c.Hwdriver.CPUs()
-			if err != nil {
-				return nil, err
-			}
-			c.Metadata.CPUs = gui.UiCPUs(d.Ui, cpus, xid.CPU.Default, xid.CPU.Min, xid.CPU.Max)
-		} else if xid.CPU.Default > 0 {
-			c.Metadata.CPUs = xid.CPU.Default
+		conf, err = gui.UiVmConfig(d.Ui, c.Hwdriver, xid)
+		if err != nil {
+			return nil, utils.FormatError(err)
 		}
-		if xid.RAM.Configure {
-			ram, err := c.Hwdriver.RAMSize()
-			if err != nil {
-				return nil, err
-			}
-			c.Metadata.RAM = gui.UiRAMSize(d.Ui, ram, xid.RAM.Default, xid.RAM.Min, xid.RAM.Max)
-			c.Metadata.RAM *= 1024
-		} else if xid.RAM.Default > 0 {
-			c.Metadata.RAM = xid.RAM.Default * 1024
-		}
+		c.Metadata.CPUs = conf.CPUs
+		c.Metadata.RAM = conf.RamMb * 1024
 	}
 
 	// imagePath is a path to the main disk of the appliance.In case the appliance needs more than a single disk,
 	// appropriate suffix will be added to each disk.For example, if path to the main disk is /mypath/disk
 	// and the guest will be equipped with 3 disks , upcoming disks will be /mypath/disk_1 and /mypath/disk_2
 	imagePath := filepath.Join(c.ExportDir, d.VaName)
-	c.StorageConfig, err = common.StorageConfig(i.StorageConfigFile, imagePath, storageConfigIndex)
+	c.StorageConfig, err = common.StorageConfig(i.StorageConfigFile, imagePath, storageConfigIndex, conf.DisksMb)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	c.Metadata.Storage, err = metaconf.SetStorageData(c.StorageConfig, i.TemplatesDir)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
-	if xid.Nets.Configure {
+	if xid.Networks.Configure {
 		nics, err := hwfilter.GetAllowedNICs(xid, c.Hwdriver)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 		nets, err := gui.UiNetworks(d.Ui, xid, nics)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 
 		c.Metadata.Networks, err = metaconf.SetNetworkData(nets, i.TemplatesDir)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 	}
 	return c, nil
@@ -171,14 +160,14 @@ func ProcessNetworkTemplate(mode *xmlinput.Mode, defaultTemplate string, tmpltDa
 
 		buf, err := ioutil.ReadFile(templatePath)
 		if err != nil {
-			return "", err
+			return "", utils.FormatError(err)
 		}
 		customTemplate = string(buf)
 	}
 
 	tempData, err := utils.ProcessTemplate(customTemplate, tmpltData)
 	if err != nil {
-		return "", err
+		return "", utils.FormatError(err)
 	}
 	return string(tempData) + "\n", nil
 }

@@ -30,12 +30,12 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 		if f.PathToInjectDir != "" {
 			if err := utils.RunPrePostScripts(filepath.Join(f.PathToInjectDir,
 				"pre-deploy-scripts"), utils.PRE_SCRIPTS); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		}
 	} else {
 		if err := archutils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	if f.PathToKernelModulesArchive != "" && f.PathToKernelArchive != "" {
@@ -49,23 +49,23 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 			errCh <- archutils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
 		}()
 		if err := utils.WaitForResult(errCh, 2); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 
 		modulesDir, err := filepath.Glob(filepath.Join(pathToRootfsMp, "lib/modules/*"))
 		if err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 		if len(modulesDir) == 0 {
-			return errors.New("modules not found")
+			return utils.FormatError(errors.New("modules not found"))
 		}
 
 		kernelVersion := filepath.Base(modulesDir[0])
 		if err := os.Symlink("/boot/vmlinuz-"+kernelVersion, filepath.Join(pathToRootfsMp, "vmlinuz")); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 		if err := os.Symlink("/boot/initrd.img-"+kernelVersion, filepath.Join(pathToRootfsMp, "initrd.img")); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 
@@ -74,12 +74,12 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 	fd, err := os.Stat(pathToCommonDir)
 	if err == nil && fd.IsDir() {
 		if err := image.Customize(pathToRootfsMp, pathToCommonDir); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	if f.PathToInjectDir != "" {
 		if err := image.Customize(pathToRootfsMp, f.PathToInjectDir); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	return nil
@@ -88,7 +88,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 // InstallApp is responsible for application installation
 func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
 	if err := archutils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	if f.ExtractApplImage {
 		return extractApplImage(pathToRootfsMp)
@@ -99,10 +99,10 @@ func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
 // extractApplImage is responsible for extracting application image
 func extractApplImage(pathRootMp string) error {
 	if err := os.Chdir(filepath.Join(pathRootMp, "/mnt/cf")); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	if err := exec.Command("/bin/bash", "-c", "./Myappl*").Run(); err != nil {
-		return fmt.Errorf("extracting application image : %v", err.Error())
+		return utils.FormatError(fmt.Errorf("extracting application image : %v", err.Error()))
 	}
 	return os.Chdir("/")
 }

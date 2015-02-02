@@ -11,6 +11,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/utils/ioutils"
 )
 
@@ -131,28 +132,28 @@ func Customize(pathToSlash, pathToPlatformDir string) error {
 	pathToXml := pathToPlatformDir + "/packages.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := packageManip(pathToXml, pathToSlash); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	// inject appropriate stuff
 	pathToXml = pathToPlatformDir + "/inject_items.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := injectManip(pathToXml, pathToSlash); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	// services manipulation
 	pathToXml = pathToPlatformDir + "/services.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := serviceManip(pathToXml, pathToSlash); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	// file content modification
 	pathToXml = pathToPlatformDir + "/files_content.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := filesContentManip(pathToXml, pathToSlash); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	return nil
@@ -176,12 +177,12 @@ func packageManip(pathToXml, pathToSlash string) error {
 	// read the XML file to a buffer
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	// parse the data structure
 	pkgsStruct := Packages{}
 	if err := xml.Unmarshal(dataBuf, &pkgsStruct); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	var pkgCmd string
 	// iterate over the slice and treat each entry (package)
@@ -192,7 +193,7 @@ func packageManip(pathToXml, pathToSlash string) error {
 		case PKG_TYPE_DEB:
 			pkgCmd = "apt-get"
 		default:
-			return errors.New("unsupported package format")
+			return utils.FormatError(errors.New("unsupported package format"))
 		}
 		var action string
 		switch val.Action {
@@ -201,16 +202,16 @@ func packageManip(pathToXml, pathToSlash string) error {
 		case ACTION_REMOVE:
 			action = ACTION_REMOVE
 		default:
-			return errors.New("unsupported package manip action")
+			return utils.FormatError(errors.New("unsupported package manip action"))
 		}
 		if val.Chroot {
 			if err := exec.Command("chroot", pathToSlash,
 				pkgCmd, "-y", action, val.Name).Run(); err != nil {
-				return fmt.Errorf("chroot %s %s -y %s %s", pathToSlash, pkgCmd, action, val.Name)
+				return utils.FormatError(fmt.Errorf("chroot %s %s -y %s %s", pathToSlash, pkgCmd, action, val.Name))
 			}
 		} else {
 			if err := exec.Command(pkgCmd, "-y", action, val.Name).Run(); err != nil {
-				return fmt.Errorf("%s -y %s %s", pkgCmd, action, val.Name)
+				return utils.FormatError(fmt.Errorf("%s -y %s %s", pkgCmd, action, val.Name))
 			}
 		}
 	}
@@ -239,11 +240,11 @@ func packageManip(pathToXml, pathToSlash string) error {
 func injectManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	itemsStruct := InjectItems{}
 	if err := xml.Unmarshal(dataBuf, &itemsStruct); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	for _, val := range itemsStruct.InjItems {
 		baseDir := filepath.Dir(pathToXml)
@@ -255,12 +256,12 @@ func injectManip(pathToXml, pathToSlash string) error {
 		case ACTION_REMOVE:
 			if val.BkpName == "" {
 				if err := ioutils.RemoveIfExists(true, dstPath); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 			} else {
 				if _, err := os.Stat(dstPath); err == nil {
 					if err := os.Rename(dstPath, dstBkpPath); err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 				}
 			}
@@ -270,25 +271,25 @@ func injectManip(pathToXml, pathToSlash string) error {
 				if err := ioutils.CreateDirRecursively(targetLocationPath, 0755,
 					val.UID, val.GID, false); err != nil {
 					if err != os.ErrExist {
-						return err
+						return utils.FormatError(err)
 					}
 				}
 				if val.Action == ACTION_UPLOAD {
 					if val.BkpName != "" {
 						if _, err := os.Stat(dstPath); err == nil {
 							if err := os.Rename(dstPath, dstBkpPath); err != nil {
-								return err
+								return utils.FormatError(err)
 							}
 						}
 					}
 					if err := ioutils.CopyFile(srcPath, dstPath, 0,
 						val.UID, val.GID, false); err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 				} else {
 					fd, err := os.Create(dstPath)
 					if err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 					fd.Close()
 				}
@@ -302,39 +303,39 @@ func injectManip(pathToXml, pathToSlash string) error {
 			case ITEM_TYPE_DIR:
 				if err := ioutils.CreateDirRecursively(filepath.Join(targetLocationPath, val.Name),
 					val.Permissions, val.UID, val.GID, false); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if val.Action == ACTION_UPLOAD {
 					if val.BkpName != "" {
 						if _, err := os.Stat(dstPath); err == nil {
 							if err := os.Rename(dstPath, dstBkpPath); err != nil {
-								return err
+								return utils.FormatError(err)
 							}
 						}
 					}
 					if err := ioutils.CopyDir(srcPath, dstPath); err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 				}
 			case ITEM_TYPE_LINK:
 				if _, err := os.Stat(val.BkpName); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if err := ioutils.RemoveIfExists(false, dstPath); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if err := ioutils.CreateDirRecursively(targetLocationPath,
 					val.Permissions, val.UID, val.GID, false); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if err := os.Symlink(val.BkpName, dstPath); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 			default:
-				return errors.New("injectManip: configuration error - unexpected element type")
+				return utils.FormatError(errors.New("injectManip: configuration error - unexpected element type"))
 			}
 		default:
-			return errors.New("injectManip: configuration error - unexpected action")
+			return utils.FormatError(errors.New("injectManip: configuration error - unexpected action"))
 		}
 	}
 	return nil
@@ -369,11 +370,11 @@ func injectManip(pathToXml, pathToSlash string) error {
 func serviceManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	servicesStruct := Services{}
 	if err := xml.Unmarshal(dataBuf, &servicesStruct); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	for _, val := range servicesStruct.Srvcs {
 		// switch the service type
@@ -386,8 +387,8 @@ func serviceManip(pathToXml, pathToSlash string) error {
 						"chkconfig", "--list", val.Name).Run(); err == nil {
 						if err := exec.Command("chroot", pathToSlash,
 							"chkconfig", val.Name, val.Status).Run(); err != nil {
-							return fmt.Errorf("chroot %s chkconfig %s %s", pathToSlash,
-								val.Name, val.Status)
+							return utils.FormatError(fmt.Errorf("chroot %s chkconfig %s %s", pathToSlash,
+								val.Name, val.Status))
 						}
 					}
 				} else {
@@ -395,23 +396,23 @@ func serviceManip(pathToXml, pathToSlash string) error {
 						val.Name).Run(); err == nil {
 						if err := exec.Command("chkconfig", val.Name,
 							val.Status).Run(); err != nil {
-							return fmt.Errorf("chkconfig %s %s", val.Name, val.Status)
+							return utils.FormatError(fmt.Errorf("chkconfig %s %s", val.Name, val.Status))
 						}
 					}
 				}
 			default:
-				return errors.New(`ServiceManip :sysv:status configuration error - unsupported service status`)
+				return utils.FormatError(errors.New(`ServiceManip :sysv:status configuration error - unsupported service status`))
 			}
 			// switch appropriate action towards the service
 			switch val.Action {
 			case ACTION_STOP, ACTION_START, ACTION_RESTART, ACTION_RELOAD:
 				if err := exec.Command("service",
 					val.Name, val.Action).Run(); err != nil {
-					return fmt.Errorf("service %s %s", val.Name, val.Action)
+					return utils.FormatError(fmt.Errorf("service %s %s", val.Name, val.Action))
 				}
 			case "":
 			default:
-				return errors.New(`ServiceManip :sysv:action: configuration error - unsupported action ` + val.Action)
+				return utils.FormatError(errors.New(`ServiceManip :sysv:action: configuration error - unsupported action ` + val.Action))
 			}
 
 		case SVC_TYPE_UPSTART:
@@ -422,25 +423,25 @@ func serviceManip(pathToXml, pathToSlash string) error {
 			case SVC_STATUS_OFF:
 				if _, err := os.Stat(servicePath); err == nil {
 					if err := ioutil.WriteFile(dummyServicePath, []byte("manual"), 0644); err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 				}
 			case SVC_STATUS_ON:
 				if err := ioutils.RemoveIfExists(false, dummyServicePath); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 			default:
-				return errors.New(`configuration error - unsupported service status`)
+				return utils.FormatError(errors.New(`configuration error - unsupported service status`))
 			}
 			switch val.Action {
 			case ACTION_STOP, ACTION_START, ACTION_RESTART, ACTION_RELOAD:
 				if err := exec.Command("initctl", val.Name,
 					val.Action).Run(); err != nil {
-					return fmt.Errorf("initctl %s %s", val.Name, val.Action)
+					return utils.FormatError(fmt.Errorf("initctl %s %s", val.Name, val.Action))
 				}
 			case "":
 			default:
-				return errors.New(`ServiceManip : upstart :configuration error - unsupported action`)
+				return utils.FormatError(errors.New(`ServiceManip : upstart :configuration error - unsupported action`))
 			}
 		}
 	}
@@ -469,33 +470,33 @@ func serviceManip(pathToXml, pathToSlash string) error {
 func filesContentManip(pathToXml, pathToSlash string) error {
 	dataBuf, err := ioutil.ReadFile(pathToXml)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	fileContentStruct := FilesContent{}
 	if err := xml.Unmarshal(dataBuf, &fileContentStruct); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	for _, val := range fileContentStruct.FContent {
 		targetPath := filepath.Join(pathToSlash, val.Path)
 		if err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 		finfo, err := os.Stat(targetPath)
 		if err != nil {
 			continue
 		}
 		if val.NewPattern == "" {
-			return errors.New("configuration error - NewPattern is empty")
+			return utils.FormatError(errors.New("configuration error - NewPattern is empty"))
 		}
 		if val.BkpName != "" {
 			bkpFilePath := filepath.Join(pathToSlash, val.BkpName)
 			if err := ioutils.CopyFile(targetPath, bkpFilePath, 0, -1, -1, false); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		}
 		fd, err := os.OpenFile(targetPath, os.O_RDWR|os.O_APPEND, finfo.Mode())
 		if err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 		defer fd.Close()
 
@@ -503,18 +504,18 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 		// if we need to append to the file
 		case ACTION_APPEND:
 			if err := ioutils.AppendToFd(fd, val.NewPattern, val.NewPattern); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		// if we need to replace a pattern
 		case ACTION_REPLACE:
 			if val.OldPattern == "" {
-				return errors.New("configuration error - replace action is set but OldPattern is empty")
+				return utils.FormatError(errors.New("configuration error - replace action is set but OldPattern is empty"))
 			}
 			if err := ioutils.FindAndReplaceFd(fd, val.OldPattern, val.NewPattern); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		default:
-			return errors.New(`FilesContentManip:configuration error - unsupported action`)
+			return utils.FormatError(errors.New(`FilesContentManip:configuration error - unsupported action`))
 		}
 	}
 	return nil

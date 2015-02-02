@@ -3,6 +3,8 @@ package hwinfo
 import (
 	"fmt"
 	"sort"
+
+	"github.com/dorzheh/deployer/utils"
 )
 
 type NICList []*NIC
@@ -29,7 +31,7 @@ func (list NICList) SearchIndexByPCI(pciaddr string) (int, error) {
 	if i := sort.Search(len(list), f); list[i].PCIAddr == pciaddr {
 		return i, nil
 	}
-	return -1, fmt.Errorf("index for PCIAddr %s not found", pciaddr)
+	return -1, utils.FormatError(fmt.Errorf("index for PCIAddr %s not found", pciaddr))
 }
 
 func (list NICList) SearchIndexByName(name string) (int, error) {
@@ -40,7 +42,7 @@ func (list NICList) SearchIndexByName(name string) (int, error) {
 	if i := sort.Search(len(list), f); list[i].Name == name {
 		return i, nil
 	}
-	return -1, fmt.Errorf("index for Name %s not found", name)
+	return -1, utils.FormatError(fmt.Errorf("index for Name %s not found", name))
 }
 
 func (list NICList) Length() int {

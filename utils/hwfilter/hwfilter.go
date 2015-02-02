@@ -6,6 +6,7 @@ import (
 
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
@@ -13,7 +14,7 @@ func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDrive
 	allowedNics := hwinfo.NewNICList()
 	nics, err := hidriver.NICs()
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	for _, n := range nics {
 		if deniedNIC(n, &data.NICs) {
@@ -32,7 +33,7 @@ func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDrive
 func NicsByType(nics hwinfo.NICList, types []xmlinput.ConnectionMode) (hwinfo.NICList, bool, error) {
 	modePassthrough := false
 	if len(nics) == 0 {
-		return nil, modePassthrough, errors.New("nics of type hwinfo.NICList is empty")
+		return nil, modePassthrough, utils.FormatError(errors.New("nics of type hwinfo.NICList is empty"))
 	}
 
 	list := hwinfo.NewNICList()
@@ -61,7 +62,7 @@ func NicsByType(nics hwinfo.NICList, types []xmlinput.ConnectionMode) (hwinfo.NI
 				modePassthrough = true
 
 			default:
-				return nil, modePassthrough, errors.New("unexpected type " + string(contype))
+				return nil, modePassthrough, utils.FormatError(errors.New("unexpected type " + string(contype)))
 			}
 		}
 	}

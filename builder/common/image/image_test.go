@@ -18,14 +18,16 @@ var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   <config>
 	<disk>
 		<storage_type>qcow2</storage_type>
-        <size_gb>1</size_gb>
+        <size_mb>1024</size_mb>
         <bootable>true</bootable>
+        <bootloader>grub</bootloader>
         <fdisk_cmd></fdisk_cmd>
         <description>Test configuration</description>
         <partition>
            <sequence>1</sequence>
            <boot_flag>true</boot_flag>
            <size_mb>800</size_mb>
+           <size_percents>-1</size_percents>
            <label>SLASH</label>
            <mount_point>/</mount_point>
            <file_system>ext4</file_system>
@@ -34,6 +36,7 @@ var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
         <partition>
            <sequence>2</sequence>
            <size_mb>-1</size_mb>
+           <size_percents>-1</size_percents>
            <label>SWAP</label>
            <mount_point>SWAP</mount_point>
            <file_system>swap</file_system>
@@ -81,16 +84,20 @@ func TestLocalImage(t *testing.T) {
 		img.ReleaseOnInterrupt()
 
 		defer func() {
-			t.Log("=> Release")
-			if err := img.Release(); err != nil {
+			t.Log("=> CleanupPre")
+			if err := img.CleanupPre(); err != nil {
 				t.Fatal(err)
 			}
 			t.Log("=> MakeBootable")
 			if err := img.MakeBootable(); err != nil {
 				t.Fatal(err)
 			}
-			t.Log("=>Cleanup")
-			if err := img.Cleanup(); err != nil {
+			t.Log("=> Convert")
+			if err := img.Convert(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=>CleanupPost")
+			if err := img.CleanupPost(); err != nil {
 				t.Fatal(err)
 			}
 			t.Log("=> Remove")
@@ -134,16 +141,20 @@ func TestRemoteImage(t *testing.T) {
 		img.ReleaseOnInterrupt()
 
 		defer func() {
-			t.Log("=> Release")
-			if err := img.Release(); err != nil {
+			t.Log("=> CleanupPre")
+			if err := img.CleanupPre(); err != nil {
 				t.Fatal(err)
 			}
 			t.Log("=> MakeBootable")
 			if err := img.MakeBootable(); err != nil {
 				t.Fatal(err)
 			}
-			t.Log("=>Cleanup")
-			if err := img.Cleanup(); err != nil {
+			t.Log("=> Convert")
+			if err := img.Convert(); err != nil {
+				t.Fatal(err)
+			}
+			t.Log("=>CleanupPost")
+			if err := img.CleanupPost(); err != nil {
 				t.Fatal(err)
 			}
 			t.Log("=> Remove")

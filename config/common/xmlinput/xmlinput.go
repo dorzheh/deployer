@@ -11,10 +11,10 @@ import (
 func ParseXMLInput(config string) (*XMLInputData, error) {
 	d, err := utils.ParseXMLFile(config, new(XMLInputData))
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	if err := verify(d.(*XMLInputData)); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return d.(*XMLInputData), nil
 }
@@ -24,17 +24,17 @@ func ParseXMLInput(config string) (*XMLInputData, error) {
 func ParseXMLInputBuf(data []byte) (*XMLInputData, error) {
 	d, err := utils.ParseXMLBuff(data, new(XMLInputData))
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	if err := verify(d.(*XMLInputData)); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return d.(*XMLInputData), nil
 }
 
 func verify(data *XMLInputData) error {
-	if data.Nets.Configure {
-		for _, net := range data.Networks {
+	if data.Networks.Configure {
+		for _, net := range data.Networks.Configs {
 			seenDirect := false
 			seenPassthrough := false
 			for _, mode := range net.Modes {
@@ -45,11 +45,11 @@ func verify(data *XMLInputData) error {
 					seenPassthrough = true
 				case ConTypeBridged, ConTypeOVS:
 				default:
-					return errors.New("unexpected mode " + string(mode.Type))
+					return utils.FormatError(errors.New("unexpected mode " + string(mode.Type)))
 				}
 			}
 			if seenDirect && seenPassthrough {
-				return errors.New("either \"direct\" or \"passthrough\" permitted")
+				return utils.FormatError(errors.New("either \"direct\" or \"passthrough\" permitted"))
 			}
 		}
 	}

@@ -56,7 +56,7 @@ func (a *CommonArtifact) GetType() ArtifactType {
 func (a *CommonArtifact) Destroy() error {
 	run := utils.RunFunc(a.SshConfig)
 	if _, err := run("rm -f " + a.Path); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }

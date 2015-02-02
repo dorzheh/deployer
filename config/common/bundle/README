@@ -12,13 +12,13 @@ Configuration example:
   <config>
 	     <name>Test2</name>
 	     <cpus>2</cpus>
-	     <ram>8192</ram>
+	     <ram_mb>8192</ram_mb>
 	     <storage_config_index>1</storage_config_index>
   </config>
   <config>
 	     <name>Test3</name>
 	     <cpus>8</cpus>
-       <ram>16384</ram>
+       <ram_mb>16384</ram_mb>
        <storage_config_index>2</storage_config_index>
   </config>
 </bundle>

@@ -41,16 +41,16 @@ type HostinfoDriver interface {
 	Init() error
 
 	// Returns amount of installed RAM.
-	RAMSize() (uint, error)
+	RAMSize() (int, error)
 
 	// Returns available CPUs.
-	CPUs() (uint, error)
+	CPUs() (int, error)
 
 	// Returns information related to the host's CPU.
 	CPUInfo() (*hwinfo.CPU, error)
 
 	// Returns amount of NUMA nodes and appropriate CPUs per NUMA node.
-	NUMANodes() (map[uint][]uint, error)
+	NUMANodes() (map[int][]int, error)
 
 	// Returns info related to the host's NICs.
 	NICs() ([]*hwinfo.NIC, error)

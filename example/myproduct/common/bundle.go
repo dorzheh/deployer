@@ -4,6 +4,7 @@ import (
 	"errors"
 
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
+	"github.com/dorzheh/deployer/utils"
 )
 
 func NameToType(ui *gui.DialogUi, configname string) error {
@@ -26,5 +27,5 @@ func NameToType(ui *gui.DialogUi, configname string) error {
 		return nil
 	}
 
-	return errors.New("unsupported configuration")
+	return utils.FormatError(errors.New("unsupported configuration"))
 }

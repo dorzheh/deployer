@@ -10,38 +10,52 @@ const (
 	ConTypeError                      = "error"
 )
 
+const Unlimited = -1
+
 type XMLInputData struct {
 	CPU
 	RAM
-	Nets
+	Disks
+	Networks
 	NICs
 }
 
 type CPU struct {
 	Configure bool `xml:"cpu>configure"`
-	Min       uint `xml:"cpu>min"`
-	Max       uint `xml:"cpu>max"`
-	Default   uint `xml:"cpu>default_value"`
+	Min       int  `xml:"cpu>min"`
+	Max       int  `xml:"cpu>max"`
+	Default   int  `xml:"cpu>default_value"`
 }
 
 type RAM struct {
 	Configure bool `xml:"ram>configure"`
-	Min       uint `xml:"ram>min"`
-	Max       uint `xml:"ram>max"`
-	Default   uint `xml:"ram>default_value"`
+	Min       int  `xml:"ram>min_mb"`
+	Max       int  `xml:"ram>max_mb"`
+	Default   int  `xml:"ram>default_value_mb"`
+}
+
+type Disk struct {
+	Min     int `xml:"min_mb"`
+	Max     int `xml:"max_mb"`
+	Default int `xml:"default_value_mb"`
+}
+
+type Disks struct {
+	Configure bool    `xml:"disks>configure"`
+	Configs   []*Disk `xml:"disks>disk"`
 }
 
 type Network struct {
 	Name          string        `xml:"name,attr"`
-	MaxIfaces     uint          `xml:"max_ifaces,attr"`
+	MaxIfaces     int           `xml:"max_ifaces,attr"`
 	Mandatory     bool          `xml:"mandatory,attr"`
 	Modes         []*Mode       `xml:"mode"`
 	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
 }
 
-type Nets struct {
+type Networks struct {
 	Configure bool       `xml:"networks>configure"`
-	Networks  []*Network `xml:"networks>network"`
+	Configs   []*Network `xml:"networks>network"`
 }
 
 type Template struct {

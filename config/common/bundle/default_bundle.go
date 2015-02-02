@@ -10,6 +10,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/ui"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
+	"github.com/dorzheh/deployer/utils"
 )
 
 // Configuration example:
@@ -40,8 +41,8 @@ import (
 
 type Config struct {
 	Name               string            `xml:"name"`
-	CPUs               uint              `xml:"cpus"`
-	RAM                uint              `xml:"ram"`
+	CPUs               int               `xml:"cpus"`
+	RAM                int               `xml:"ram_mb"`
 	StorageConfigIndex image.ConfigIndex `xml:"storage_config_index"`
 }
 
@@ -52,23 +53,23 @@ type DefaultBundle struct {
 func (b *DefaultBundle) Parse(d *deployer.CommonData, hidriver deployer.HostinfoDriver, xid *xmlinput.XMLInputData) (map[string]interface{}, error) {
 	hostRamsizeMb, err := hidriver.RAMSize()
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	configs := b.getConfigs(hostRamsizeMb)
 	amountOfConfigs := len(configs)
 	if amountOfConfigs == 0 {
-		return nil, errors.New("no eligable configuration is available for the host")
+		return nil, utils.FormatError(errors.New("no eligable configuration is available for the host"))
 	}
 
 	installedCpus, err := hidriver.CPUs()
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	for {
 		c, err := uiBundleConfig(d.Ui, configs)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 		if c == nil {
 			break
@@ -81,14 +82,14 @@ func (b *DefaultBundle) Parse(d *deployer.CommonData, hidriver deployer.Hostinfo
 		m := make(map[string]interface{})
 		m["name"] = c.Name
 		m["cpus"] = c.CPUs
-		m["ram"] = c.RAM
+		m["ram_mb"] = c.RAM
 		m["storage_config_index"] = c.StorageConfigIndex
 		return m, nil
 	}
 	return nil, nil
 }
 
-func (b *DefaultBundle) getConfigs(ramsizeMb uint) []*Config {
+func (b *DefaultBundle) getConfigs(ramsizeMb int) []*Config {
 	configs := make([]*Config, 0)
 	for _, c := range b.Configs {
 		if c.RAM <= ramsizeMb {
@@ -123,7 +124,7 @@ func uiBundleConfig(ui *gui.DialogUi, configs []*Config) (*Config, error) {
 
 	configNumInt, err := strconv.Atoi(configNumStr)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	if configNumInt == advIndex {
 		return nil, nil

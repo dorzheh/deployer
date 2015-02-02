@@ -2,6 +2,7 @@ package libvirt
 
 import (
 	info "github.com/dorzheh/deployer/post_processor/libvirt"
+	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/sysinfo"
 	ssh "github.com/dorzheh/infra/comm/common"
 )
@@ -17,7 +18,7 @@ func MultiQueueSupported(sshconfig *ssh.Config) (bool, error) {
 		d := info.NewDriver(sshconfig)
 		curVersion, err := d.Version()
 		if err != nil {
-			return false, err
+			return false, utils.FormatError(err)
 		}
 		if curVersion >= multiQueueLibvirtVersion {
 			return true, nil

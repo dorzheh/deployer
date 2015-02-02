@@ -3,6 +3,8 @@ package deployer
 import (
 	"runtime"
 	"time"
+
+	"github.com/dorzheh/deployer/utils"
 )
 
 // BuildProgress is responsible for running appropriate builders
@@ -20,7 +22,9 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 
 	progressBarTitle := c.VaName + " installation in progress (artifacts building stage)"
 	progressBarMsg := "\n\nPlease wait..."
-	err = c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan)
+	if err = c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan); err != nil {
+		err = utils.FormatError(err)
+	}
 	return
 }
 
@@ -34,16 +38,16 @@ type buildResult struct {
 // each builder in a separated goroutine.
 // Returns a slice of artifacts.
 func Build(builders []Builder) ([]Artifact, error) {
+	dur, err := time.ParseDuration("1s")
+	if err != nil {
+		return nil, utils.FormatError(err)
+	}
+
 	runtime.GOMAXPROCS(runtime.NumCPU() - 1)
 
 	var artifacts []Artifact
 	ch := make(chan *buildResult, len(builders))
-	defer close(ch)
 
-	dur, err := time.ParseDuration("1s")
-	if err != nil {
-		return nil, err
-	}
 	for _, b := range builders {
 		time.Sleep(dur)
 		go func(b Builder) {
@@ -56,7 +60,8 @@ func Build(builders []Builder) ([]Artifact, error) {
 		select {
 		case result := <-ch:
 			if result.err != nil {
-				return nil, result.err
+				//defer close(ch)
+				return nil, utils.FormatError(result.err)
 			}
 			artifacts = append(artifacts, result.artifact)
 		}

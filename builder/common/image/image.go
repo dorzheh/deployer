@@ -46,11 +46,6 @@ type image struct {
 	// path to the root directory where the image will be mounted
 	slashpath string
 
-	// path to sshfs mount
-	// due to the fact that the remote deployment mode only
-	// it indicates whether image creation occurs locally or remotely
-	localmount string
-
 	// do we need to partition and format the image
 	needToFormat bool
 
@@ -59,6 +54,11 @@ type image struct {
 
 	// set of utilities needed for image manipulation
 	utils *Utils
+
+	// path to sshfs mount
+	// due to the fact that it used only during remote deployment mode
+	// this indicates whether image creation occurs locally or remotely
+	localmount string
 
 	// executes commands locally or remotely
 	run func(string) (string, error)
@@ -93,16 +93,20 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 		i.run = utils.RunFunc(remoteConfig.Common)
 		i.client, err = sshfs.NewClient(remoteConfig)
 		if err != nil {
+			err = utils.FormatError(err)
 			return
 		}
 		i.localmount = rootfsMp
 		if i.slashpath, err = i.run("mktemp -d --suffix _deployer_rootfs"); err != nil {
+			err = utils.FormatError(err)
 			return
 		}
 		if err = i.client.Attach(i.slashpath, i.localmount); err != nil {
+			err = utils.FormatError(err)
 			return
 		}
 		if err = setUtilNewPaths(i, bins); err != nil {
+			err = utils.FormatError(err)
 			return
 		}
 		qemuImgError = "please install qemu-img on remote host"
@@ -110,7 +114,7 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 
 	if config.Type != StorageTypeRAW {
 		if _, err = i.run("which qemu-img"); err != nil {
-			err = errors.New(qemuImgError)
+			err = utils.FormatError(errors.New(qemuImgError))
 			return
 		}
 		// set temporary name
@@ -120,6 +124,7 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 	i.config = config
 	if _, err = i.run("ls" + config.Path); err != nil {
 		if err = i.create(); err != nil {
+			err = utils.FormatError(err)
 			return
 		}
 		if config.Partitions != nil {
@@ -135,7 +140,7 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 func setUtilNewPaths(i *image, u *Utils) error {
 	dir, err := utils.UploadBinaries(i.client.Config.Common, u.Grub, u.Kpartx)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	i.utils = new(Utils)
 	i.utils.Grub = filepath.Join(dir, filepath.Base(u.Grub))
@@ -144,20 +149,20 @@ func setUtilNewPaths(i *image, u *Utils) error {
 	return nil
 }
 
-// parse processes the RAW image
+// Parse processes RAW image
 // Returns error/nil
 func (i *image) Parse() error {
 	var err error
-	if i.loopDevice.name, err = i.bind(); err != nil {
-		return err
+	if i.loopDevice.name, err = bind(i.config.Path, i.run); err != nil {
+		return utils.FormatError(err)
 	}
 	if i.needToFormat {
 		if err := i.partTableMakefs(); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	} else if i.config.Partitions != nil {
 		if err := i.addMappers(); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	return nil
@@ -167,7 +172,7 @@ func (i *image) Parse() error {
 // - pathToPlatformDir - path to directory containing platform configuration XML file
 func (i *image) Customize(pathToPlatformDir string) error {
 	if i.amountOfMappers == 0 {
-		return fmt.Errorf("amount of mappers is 0.Seems you didn't call Parse().")
+		return utils.FormatError(errors.New("amount of mappers is 0.Seems you didn't call Parse()."))
 	}
 	return Customize(i.slashpath, pathToPlatformDir)
 }
@@ -176,49 +181,44 @@ func (i *image) Customize(pathToPlatformDir string) error {
 // by unmounting the mappers in reverse order
 // and the cleans up a temporary stuff
 // Returns error or nil
-func (i *image) Release() error {
+func (i *image) CleanupPre() error {
 	if i.localmount != "" {
 		if err := i.client.Detach(i.localmount); err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 	}
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
 		if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
-			return fmt.Errorf("%s [%v]", out, err)
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
 		i.loopDevice.amountOfMappers--
 		index--
 	}
-	// unbind mappers and image
-	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
-	}
-	if out, err := i.run("losetup -d " + i.loopDevice.name); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
-	}
 	return nil
 }
 
-func (i *image) Cleanup() error {
+func (i *image) CleanupPost() error {
+	// unbind mappers and image
+	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+	}
+	if out, err := i.run("losetup -d " + i.loopDevice.name); err != nil {
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+	}
 	// remove mount point
 	if out, err := i.run("rm -rf " + i.slashpath); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	if i.localmount != "" {
 		// remove mount point
 		if out, err := i.run("rm -rf " + i.utils.dir); err != nil {
-			return fmt.Errorf("%s [%v]", out, err)
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
 		// remove mount point
 		if out, err := i.run("rm -rf " + i.localmount); err != nil {
-			return fmt.Errorf("%s [%v]", out, err)
-		}
-	}
-	if i.config.Type != StorageTypeRAW {
-		if err := i.convert(); err != nil {
-			return err
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
 	}
 	return nil
@@ -227,9 +227,46 @@ func (i *image) Cleanup() error {
 // MakeBootable is responsible for making RAW disk bootable.
 // The target disk could be either local or remote image
 func (i *image) MakeBootable() error {
-	cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config.Path, i.utils.Grub)
-	if out, err := i.run(cmd); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+	switch i.config.BootLoader {
+	case BootLoaderGrub:
+		if out, err := i.run(fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config.Path, i.utils.Grub)); err != nil {
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+		}
+	case BootLoaderGrub2:
+		dummyLoopDevice, err := bind(i.loopDevice.mappers[0].name, i.run)
+		if err != nil {
+			return utils.FormatError(err)
+		}
+		defer i.run("losetup -d " + dummyLoopDevice)
+
+		dummyLoopDeviceMp, err := i.run("mktemp -d --suffix _deployer_dummy_loop")
+		if err != nil {
+			return utils.FormatError(err)
+		}
+		if out, err := i.run("mount " + dummyLoopDevice + " " + dummyLoopDeviceMp); err != nil {
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+		}
+		defer i.run("umount -f " + dummyLoopDeviceMp + ";rm -rf " + dummyLoopDeviceMp)
+
+		cmd := fmt.Sprintf("mkdir -p %s/boot/grub; echo -e \"(hd0) %s\n(hd0,1) %s\" > %s/boot/grub/device.map;",
+			dummyLoopDeviceMp, i.loopDevice.name, dummyLoopDevice, dummyLoopDeviceMp)
+		cmd += fmt.Sprintf("mount --bind /dev %s/dev ;chroot %s mount -t proc none /proc;", dummyLoopDeviceMp, dummyLoopDeviceMp)
+		cmd += fmt.Sprintf("chroot %s grub-install --no-floppy --grub-mkdevicemap=/boot/grub/device.map %s;", dummyLoopDeviceMp, i.loopDevice.name)
+		cmd += fmt.Sprintf("chroot %s update-grub;rm -f %s/boot/grub/device.map;", dummyLoopDeviceMp, dummyLoopDeviceMp)
+		cmd += fmt.Sprintf("sed -i '/loop/d' %s/boot/grub/grub.cfg;umount -l %s/proc;umount -l %s/dev", dummyLoopDeviceMp, dummyLoopDeviceMp, dummyLoopDeviceMp)
+
+		if out, err := i.run(cmd); err != nil {
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+		}
+	}
+	return nil
+}
+
+func (i *image) Convert() error {
+	if i.config.Type != StorageTypeRAW {
+		if err := i.convert(); err != nil {
+			return utils.FormatError(err)
+		}
 	}
 	return nil
 }
@@ -246,8 +283,8 @@ func (i *image) ReleaseOnInterrupt() {
 		for {
 			select {
 			case <-interrupt:
-				i.Release()
-				i.Cleanup()
+				i.CleanupPre()
+				i.CleanupPost()
 			}
 		}
 	}()
@@ -260,19 +297,6 @@ func (i *image) AmountOfMappers() uint8 {
 
 /// Private stuff ///
 
-func (i *image) bind() (loopDevice string, err error) {
-	loopDevice, err = i.run("losetup -f")
-	if err != nil {
-		return
-	}
-	cmd := fmt.Sprintf("losetup %s %s", loopDevice, i.config.Path)
-	if out, er := i.run(cmd); err != nil {
-		err = fmt.Errorf("%s [%v]", out, er)
-		return
-	}
-	return
-}
-
 // partTable creates partition table on the RAW disk
 func (i *image) partTableMakefs() error {
 	if i.config.FdiskCmd == "" {
@@ -282,7 +306,7 @@ func (i *image) partTableMakefs() error {
 	i.run(fmt.Sprintf("echo -e  \"%s\"|%s %s", i.config.FdiskCmd, "fdisk", i.loopDevice.name))
 	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 
 	for index, part := range i.config.Partitions {
@@ -290,21 +314,28 @@ func (i *image) partTableMakefs() error {
 		// create SWAP and do not add to the mappers slice
 		if strings.ToLower(part.FileSystem) == "swap" {
 			if out, err := i.run(fmt.Sprintf("mkswap -L %s %s", part.Label, mapper)); err != nil {
-				return fmt.Errorf("%s [%v]", out, err)
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 			}
 		} else {
 			cmd := fmt.Sprintf("mkfs -t %v -L %s %s %s", part.FileSystem,
 				part.Label, part.FileSystemArgs, mapper)
 			if out, err := i.run(cmd); err != nil {
-				return fmt.Errorf("%s [%v]", out, err)
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 			}
 			if err := i.addMapper(mapper, part.MountPoint); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		}
 	}
 	return nil
 }
+
+const (
+	// calculate partition size in percents
+	calcInPercents = -1
+	// allocate all the space left on the disk
+	allocateAll = -2
+)
 
 // generateFdiskCmd constructs a command to be used by fdisk utility
 // to create partition table on our disk
@@ -319,9 +350,14 @@ func (i *image) generateFdiskCmd() {
 	// header of the command
 	i.config.FdiskCmd = `o\n`
 	for _, part := range i.config.Partitions {
+		// in case partition size in megabytes is set to -1
+		// caclulate partition size in percents
+		if part.SizeMb == calcInPercents {
+			part.SizeMb = i.config.SizeMb / 100 * part.SizePercents
+		}
 		switch {
 		// in case we are treating the last partition and need to allocate all the space left for it
-		case part.Sequence == amountOfPartitions && part.SizeMb == -1:
+		case part.Sequence == amountOfPartitions && part.SizeMb == allocateAll:
 			if part.Sequence > extendedPart {
 				i.config.FdiskCmd += fmt.Sprintf(`n\nl\n%d\n\n\n`, logicalDrive)
 				logicalDrive++
@@ -358,14 +394,14 @@ func (i *image) generateFdiskCmd() {
 func (i *image) addMappers() error {
 	mappers, err := i.getMappers(i.loopDevice.name)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
 		if strings.ToLower(part.FileSystem) != "swap" {
 			if err := i.addMapper(mapper, part.MountPoint); err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 		}
 	}
@@ -376,16 +412,16 @@ func (i *image) addMappers() error {
 func (i *image) addMapper(mapperDeviceName, path string) error {
 	mountPoint := filepath.Join(i.slashpath, path)
 	if out, err := i.run("mkdir -p " + mountPoint); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	// check if the volume is already mounted
 	mounted, err := isMounted(mapperDeviceName)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	if !mounted {
 		if out, err := i.run(fmt.Sprintf("mount %s %s", mapperDeviceName, mountPoint)); err != nil {
-			return fmt.Errorf("%s [%v]", out, err)
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
 	}
 	// add mapper
@@ -402,9 +438,9 @@ func (i *image) addMapper(mapperDeviceName, path string) error {
 
 // create is intended for creating RAW image
 func (i *image) create() error {
-	out, err := i.run(fmt.Sprintf("dd if=/dev/zero of=%s count=1 bs=1 seek=%vG", i.config.Path, i.config.SizeGb))
+	out, err := i.run(fmt.Sprintf("dd if=/dev/zero of=%s count=1 bs=1 seek=%vM", i.config.Path, i.config.SizeMb))
 	if err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	return nil
 }
@@ -414,13 +450,13 @@ func (i *image) create() error {
 func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 	var mappers []string
 	if _, err := i.run(i.utils.Kpartx + " -a " + loopDeviceName); err != nil {
-		return mappers, err
+		return mappers, utils.FormatError(err)
 	}
 	// somehow on RHEL based systems refresh might take some time therefore
 	// no mappers are available until then
 	duration, err := time.ParseDuration("1s")
 	if err != nil {
-		return mappers, err
+		return mappers, utils.FormatError(err)
 	}
 	time.Sleep(duration)
 
@@ -428,7 +464,7 @@ func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 		strings.TrimSpace(strings.SplitAfter(loopDeviceName, "/dev/loop")[1]))
 	out, err := i.run(cmd)
 	if err != nil {
-		return mappers, fmt.Errorf("%s [%v]", out, err)
+		return mappers, utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	for _, line := range strings.Split(out, "\n") {
 		if line != "" {
@@ -436,7 +472,7 @@ func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 		}
 	}
 	if len(mappers) == 0 {
-		return mappers, errors.New("mappers not found")
+		return mappers, utils.FormatError(errors.New("mappers not found"))
 	}
 	sort.Strings(mappers)
 	return mappers, nil
@@ -447,13 +483,27 @@ func (i *image) convert() error {
 	// set the new path - append extention
 	newPath := fmt.Sprintf("%s.%s", i.config.Path, i.config.Type)
 	if out, err := i.run(fmt.Sprintf("qemu-img convert -f raw -O %s %s %s", i.config.Type, i.config.Path, newPath)); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	//remove temporary image
 	if out, err := i.run("rm -rf " + i.config.Path); err != nil {
-		return fmt.Errorf("%s [%v]", out, err)
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
 	// expose the new path
 	i.config.Path = newPath
 	return nil
+}
+
+func bind(imagePath string, run func(string) (string, error)) (loopDevice string, err error) {
+	loopDevice, err = run("losetup -f")
+	if err != nil {
+		err = utils.FormatError(err)
+		return
+	}
+	cmd := fmt.Sprintf("losetup %s %s", loopDevice, imagePath)
+	if out, er := run(cmd); err != nil {
+		err = utils.FormatError(fmt.Errorf("%s [%v]", out, er))
+		return
+	}
+	return
 }

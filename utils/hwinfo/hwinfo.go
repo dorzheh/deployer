@@ -35,11 +35,11 @@ func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error)
 // Parse parses lshw output
 func (i *Parser) Parse() error {
 	if err := i.parse(); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	out, err := i.run(i.cmd)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
 }
@@ -54,13 +54,13 @@ type CPU struct {
 func (i *Parser) CPUInfo() (*CPU, error) {
 	if _, err := os.Stat(i.cacheFile); err != nil {
 		if err = i.Parse(); err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 	}
 
 	out, err := mxj.NewMapsFromJsonFile(i.cacheFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	c := new(CPU)
@@ -85,17 +85,17 @@ func (i *Parser) CPUInfo() (*CPU, error) {
 	return c, nil
 }
 
-func (p *Parser) CPUs() (uint, error) {
+func (p *Parser) CPUs() (int, error) {
 	cpustr, err := p.run(`grep -c ^processor /proc/cpuinfo`)
 	if err != nil {
-		return 0, err
+		return 0, utils.FormatError(err)
 	}
 
 	cpus, err := strconv.Atoi(strings.Trim(cpustr, "\n"))
 	if err != nil {
-		return 0, err
+		return 0, utils.FormatError(err)
 	}
-	return uint(cpus), nil
+	return int(cpus), nil
 }
 
 // supported NIC types
@@ -135,12 +135,12 @@ type NIC struct {
 func (p *Parser) NICInfo() (NICList, error) {
 	if _, err := os.Stat(p.cacheFile); err != nil {
 		if err = p.Parse(); err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 	}
 	out, err := mxj.NewMapsFromJsonFile(p.cacheFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	//nics := make([]*NIC, 0)
@@ -200,7 +200,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 	// lshw is unable to find linux bridges so let's do it manually
 	res, err := p.run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	if res != "" {
 		for _, n := range strings.Split(res, " ") {
@@ -217,39 +217,39 @@ func (p *Parser) NICInfo() (NICList, error) {
 	return list, nil
 }
 
-func (p *Parser) NUMANodes() (map[uint][]uint, error) {
+func (p *Parser) NUMANodes() (map[int][]int, error) {
 	out, err := p.run("ls -d  /sys/devices/system/node/node[0-9]*")
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
-	numaMap := make(map[uint][]uint)
+	numaMap := make(map[int][]int)
 	for i, _ := range strings.SplitAfter(out, "\n") {
 		out, err := p.run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
-		cpus := make([]uint, 0)
+		cpus := make([]int, 0)
 		for _, line := range strings.SplitAfter(out, "\n") {
 			cpuStr := strings.SplitAfter(line, "cpu")[1]
 			cpu, err := strconv.Atoi(strings.TrimSpace(cpuStr))
 			if err != nil {
-				return nil, err
+				return nil, utils.FormatError(err)
 			}
-			cpus = append(cpus, uint(cpu))
+			cpus = append(cpus, int(cpu))
 		}
-		numaMap[uint(i)] = cpus
+		numaMap[int(i)] = cpus
 	}
 	return numaMap, nil
 }
 
 // RAMSize gathers information related to the installed amount of RAM in MB
-func (p *Parser) RAMSize() (uint, error) {
+func (p *Parser) RAMSize() (int, error) {
 	out, err := p.run("grep MemTotal /proc/meminfo")
 	if err != nil {
-		return 0, err
+		return 0, utils.FormatError(err)
 	}
-	var ramsize uint
+	var ramsize int
 	fmt.Sscanf(out, "MemTotal: %d %s", &ramsize)
 	return ramsize / 1024, nil
 }
@@ -259,23 +259,22 @@ func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func(
 		if lshwpath == "" {
 			out, err := i.run("which lshw")
 			if err != nil {
-				return fmt.Errorf("%s [%v]", out, err)
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 			}
 			lshwpath = out
 		} else {
 			if sshconf != nil {
 				dir, err := utils.UploadBinaries(sshconf, lshwpath)
 				if err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
 			}
 		}
-
 		lshwconf := &lshw.Config{[]lshw.Class{lshw.All}, lshw.FormatJSON}
 		l, err := lshw.New(lshwpath, lshwconf)
 		if err != nil {
-			return err
+			return utils.FormatError(err)
 		}
 		i.cmd = l.Cmd()
 		i.cacheFile = cacheFile

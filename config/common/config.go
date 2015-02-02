@@ -8,6 +8,7 @@ import (
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
+	"github.com/dorzheh/deployer/utils"
 )
 
 func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
@@ -20,10 +21,10 @@ func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
 	return c
 }
 
-func StorageConfig(storageConfigFile, pathToMainImage string, configIndex image.ConfigIndex) (*image.Config, error) {
+func StorageConfig(storageConfigFile, pathToMainImage string, configIndex image.ConfigIndex, diskSizeMbSlice []int) (*image.Config, error) {
 	f, err := image.ParseConfigFile(storageConfigFile)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	conf, err := f.IndexToConfig(configIndex)
@@ -31,13 +32,16 @@ func StorageConfig(storageConfigFile, pathToMainImage string, configIndex image.
 		return nil, err
 	}
 
-	var deviceIndex uint
+	deviceIndex := 0
 	amountOfDisks := len(conf.Disks)
 	for ; amountOfDisks != 0; amountOfDisks-- {
 		if deviceIndex == 0 {
 			conf.Disks[deviceIndex].Path = fmt.Sprintf("%s.%s", pathToMainImage, conf.Disks[deviceIndex].Type)
 		} else {
 			conf.Disks[deviceIndex].Path = fmt.Sprintf("%s_%d.%s", pathToMainImage, deviceIndex, conf.Disks[deviceIndex].Type)
+		}
+		if len(diskSizeMbSlice) > 0 {
+			conf.Disks[deviceIndex].SizeMb = diskSizeMbSlice[deviceIndex]
 		}
 		deviceIndex++
 	}

@@ -26,7 +26,7 @@ func (d *Driver) DefineDomain(domainConfig string) error {
 	defer d.Unlock()
 
 	if _, err := d.run("virsh define " + domainConfig); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }
@@ -36,7 +36,7 @@ func (d *Driver) StartDomain(name string) error {
 	defer d.Unlock()
 
 	if _, err := d.run("virsh start " + name); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }
@@ -46,7 +46,7 @@ func (d *Driver) DestroyDomain(name string) error {
 	defer d.Unlock()
 
 	if _, err := d.run("virsh destroy " + name); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }
@@ -56,7 +56,7 @@ func (d *Driver) UndefineDomain(name string) error {
 	defer d.Unlock()
 
 	if _, err := d.run("virsh undefine " + name); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }
@@ -66,7 +66,7 @@ func (d *Driver) SetAutostart(name string) error {
 	defer d.Unlock()
 
 	if _, err := d.run("virsh autostart " + name); err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	return nil
 }
@@ -87,17 +87,17 @@ func (d *Driver) Emulator(arch string) (string, error) {
 	case "x86_64":
 	case "i686":
 	default:
-		return "", fmt.Errorf("Unsupported architecture(%s).Supported i686 and x86_64 only", arch)
+		return "", utils.FormatError(fmt.Errorf("Unsupported architecture(%s).Only i686 and x86_64 supported", arch))
 	}
 
 	out, err := d.run("virsh capabilities")
 	if err != nil {
-		return "", err
+		return "", utils.FormatError(err)
 	}
 
 	m, err := mxj.NewMapXml([]byte(out))
 	if err != nil {
-		return "", err
+		return "", utils.FormatError(err)
 	}
 
 	v, _ := m.ValuesForPath("capabilities.guest.arch", "-name:"+arch)
@@ -108,7 +108,7 @@ func (d *Driver) Emulator(arch string) (string, error) {
 func (d *Driver) Version() (string, error) {
 	out, err := d.run("libvirtd --version")
 	if err != nil {
-		return "", err
+		return "", utils.FormatError(err)
 	}
 	return strings.Split(out, " ")[2], nil
 

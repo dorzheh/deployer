@@ -6,7 +6,7 @@
 //<storage>
 //  <config>
 //	 <disk>
-//	  	<size_gb>5</size_gb>
+//	  	<size_mb>5120</size_mb>
 //    	<bootable>true</bootable>
 //	 	 <fdisk_cmd>n\np\n1\n\n+3045M\nn\np\n2\n\n\nt\n2\n82\na\n1\nw\n</fdisk_cmd>
 //   	 <description>Topology for release xxxx</description>
@@ -37,6 +37,8 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io/ioutil"
+
+	"github.com/dorzheh/deployer/utils"
 )
 
 type StorageType string
@@ -45,6 +47,13 @@ const (
 	StorageTypeRAW   StorageType = "raw"
 	StorageTypeQCOW2 StorageType = "qcow2"
 	StorageTypeVMDK  StorageType = "vmdk"
+)
+
+type BootLoaderType string
+
+const (
+	BootLoaderGrub  BootLoaderType = "grub"
+	BootLoaderGrub2 BootLoaderType = "grub2"
 )
 
 type ConfigIndex uint8
@@ -59,18 +68,20 @@ type Config struct {
 
 type Disk struct {
 	Path        string
-	Type        StorageType  `xml:"storage_type"`
-	SizeGb      int          `xml:"size_gb"`
-	Bootable    bool         `xml:"bootable"`
-	FdiskCmd    string       `xml:"fdisk_cmd"`
-	Description string       `xml:"description"`
-	Partitions  []*Partition `xml:"partition"`
+	Type        StorageType    `xml:"storage_type"`
+	SizeMb      int            `xml:"size_mb"`
+	Bootable    bool           `xml:"bootable"`
+	BootLoader  BootLoaderType `xml:"bootloader"`
+	FdiskCmd    string         `xml:"fdisk_cmd"`
+	Description string         `xml:"description"`
+	Partitions  []*Partition   `xml:"partition"`
 }
 
 type Partition struct {
 	Sequence       int    `xml:"sequence"`
 	BootFlag       bool   `xml: "boot_flag"`
 	SizeMb         int    `xml:"size_mb"`
+	SizePercents   int    `xml:"size_percents"`
 	Label          string `xml:"label"`
 	MountPoint     string `xml:"mount_point"`
 	FileSystem     string `xml:"file_system"`
@@ -83,7 +94,7 @@ type Partition struct {
 func ParseConfigFile(xmlpath string) (*Storage, error) {
 	fb, err := ioutil.ReadFile(xmlpath)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return ParseConfig(fb)
 }
@@ -94,7 +105,7 @@ func ParseConfig(fb []byte) (*Storage, error) {
 	p := new(Storage)
 	decoded := xml.NewDecoder(buf)
 	if err := decoded.Decode(p); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return p, nil
 }
@@ -103,7 +114,7 @@ func ParseConfig(fb []byte) (*Storage, error) {
 func (s *Storage) IndexToConfig(index ConfigIndex) (*Config, error) {
 	t := s.Configs[index]
 	if t == nil {
-		return nil, fmt.Errorf("no configuration found for index %d", index)
+		return nil, utils.FormatError(fmt.Errorf("no configuration found for index %d", index))
 	}
 	return t, nil
 }

@@ -21,7 +21,7 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 			c.Stderr = &stderr
 			c.Stdout = &stdout
 			if err := c.Start(); err != nil {
-				return "", err
+				return "", FormatError(err)
 			}
 			if err := c.Wait(); err != nil {
 				return "", fmt.Errorf("executing %s  : %s [%s]", command, stderr.String(), err)
@@ -32,7 +32,7 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 	return func(command string) (string, error) {
 		c, err := ssh.NewSshConn(config)
 		if err != nil {
-			return "", err
+			return "", FormatError(err)
 		}
 		defer c.ConnClose()
 		//IMPORTANT! Make sure that "Defaults !requiretty" is set in sudoers on remote system

@@ -1,5 +1,9 @@
 package deployer
 
+import (
+	"github.com/dorzheh/deployer/utils"
+)
+
 // PostProcessProgress is responsible for representing a progress
 // during post-processing of appropriate artifact.
 func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) error {
@@ -15,5 +19,8 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 
 	progressBarTitle := c.VaName + " installation in progress (post-processing stage)"
 	progressBarMsg := "\n\nPlease wait..."
-	return c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan)
+	if err := c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan); err != nil {
+		return utils.FormatError(err)
+	}
+	return nil
 }

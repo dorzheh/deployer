@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"os"
 	"strings"
+
+	"github.com/dorzheh/deployer/utils"
 )
 
 // isMounted parses /proc/mounts and looking for
@@ -13,7 +15,7 @@ import (
 func isMounted(device string) (bool, error) {
 	fh, err := os.Open("/proc/mounts")
 	if err != nil {
-		return false, err
+		return false, utils.FormatError(err)
 	}
 	defer fh.Close()
 

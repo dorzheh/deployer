@@ -125,7 +125,7 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 		if err == nil {
 			break
 		}
-		ui.Output(gui.Warning, "Unable to establish SSH connection.\nPress <OK> to proceed", 7, 2)
+		ui.Output(gui.Warning, "Unable to establish SSH connection.\nPress <OK> to proceed.", 7, 2)
 	}
 	return cfg
 }
@@ -135,7 +135,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 	netMetaData.Networks = make([]*xmlinput.Network, 0)
 	netMetaData.NICLists = make([]hwinfo.NICList, 0)
 
-	for i, net := range data.Networks {
+	for i, net := range data.Networks.Configs {
 		if !net.Mandatory {
 			ui.SetSize(5, 60)
 			if i == 0 {
@@ -153,7 +153,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 		if net.UiModeBinding != nil {
 			mode, err := uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
 			if err != nil {
-				return nil, err
+				return nil, utils.FormatError(err)
 			}
 			modes = append(modes, mode)
 		} else {
@@ -164,7 +164,7 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 
 		retainedNics, modePassthrough, err := hwfilter.NicsByType(allowedNics, modes)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 
 		var list hwinfo.NICList
@@ -172,16 +172,15 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 		case net.MaxIfaces > 1 && retainedNics.Length() > 1:
 			list, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
 			if err != nil {
-				return nil, err
+				return nil, utils.FormatError(err)
 			}
 		default:
 			list, err = uiSelectSingleNic(ui, retainedNics, &allowedNics, modePassthrough, net.Name)
 			if err != nil {
-				return nil, err
+				return nil, utils.FormatError(err)
 			}
 
 		}
-
 		netMetaData.Networks = append(netMetaData.Networks, net)
 		netMetaData.NICLists = append(netMetaData.NICLists, list)
 	}
@@ -201,7 +200,7 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 
 	sliceLength := len(temp)
 	if sliceLength == 0 {
-		return nil, errors.New("Make sure that XML file representing xmlinput is configured properly")
+		return nil, utils.FormatError(errors.New("Make sure that XML file representing xmlinput is configured properly."))
 	}
 
 	var selected []string
@@ -213,7 +212,7 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 		if selected[0] == "" {
 			continue
 		}
-		if uint(len(selected)) > network.MaxIfaces {
+		if len(selected) > network.MaxIfaces {
 			continue
 		}
 		break
@@ -226,7 +225,7 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 		if modePassthrough && nic.Type == hwinfo.NicTypePhys {
 			i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
 			if err != nil {
-				return nil, err
+				return nil, utils.FormatError(err)
 			}
 			fullList.Remove(i)
 		}
@@ -247,7 +246,7 @@ func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *
 
 	sliceLength := len(temp)
 	if sliceLength == 0 {
-		return nil, errors.New("Make sure that XML file representing xmlinput is configured properly")
+		return nil, utils.FormatError(errors.New("Make sure that XML file representing xmlinput is configured properly."))
 	}
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
@@ -256,7 +255,7 @@ func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *
 	if modePassthrough && nic.Type == hwinfo.NicTypePhys {
 		i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
 		if err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 		fullList.Remove(i)
 	}
@@ -269,7 +268,7 @@ func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *
 func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) (xmlinput.ConnectionMode, error) {
 	sliceLength := len(modes)
 	if sliceLength == 0 {
-		return xmlinput.ConTypeError, errors.New("ui_mode_selection is not set")
+		return xmlinput.ConTypeError, utils.FormatError(errors.New("ui_mode_selection is not set."))
 	}
 
 	var temp []string
@@ -283,7 +282,7 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 	ui.SetLabel(fmt.Sprintf("Network interface type for network \"%s\"", network))
 	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
 	if err != nil {
-		return xmlinput.ConTypeError, err
+		return xmlinput.ConTypeError, utils.FormatError(err)
 	}
 	return modes[ifaceNumInt-1].Type, nil
 }
@@ -296,7 +295,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 	}()
 	sleep, err := time.ParseDuration(sleepInSec)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 
 	var msg string
@@ -308,86 +307,152 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 	return ui.Wait(msg, sleep, errCh)
 }
 
-func UiRAMSize(ui *gui.DialogUi, installedRamInMb, defaultRamInMb, reqMinimumRamInMb, reqMaximumRamInMb uint) uint {
-	var amountUint uint
-	maxIsSet := true
-	if reqMaximumRamInMb == 0 {
-		maxIsSet = false
-		reqMaximumRamInMb = installedRamInMb
-	}
-	var defaultRamInMbStr string
-	if defaultRamInMb != 0 {
-		defaultRamInMbStr = strconv.Itoa(int(defaultRamInMb))
-	}
-	for {
-		msg := fmt.Sprintf("Enter VM RAM size(minimum %dMB, maximum %dMB)", reqMinimumRamInMb, reqMaximumRamInMb)
-		ui.SetSize(8, len(msg)+10)
-		ui.SetLabel(msg)
-		amountStr := ui.Inputbox(defaultRamInMbStr)
-		amountInt, err := strconv.Atoi(amountStr)
-		if err != nil {
-			continue
-		}
-		amountUint = uint(amountInt)
-		if amountUint > installedRamInMb {
-			ui.Output(gui.Warning, "Required RAM exceeds host machine available memory.\nPress <OK> to proceed", 7, 2)
-			continue
-		}
-		if amountUint < reqMinimumRamInMb {
-			ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dMB.\nPress <OK> to proceed", reqMinimumRamInMb), 7, 2)
-			continue
-		}
-		if maxIsSet && amountUint > reqMaximumRamInMb {
-			ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dMB.\nPress <OK> to proceed", reqMaximumRamInMb), 7, 2)
-			continue
-		}
-		break
-	}
-	return amountUint
+type VmConfig struct {
+	CPUs    int
+	RamMb   int
+	DisksMb []int
 }
 
-func UiCPUs(ui *gui.DialogUi, installedCpus, defaultCpus, reqMinimumCpus, reqMaximumCpus uint) uint {
-	var amountUint uint
-	maxIsSet := true
-	if reqMaximumCpus == 0 {
-		maxIsSet = false
-		reqMaximumCpus = installedCpus
+func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinput.XMLInputData) (*VmConfig, error) {
+	var installedRamMb int
+	var err error
+	conf := new(VmConfig)
+	list := make([]string, 0)
+	index := 1
+
+	if xidata.CPU.Configure {
+		cpuStr := fmt.Sprintf("  %-9s |  %d-%d", "CPU", xidata.CPU.Min, xidata.CPU.Max)
+		list = []string{cpuStr, strconv.Itoa(index), "1", strconv.Itoa(xidata.CPU.Default), "1", "30", "6", "0", "0"}
+		index++
+	} else if xidata.CPU.Default > 0 {
+		conf.CPUs = xidata.CPU.Default
 	}
-	var defaultCpusStr string
-	if defaultCpus != 0 {
-		defaultCpusStr = strconv.Itoa(int(defaultCpus))
-	}
-	for {
-		msg := fmt.Sprintf("Enter VM number of vCPUs(minimum %d, maximum %d)", reqMinimumCpus, reqMaximumCpus)
-		ui.SetSize(8, len(msg)+10)
-		ui.SetLabel(msg)
-		amountStr := ui.Inputbox(defaultCpusStr)
-		amountInt, err := strconv.Atoi(amountStr)
+	if xidata.RAM.Configure {
+		installedRamMb, err = driver.RAMSize()
 		if err != nil {
-			continue
+			return nil, utils.FormatError(err)
+		}
+		if xidata.RAM.Max > installedRamMb || xidata.RAM.Max == xmlinput.Unlimited {
+			xidata.RAM.Max = installedRamMb
 		}
 
-		amountUint = uint(amountInt)
-		if amountUint < reqMinimumCpus {
-			ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to proceed", reqMinimumCpus), 7, 2)
-			continue
-		}
-		if maxIsSet && amountUint > reqMaximumCpus {
-			ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).\nPress <OK> to proceed", reqMaximumCpus), 7, 2)
-			continue
-		}
-		if amountUint > installedCpus {
-			if !UiVCPUsOvercommit(ui, installedCpus) {
-				continue
+		ramStr := fmt.Sprintf("  %-9s |  %d-%dG", "RAM", xidata.RAM.Min/1024, xidata.RAM.Max/1024)
+		list = append(list, []string{ramStr, strconv.Itoa(index), "1", strconv.Itoa(xidata.RAM.Default / 1024), "2", "30", "6", "0", "0"}...)
+		index++
+	} else if xidata.RAM.Default > 0 {
+		conf.RamMb = xidata.RAM.Default
+	}
+	if xidata.Disks.Configure {
+		diskName := "Disk"
+		for i, disk := range xidata.Disks.Configs {
+			if i > 0 {
+				diskName = strconv.Itoa(i) + "_" + strconv.Itoa(i)
 			}
+			diskStr := fmt.Sprintf("  %-9s |  %d-%dG", diskName, disk.Min/1024, disk.Max/1024)
+			indexStr := strconv.Itoa(index)
+			list = append(list, []string{diskStr, indexStr, "1", strconv.Itoa(disk.Default / 1024), indexStr, "30", "6", "0", "0"}...)
+			index++
+		}
+	}
+	str := "Virtual Machine Configuration\n------------------------------------------\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
+
+	installedCpus, err := driver.CPUs()
+	if err != nil {
+		return nil, utils.FormatError(err)
+	}
+
+	index--
+
+MainLoop:
+	for {
+		ui.SetSize(13, 46)
+		resultIndex := 0
+		result := ui.Mixedform(str, list[0:]...)
+		if len(result) < index {
+			continue
+		}
+		selectedCpus, err := strconv.Atoi(result[resultIndex])
+		if err != nil {
+			continue
+		}
+		if uiCpuNotOK(ui, selectedCpus, installedCpus, xidata.CPU.Min, xidata.CPU.Max) {
+			continue
+		}
+		conf.CPUs = selectedCpus
+		resultIndex++
+
+		selectedRamGb, err := strconv.Atoi(result[resultIndex])
+		if err != nil {
+			continue
+		}
+		if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, xidata.RAM.Max) {
+			continue
+		}
+		conf.RamMb = selectedRamGb * 1024
+		resultIndex++
+
+		for _, disk := range xidata.Disks.Configs {
+			selectedDiskSizeGb, err := strconv.Atoi(result[resultIndex])
+			if err != nil {
+				continue MainLoop
+			}
+			if uiDiskNotOK(ui, selectedDiskSizeGb*1024, disk.Min, disk.Max) {
+				continue MainLoop
+			}
+			conf.DisksMb = append(conf.DisksMb, selectedDiskSizeGb*1024)
 		}
 		break
 	}
-	return amountUint
+	return conf, nil
 }
 
-func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus uint) bool {
+func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus int) bool {
 	ui.SetSize(7, 85)
 	ui.SetLabel(fmt.Sprintf("WARNING:The host only has %d CPUs.Overcommitting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
 	return ui.Yesno()
+}
+
+func uiCpuNotOK(ui *gui.DialogUi, selectedCpus, installedCpus, minCpus, maxCpus int) bool {
+	if selectedCpus < minCpus {
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to return to menu.", minCpus), 7, 2)
+		return true
+	}
+	if selectedCpus > maxCpus {
+		ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).\nPress <OK> to return to menu.", maxCpus), 7, 2)
+		return true
+	}
+	if selectedCpus > installedCpus {
+		if !UiVCPUsOvercommit(ui, installedCpus) {
+			return true
+		}
+	}
+	return false
+}
+
+func uiRamNotOK(ui *gui.DialogUi, selectedRamInMb, installedRamMb, minRamInMb, maxRamInMb int) bool {
+	if selectedRamInMb > installedRamMb {
+		ui.Output(gui.Warning, "Required RAM exceeds host machine available memory.\nPress <OK> to return to menu.", 7, 2)
+		return true
+	}
+	if selectedRamInMb < minRamInMb {
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dGB.\nPress <OK> to return to menu.", minRamInMb/1024), 7, 2)
+		return true
+	}
+	if selectedRamInMb > maxRamInMb {
+		ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dGB.\nPress <OK> to return to menu.", maxRamInMb/1024), 7, 2)
+		return true
+	}
+	return false
+}
+
+func uiDiskNotOK(ui *gui.DialogUi, selectedDiskInMb, minDiskInMb, maxDiskInMb int) bool {
+	if selectedDiskInMb < minDiskInMb {
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum disk size requirement is %dGB.\nPress <OK> to return to menu.", minDiskInMb/1024), 7, 2)
+		return true
+	}
+	if selectedDiskInMb > maxDiskInMb {
+		ui.Output(gui.Warning, fmt.Sprintf("Maximum disk size requirement is %dGB.\nPress <OK> to return to menu.", maxDiskInMb/1024), 7, 2)
+		return true
+	}
+	return false
 }

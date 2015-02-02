@@ -15,10 +15,23 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </cpu>
   <ram>
   	<configure>true</configure>
-  	<min>2500</min>
-    <max>0</max>
-	<default_value>2500</default_value>
+  	<min_mb>2500</min_mb>
+    <max_mb>-1</max_mb>
+	<default_value_mb>2500</default_value_mb>
   </ram>
+  <disks>
+    <configure>true</configure>
+   	<disk>
+  		<min_mb>2500</min_mb>
+    	<max_mb>40000</max_mb>
+		<default_value_mb>2500</default_value_mb>
+	</disk>
+	<disk>
+  		<min_mb>50000</min_mb>
+    	<max_mb>70000</max_mb>
+		<default_value_mb>60000</default_value_mb>
+	</disk>
+  </disks>
   <networks>
     <configure>true</configure>
 	<network name="Management" max_ifaces="1" mandatory="true">
@@ -60,11 +73,16 @@ func TestParseXMLInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, n := range d.Networks {
+	for _, d := range d.Disks.Configs {
+		fmt.Printf("%v\n", d)
+
+	}
+	for _, n := range d.Networks.Configs {
 		for _, m := range n.Modes {
 			fmt.Printf("%v\n", m.Type)
 		}
 	}
+
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",
 			nic.Vendor, nic.Model)
@@ -85,10 +103,18 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </cpu>
   <ram>
   	<configure>true</configure>
-  	<min>2500</min>
-    <max>0</max>
-	<default_value>2500</default_value>
+  	<min_mb>2500</min_mb>
+    <max_mb>-1</max_mb>
+	<default_value_mb>2500</default_value_mb>
   </ram>
+   <disks>
+    <configure>true</configure>
+   	<disk>
+  		<min_mb>2500</min_mb>
+    	<max_mb>-1</max_mb>
+		<default_value_mb>2500</default_value_mb>
+	<disk>
+  </disks>
   <networks>
     <configure>true</configure>
 	<network name="Management" max_ifaces="1" mandatory="true">

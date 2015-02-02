@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"runtime"
 	"sort"
 	"strings"
 	"text/template"
@@ -29,12 +30,12 @@ const (
 func ProcessTemplate(str string, userData interface{}) ([]byte, error) {
 	t, err := template.New(time.Now().String()).Parse(str)
 	if err != nil {
-		return nil, err
+		return nil, FormatError(err)
 	}
 
 	buf := new(bytes.Buffer)
 	if err := t.Execute(buf, userData); err != nil {
-		return nil, err
+		return nil, FormatError(err)
 	}
 	return buf.Bytes(), nil
 }
@@ -62,10 +63,10 @@ func WaitForResult(ch <-chan error, num int) error {
 func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
 	d, err := os.Stat(pathToPlatformDir)
 	if err != nil {
-		return err
+		return FormatError(err)
 	}
 	if !d.IsDir() {
-		return fmt.Errorf("%s is not directory", d.Name())
+		return FormatError(fmt.Errorf("%s is not directory", d.Name()))
 	}
 	var pathToScriptsDir string
 	switch preOrPost {
@@ -74,15 +75,15 @@ func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
 	case POST_SCRIPTS:
 		pathToScriptsDir = pathToPlatformDir + "/post-deploy-scripts"
 	default:
-		return errors.New("unknown stage")
+		return FormatError(errors.New("unknown stage"))
 	}
 	fd, err := os.Stat(pathToScriptsDir)
 	if err != nil {
-		return err
+		return FormatError(err)
 	}
 
 	if !fd.IsDir() {
-		return fmt.Errorf("%s is not directory", fd.Name())
+		return FormatError(fmt.Errorf("%s is not directory", fd.Name()))
 	}
 	var scriptsSlice []string
 	//find mapped loop device partition , create appropriate mount point for each partition
@@ -97,10 +98,10 @@ func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
 	sort.Strings(scriptsSlice)
 	for _, file := range scriptsSlice {
 		if err := exec.Command(file).Run(); err != nil {
-			return err
+			return FormatError(err)
 		}
 	}
-	return err
+	return FormatError(err)
 }
 
 // UploadBinaries is intended to create a temporary directory on a remote server,
@@ -109,13 +110,13 @@ func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
 func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
 	c, err := ssh.NewSshConn(conf)
 	if err != nil {
-		return "", err
+		return "", FormatError(err)
 	}
 	defer c.ConnClose()
 
 	dir, errout, err := c.Run("mktemp -d --suffix _deployer_bin")
 	if err != nil {
-		return "", fmt.Errorf("%s [%v]", errout, err)
+		return "", FormatError(fmt.Errorf("%s [%v]", errout, err))
 	}
 
 	dir = strings.TrimSpace(dir)
@@ -123,10 +124,10 @@ func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
 	for _, src := range pathbins {
 		dst := filepath.Join(dir, filepath.Base(src))
 		if err := c.Upload(src, dst); err != nil {
-			return "", err
+			return "", FormatError(err)
 		}
 		if _, errout, err := c.Run("chmod 755 " + dst); err != nil {
-			return "", fmt.Errorf("%s [%v]", errout, err)
+			return "", FormatError(fmt.Errorf("%s [%v]", errout, err))
 		}
 	}
 	return dir, nil
@@ -135,7 +136,7 @@ func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
 func ParseXMLFile(xmlpath string, data interface{}) (interface{}, error) {
 	fb, err := ioutil.ReadFile(xmlpath)
 	if err != nil {
-		return nil, err
+		return nil, FormatError(err)
 	}
 	return ParseXMLBuff(fb, data)
 }
@@ -144,7 +145,12 @@ func ParseXMLBuff(fb []byte, data interface{}) (interface{}, error) {
 	buf := bytes.NewBuffer(fb)
 	decoded := xml.NewDecoder(buf)
 	if err := decoded.Decode(data); err != nil {
-		return nil, err
+		return nil, FormatError(err)
 	}
 	return data, nil
+}
+
+func FormatError(err error) error {
+	pc, fn, line, _ := runtime.Caller(1)
+	return fmt.Errorf("%v\nDEBUG: %s[%s:%d]", err, runtime.FuncForPC(pc).Name(), filepath.Base(fn), line)
 }

@@ -4,6 +4,7 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/deployer"
+	"github.com/dorzheh/deployer/utils"
 )
 
 type PostProcessor struct {
@@ -19,10 +20,10 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 				defer a.Destroy()
 				domain := strings.Split(a.GetName(), "-metadata")[0]
 				if err := p.Driver.DefineDomain(a.GetPath()); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if err := p.Driver.SetAutostart(domain); err != nil {
-					return err
+					return utils.FormatError(err)
 				}
 				if p.StartDomain {
 					if err := p.Driver.StartDomain(domain); err != nil {

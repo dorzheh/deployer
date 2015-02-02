@@ -35,47 +35,51 @@ func (b *ImageBuilder) Id() string {
 
 func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	if err := os.MkdirAll(b.RootfsMp, 0755); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
-	defer func() {
-		os.RemoveAll(b.RootfsMp)
-	}()
+
+	defer os.RemoveAll(b.RootfsMp)
 
 	// create new image artifact
 	img, err := image.New(b.ImageConfig, b.RootfsMp, b.Utils, b.SshfsConfig)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	// interrupt handler
 	img.ReleaseOnInterrupt()
 	defer func() {
-		if err := img.Release(); err != nil {
-			panic(err)
-		}
-		if b.ImageConfig.Bootable {
-			if err := img.MakeBootable(); err != nil {
-				panic(err)
-			}
-		}
-		if err := img.Cleanup(); err != nil {
-			panic(err)
-		}
+		img.CleanupPre()
+		img.CleanupPost()
 	}()
+
 	// parse the image
 	if err := img.Parse(); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	// customize rootfs
 	if b.Filler != nil {
 		if err := b.Filler.MakeRootfs(b.RootfsMp); err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 		// install application.
 		if err := b.Filler.InstallApp(b.RootfsMp); err != nil {
-			return nil, err
+			return nil, utils.FormatError(err)
 		}
 	}
-
+	if err := img.CleanupPre(); err != nil {
+		return nil, utils.FormatError(err)
+	}
+	if b.ImageConfig.Bootable {
+		if err := img.MakeBootable(); err != nil {
+			return nil, utils.FormatError(err)
+		}
+	}
+	if err := img.CleanupPost(); err != nil {
+		return nil, utils.FormatError(err)
+	}
+	if err := img.Convert(); err != nil {
+		return nil, utils.FormatError(err)
+	}
 	return &deployer.CommonArtifact{
 		Name: filepath.Base(b.ImageConfig.Path),
 		Path: b.ImageConfig.Path,
@@ -106,17 +110,17 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 
 	f, err := ioutil.ReadFile(b.Source)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	data, err := utils.ProcessTemplate(string(f), b.UserData)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	run := utils.RunFunc(b.SshConfig)
 	if _, err := run(fmt.Sprintf("echo \"%s\" > %s", data, b.Dest)); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return &deployer.CommonArtifact{
 		Name: filepath.Base(b.Dest),
@@ -137,9 +141,11 @@ func (b *InstanceBuilder) Id() string {
 
 func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {
 	if err = b.Filler.MakeRootfs("/"); err != nil {
+		err = utils.FormatError(err)
 		return
 	}
 	if err = b.Filler.InstallApp("/"); err != nil {
+		err = utils.FormatError(err)
 		return
 	}
 	return

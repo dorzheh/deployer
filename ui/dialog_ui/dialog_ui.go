@@ -7,6 +7,7 @@ import (
 	"os/exec"
 	"time"
 
+	"github.com/dorzheh/deployer/utils"
 	. "github.com/dorzheh/go-dialog"
 )
 
@@ -25,6 +26,7 @@ type Pb struct {
 
 func (p *Pb) SetSleep(s string) (err error) {
 	p.sleep, err = time.ParseDuration(s)
+	err = utils.FormatError(err)
 	return
 }
 
@@ -43,7 +45,7 @@ func (p *Pb) Step() int {
 func (p *Pb) IncreaseSleep(s string) error {
 	sleep, err := time.ParseDuration(s)
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	p.sleep += sleep
 	return nil
@@ -99,7 +101,7 @@ func (ui *DialogUi) WaitForCmdToFinish(cmd *exec.Cmd, title, msg string, step in
 	// execute the command in a background
 	err := cmd.Start()
 	if err != nil {
-		return err
+		return utils.FormatError(err)
 	}
 	// allocate a channel
 	done := make(chan error)
@@ -142,7 +144,7 @@ func (ui *DialogUi) Progress(title, pbMsg string, duration time.Duration, step i
 			ui.SetSize(6, 15)
 			finalSleep, err := time.ParseDuration("1s")
 			if err != nil {
-				return err
+				return utils.FormatError(err)
 			}
 			time.Sleep(finalSleep)
 			return nil

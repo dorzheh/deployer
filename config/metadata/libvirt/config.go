@@ -26,13 +26,13 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil}
 	c.Hwdriver, err = hwinfodrvr.NewHostinfoDriver(filepath.Join(d.RootDir, "hwinfo.json"), i.Lshw, c.SshConfig)
 	if err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 
 	c.Metadata = new(metadata.Metadata)
 	postdriver := libvirt.NewDriver(c.SshConfig)
 	if c.Metadata.EmulatorPath, err = postdriver.Emulator(d.Arch); err != nil {
-		return nil, err
+		return nil, utils.FormatError(err)
 	}
 	return metadata.CreateConfig(d, i, c, postdriver, &meta{})
 }
@@ -71,7 +71,7 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 		d.BlockDeviceSuffix = blockDevicesSuffix[i]
 		tempData, err := utils.ProcessTemplate(TmpltStorage, d)
 		if err != nil {
-			return "", err
+			return "", utils.FormatError(err)
 		}
 		data += string(tempData) + "\n"
 	}
@@ -115,7 +115,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 					if mode.Type == xmlinput.ConTypePassthrough || mode.Type == xmlinput.ConTypeDirect {
 						out, err := treatPhysical(port, mode, templatesDir)
 						if err != nil {
-							return "", err
+							return "", utils.FormatError(err)
 						}
 						data += out
 					}
@@ -125,7 +125,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridgedOVS,
 							&BridgedOVSData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
-							return "", err
+							return "", utils.FormatError(err)
 						}
 						data += tempData
 					}
@@ -135,7 +135,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridged,
 							&BridgedData{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
-							return "", err
+							return "", utils.FormatError(err)
 						}
 						data += tempData
 					}
@@ -155,7 +155,7 @@ func ProcessTemplatePassthrough(pci string) (string, error) {
 	d.Function = temp[1]
 	data, err := utils.ProcessTemplate(TmpltPassthrough, d)
 	if err != nil {
-		return "", err
+		return "", utils.FormatError(err)
 	}
 	return string(data), nil
 }
@@ -167,12 +167,12 @@ func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, templatesDir string) (
 	switch mode.Type {
 	case xmlinput.ConTypePassthrough:
 		if tempData, err = ProcessTemplatePassthrough(port.PCIAddr); err != nil {
-			return "", err
+			return "", utils.FormatError(err)
 		}
 	case xmlinput.ConTypeDirect:
 		if tempData, err = metadata.ProcessNetworkTemplate(mode, TmpltDirect,
 			&DirectData{port.Name, mode.VnicDriver}, templatesDir); err != nil {
-			return "", err
+			return "", utils.FormatError(err)
 		}
 	}
 	return tempData, nil
