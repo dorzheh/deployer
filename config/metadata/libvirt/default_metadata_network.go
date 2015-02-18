@@ -1,5 +1,9 @@
 package libvirt
 
+var TmpltVirtNetwork = ` <interface type='network'>
+      <source network='{{.VirtNetwork}}'/>
+    </interface>`
+
 var TmpltBridged = `<interface type='bridge'>
       <source bridge='{{.Bridge}}'/>
 	  <model type='{{.Driver}}'/>

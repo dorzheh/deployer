@@ -140,7 +140,7 @@ func (ui *DialogUi) Progress(title, pbMsg string, duration time.Duration, step i
 				return result
 			}
 			// we are finished - 100% done
-			pb.Step(100, "\n\nSUCCESS!")
+			pb.Step(100, "\n\nDone!")
 			ui.SetSize(6, 15)
 			finalSleep, err := time.ParseDuration("1s")
 			if err != nil {

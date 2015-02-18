@@ -308,7 +308,6 @@ func (i *image) partTableMakefs() error {
 	if err != nil {
 		return utils.FormatError(err)
 	}
-
 	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
 		// create SWAP and do not add to the mappers slice
@@ -353,7 +352,11 @@ func (i *image) generateFdiskCmd() {
 		// in case partition size in megabytes is set to -1
 		// caclulate partition size in percents
 		if part.SizeMb == calcInPercents {
-			part.SizeMb = i.config.SizeMb / 100 * part.SizePercents
+			if part.SizePercents == allocateAll {
+				part.SizeMb = allocateAll
+			} else {
+				part.SizeMb = i.config.SizeMb / 100 * part.SizePercents
+			}
 		}
 		switch {
 		// in case we are treating the last partition and need to allocate all the space left for it

@@ -36,7 +36,7 @@ var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
         <partition>
            <sequence>2</sequence>
            <size_mb>-1</size_mb>
-           <size_percents>-1</size_percents>
+           <size_percents>-2</size_percents>
            <label>SWAP</label>
            <mount_point>SWAP</mount_point>
            <file_system>swap</file_system>

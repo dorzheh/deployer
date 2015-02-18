@@ -152,5 +152,5 @@ func ParseXMLBuff(fb []byte, data interface{}) (interface{}, error) {
 
 func FormatError(err error) error {
 	pc, fn, line, _ := runtime.Caller(1)
-	return fmt.Errorf("%v\nDEBUG: %s[%s:%d]", err, runtime.FuncForPC(pc).Name(), filepath.Base(fn), line)
+	return fmt.Errorf("%v\nTRACE: %s[%s:%d]", err, runtime.FuncForPC(pc).Name(), filepath.Base(fn), line)
 }
