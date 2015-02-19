@@ -363,45 +363,52 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 
 	index--
 
-MainLoop:
-	for {
-		ui.SetSize(13, 46)
-		resultIndex := 0
-		result := ui.Mixedform(str, list[0:]...)
-		if len(result) < index {
-			continue
-		}
-		selectedCpus, err := strconv.Atoi(result[resultIndex])
-		if err != nil {
-			continue
-		}
-		if uiCpuNotOK(ui, selectedCpus, installedCpus, xidata.CPU.Min, xidata.CPU.Max) {
-			continue
-		}
-		conf.CPUs = selectedCpus
-		resultIndex++
+	if index > 1 {
 
-		selectedRamGb, err := strconv.Atoi(result[resultIndex])
-		if err != nil {
-			continue
-		}
-		if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, xidata.RAM.Max) {
-			continue
-		}
-		conf.RamMb = selectedRamGb * 1024
-		resultIndex++
-
-		for _, disk := range xidata.Disks.Configs {
-			selectedDiskSizeGb, err := strconv.Atoi(result[resultIndex])
-			if err != nil {
-				continue MainLoop
+	MainLoop:
+		for {
+			ui.SetSize(13, 46)
+			resultIndex := 0
+			result := ui.Mixedform(str, list[0:]...)
+			if len(result) < index {
+				continue
 			}
-			if uiDiskNotOK(ui, selectedDiskSizeGb*1024, disk.Min, disk.Max) {
-				continue MainLoop
+			if xidata.CPU.Configure {
+				selectedCpus, err := strconv.Atoi(result[resultIndex])
+				if err != nil {
+					continue
+				}
+				if uiCpuNotOK(ui, selectedCpus, installedCpus, xidata.CPU.Min, xidata.CPU.Max) {
+					continue
+				}
+				conf.CPUs = selectedCpus
+				resultIndex++
 			}
-			conf.DisksMb = append(conf.DisksMb, selectedDiskSizeGb*1024)
+			if xidata.RAM.Configure {
+				selectedRamGb, err := strconv.Atoi(result[resultIndex])
+				if err != nil {
+					continue
+				}
+				if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, xidata.RAM.Max) {
+					continue
+				}
+				conf.RamMb = selectedRamGb * 1024
+				resultIndex++
+			}
+			if xidata.Disks.Configure {
+				for _, disk := range xidata.Disks.Configs {
+					selectedDiskSizeGb, err := strconv.Atoi(result[resultIndex])
+					if err != nil {
+						continue MainLoop
+					}
+					if uiDiskNotOK(ui, selectedDiskSizeGb*1024, disk.Min, disk.Max) {
+						continue MainLoop
+					}
+					conf.DisksMb = append(conf.DisksMb, selectedDiskSizeGb*1024)
+				}
+			}
+			break
 		}
-		break
 	}
 	return conf, nil
 }
