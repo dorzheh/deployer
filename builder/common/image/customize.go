@@ -10,6 +10,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
+	"sort"
 
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/utils/ioutils"
@@ -77,8 +79,8 @@ type InjectItem struct {
 
 // Represents a slice of Items for injection
 type InjectItems struct {
-	XMLName  xml.Name     `xml:"inject_items"`
-	InjItems []InjectItem `xml:"inject_item"`
+	XMLName  xml.Name     `xml:"items"`
+	InjItems []InjectItem `xml:"item"`
 }
 
 // Represents services
@@ -127,30 +129,30 @@ type FilesContent struct {
 
 // ImageCustomize treating image customization according to XML config files
 // Returns error or nil
-func Customize(pathToSlash, pathToPlatformDir string) error {
+func Customize(pathToSlash, pathToConfigDir string) error {
 	//install/deinstall appropriate packages
-	pathToXml := pathToPlatformDir + "/packages.xml"
+	pathToXml := pathToConfigDir + "/packages.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := packageManip(pathToXml, pathToSlash); err != nil {
 			return utils.FormatError(err)
 		}
 	}
 	// inject appropriate stuff
-	pathToXml = pathToPlatformDir + "/inject_items.xml"
+	pathToXml = pathToConfigDir + "/inject_items.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := injectManip(pathToXml, pathToSlash); err != nil {
 			return utils.FormatError(err)
 		}
 	}
 	// services manipulation
-	pathToXml = pathToPlatformDir + "/services.xml"
+	pathToXml = pathToConfigDir + "/services.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := serviceManip(pathToXml, pathToSlash); err != nil {
 			return utils.FormatError(err)
 		}
 	}
 	// file content modification
-	pathToXml = pathToPlatformDir + "/files_content.xml"
+	pathToXml = pathToConfigDir + "/files_content.xml"
 	if _, err := os.Stat(pathToXml); err == nil {
 		if err := filesContentManip(pathToXml, pathToSlash); err != nil {
 			return utils.FormatError(err)
@@ -248,7 +250,7 @@ func injectManip(pathToXml, pathToSlash string) error {
 	}
 	for _, val := range itemsStruct.InjItems {
 		baseDir := filepath.Dir(pathToXml)
-		srcPath := baseDir + "/inject/" + val.Name
+		srcPath := baseDir + "/items/" + val.Name
 		targetLocationPath := filepath.Join(pathToSlash, val.Location)
 		dstPath := filepath.Join(targetLocationPath, val.Name)
 		dstBkpPath := filepath.Join(targetLocationPath, val.BkpName)
@@ -503,7 +505,7 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 		switch val.Action {
 		// if we need to append to the file
 		case ACTION_APPEND:
-			if err := ioutils.AppendToFd(fd, val.NewPattern, val.NewPattern); err != nil {
+			if err := ioutils.AppendToFd(fd, val.NewPattern+"\n", val.NewPattern); err != nil {
 				return utils.FormatError(err)
 			}
 		// if we need to replace a pattern
@@ -516,6 +518,43 @@ func filesContentManip(pathToXml, pathToSlash string) error {
 			}
 		default:
 			return utils.FormatError(errors.New(`FilesContentManip:configuration error - unsupported action`))
+		}
+	}
+	return nil
+}
+
+// ProcessHooks is intended for executing appropriate hooks.
+// The hooks must contain the following prefix : [0-9]+_
+// If arguments are being passed to the function, they will be
+// passed tp the hooks as well
+// Example:
+// 01_pre_deploy
+// 02_deploy
+// 03_post_deploy
+// 04_clean
+func ProcessHooks(pathToHooksDir string, hookArgs ...string) error {
+	d, err := os.Stat(pathToHooksDir)
+	if err != nil {
+		return utils.FormatError(err)
+	}
+	if !d.IsDir() {
+		return utils.FormatError(fmt.Errorf("%s is not directory", d.Name()))
+	}
+
+	var scriptsSlice []string
+	//find mapped loop device partition , create appropriate mount point for each partition
+	err = filepath.Walk(pathToHooksDir, func(scriptName string, info os.FileInfo, err error) error {
+		if !info.IsDir() {
+			if found, _ := regexp.MatchString("[0-9]+_", scriptName); found {
+				scriptsSlice = append(scriptsSlice, scriptName)
+			}
+		}
+		return nil
+	})
+	sort.Strings(scriptsSlice)
+	for _, file := range scriptsSlice {
+		if err := exec.Command(file, hookArgs[0:]...).Run(); err != nil {
+			return utils.FormatError(err)
 		}
 	}
 	return nil

@@ -3,26 +3,16 @@ package utils
 import (
 	"bytes"
 	"encoding/xml"
-	"errors"
 	"fmt"
 	"io/ioutil"
-	"os"
-	"os/exec"
 	"path/filepath"
-	"regexp"
 	"runtime"
-	"sort"
 	"strings"
 	"text/template"
 	"time"
 
 	sshconf "github.com/dorzheh/infra/comm/common"
 	"github.com/dorzheh/infra/comm/ssh"
-)
-
-const (
-	PRE_SCRIPTS = iota
-	POST_SCRIPTS
 )
 
 // ProcessTemplate is responsible for writing appapropriate user data to
@@ -52,56 +42,6 @@ func WaitForResult(ch <-chan error, num int) error {
 		}
 	}
 	return nil
-}
-
-// RunPrePostScripts gets a value representing the pre or post action
-// and executes the scripts in a numeric order.Current valuable usage -
-// executing deployer locally on a cloud instance
-// The scripts must contain the following prefix : [0-9]+_
-// Example: 02_clean
-//returns error or nil
-func RunPrePostScripts(pathToPlatformDir string, preOrPost uint8) error {
-	d, err := os.Stat(pathToPlatformDir)
-	if err != nil {
-		return FormatError(err)
-	}
-	if !d.IsDir() {
-		return FormatError(fmt.Errorf("%s is not directory", d.Name()))
-	}
-	var pathToScriptsDir string
-	switch preOrPost {
-	case PRE_SCRIPTS:
-		pathToScriptsDir = pathToPlatformDir + "/pre-deploy-scripts"
-	case POST_SCRIPTS:
-		pathToScriptsDir = pathToPlatformDir + "/post-deploy-scripts"
-	default:
-		return FormatError(errors.New("unknown stage"))
-	}
-	fd, err := os.Stat(pathToScriptsDir)
-	if err != nil {
-		return FormatError(err)
-	}
-
-	if !fd.IsDir() {
-		return FormatError(fmt.Errorf("%s is not directory", fd.Name()))
-	}
-	var scriptsSlice []string
-	//find mapped loop device partition , create appropriate mount point for each partition
-	err = filepath.Walk(pathToScriptsDir, func(scriptName string, info os.FileInfo, err error) error {
-		if !info.IsDir() {
-			if found, _ := regexp.MatchString("[0-9]+_", scriptName); found {
-				scriptsSlice = append(scriptsSlice, scriptName)
-			}
-		}
-		return nil
-	})
-	sort.Strings(scriptsSlice)
-	for _, file := range scriptsSlice {
-		if err := exec.Command(file).Run(); err != nil {
-			return FormatError(err)
-		}
-	}
-	return FormatError(err)
 }
 
 // UploadBinaries is intended to create a temporary directory on a remote server,

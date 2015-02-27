@@ -169,12 +169,12 @@ func (i *image) Parse() error {
 }
 
 // Customize intended for the target customization
-// - pathToPlatformDir - path to directory containing platform configuration XML file
-func (i *image) Customize(pathToPlatformDir string) error {
+// - pathToConfigDir - path to directory containing configuration XML files
+func (i *image) Customize(pathToConfigDir string) error {
 	if i.amountOfMappers == 0 {
-		return utils.FormatError(errors.New("amount of mappers is 0.Seems you didn't call Parse()."))
+		return utils.FormatError(errors.New("amount of mappers is 0.Seems Parse() hasn't been called yet."))
 	}
-	return Customize(i.slashpath, pathToPlatformDir)
+	return Customize(i.slashpath, pathToConfigDir)
 }
 
 // Release is trying to release the image correctly
