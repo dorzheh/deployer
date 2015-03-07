@@ -332,7 +332,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
-		if xidata.RAM.Max > installedRamMb || xidata.RAM.Max == xmlinput.Unlimited {
+		if xidata.RAM.Max > installedRamMb || xidata.RAM.Max == xmlinput.UnlimitedAlloc {
 			xidata.RAM.Max = installedRamMb
 		}
 

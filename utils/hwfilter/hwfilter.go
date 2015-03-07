@@ -61,6 +61,11 @@ func NicsByType(nics hwinfo.NICList, types []xmlinput.ConnectionMode) (hwinfo.NI
 				}
 				modePassthrough = true
 
+			case xmlinput.ConTypeVirtualNetwork:
+				if nic.Type == hwinfo.NicTypeVirtualNetwork {
+					list.Add(nic)
+				}
+
 			default:
 				return nil, modePassthrough, utils.FormatError(errors.New("unexpected type " + string(contype)))
 			}

@@ -15,29 +15,29 @@ import (
 	"github.com/dorzheh/infra/utils/archutils"
 )
 
-type RootfsFiller struct {
-	PathToKitDir               string
-	PathToRootfsArchive        string
-	PathToKernelArchive        string
-	PathToKernelModulesArchive string
-	PathToApplArchive          string
-	PathToInjectDir            string
-	ExtractApplImage           bool
+type rootfsFiller struct {
+	pathToKitDir               string
+	pathToRootfsArchive        string
+	pathToKernelArchive        string
+	pathToKernelModulesArchive string
+	pathToApplArchive          string
+	pathToInjectDir            string
+	extractApplImage           bool
 }
 
-func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
-	if err := archutils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
+func (f *rootfsFiller) MakeRootfs(pathToRootfsMp string) error {
+	if err := archutils.Extract(f.pathToRootfsArchive, pathToRootfsMp); err != nil {
 		return utils.FormatError(err)
 	}
-	if f.PathToKernelModulesArchive != "" && f.PathToKernelArchive != "" {
+	if f.pathToKernelModulesArchive != "" && f.pathToKernelArchive != "" {
 		errCh := make(chan error, 2)
 		defer close(errCh)
 
 		go func() {
-			errCh <- archutils.Extract(f.PathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
+			errCh <- archutils.Extract(f.pathToKernelArchive, filepath.Join(pathToRootfsMp, "boot"))
 		}()
 		go func() {
-			errCh <- archutils.Extract(f.PathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
+			errCh <- archutils.Extract(f.pathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
 		}()
 		if err := utils.WaitForResult(errCh, 2); err != nil {
 			return utils.FormatError(err)
@@ -60,7 +60,7 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 		}
 	}
 
-	pathToEnvDir := filepath.Join(f.PathToKitDir, "env")
+	pathToEnvDir := filepath.Join(f.pathToKitDir, "env")
 	pathToCommonDir := filepath.Join(pathToEnvDir, "common")
 	fd, err := os.Stat(pathToCommonDir)
 	if err == nil && fd.IsDir() {
@@ -68,8 +68,8 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 			return utils.FormatError(err)
 		}
 	}
-	if f.PathToInjectDir != "" {
-		if err := image.Customize(pathToRootfsMp, f.PathToInjectDir); err != nil {
+	if f.pathToInjectDir != "" {
+		if err := image.Customize(pathToRootfsMp, f.pathToInjectDir); err != nil {
 			return utils.FormatError(err)
 		}
 	}
@@ -77,11 +77,11 @@ func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 }
 
 // InstallApp is responsible for application installation
-func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
-	if err := archutils.Extract(f.PathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
+func (f *rootfsFiller) InstallApp(pathToRootfsMp string) error {
+	if err := archutils.Extract(f.pathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/compact_flash")); err != nil {
 		return utils.FormatError(err)
 	}
-	if f.ExtractApplImage {
+	if f.extractApplImage {
 		return extractApplImage(pathToRootfsMp)
 	}
 	return nil
@@ -89,7 +89,7 @@ func (f *RootfsFiller) InstallApp(pathToRootfsMp string) error {
 
 // extractApplImage is responsible for extracting application image
 func extractApplImage(pathRootMp string) error {
-	if err := os.Chdir(filepath.Join(pathRootMp, "/mnt/cf")); err != nil {
+	if err := os.Chdir(filepath.Join(pathRootMp, "/mnt/compact_flash")); err != nil {
 		return utils.FormatError(err)
 	}
 	if err := exec.Command("/bin/bash", "-c", "./Myappl*").Run(); err != nil {

@@ -1,4 +1,4 @@
 deployer
 --------
 
-Deployer is a tool allowing to deploy your application in different virtual datacenters and cloud environments.
+Deployer is a framework allowing to develop deployment tools intended to build Virtual Appliances and deploy them in different virtual datacenters and cloud environments.

@@ -1,4 +1,4 @@
-package libvirt
+package libvirt_kvm
 
 var defaultMetdata = []byte(`<domain type='kvm'>
   <name>{{.DomainName}}</name>

@@ -56,5 +56,5 @@ type HostinfoDriver interface {
 	NUMANodes() (map[int][]int, error)
 
 	// Returns info related to the host's NICs.
-	NICs() ([]*hwinfo.NIC, error)
+	NICs() (hwinfo.NICList, error)
 }

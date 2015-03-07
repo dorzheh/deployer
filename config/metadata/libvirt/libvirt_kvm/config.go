@@ -1,6 +1,6 @@
 // Intended for creating configuration related to those deployments
 // where the target appliance assumed to be powered by libvirt API
-package libvirt
+package libvirt_kvm
 
 import (
 	"io/ioutil"
@@ -12,7 +12,7 @@ import (
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/config/metadata"
 	"github.com/dorzheh/deployer/deployer"
-	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt"
+	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
 	hwinfodriver "github.com/dorzheh/deployer/drivers/hwinfo_driver/libvirt"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo"
@@ -102,6 +102,11 @@ type DirectData struct {
 	Driver    string
 }
 
+type VirtNetwork struct {
+	NetworkName string
+	Driver      string
+}
+
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
 func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir string) (string, error) {
@@ -134,6 +139,16 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 					if mode.Type == xmlinput.ConTypeBridged {
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridged,
 							&BridgedData{port.Name, mode.VnicDriver}, templatesDir)
+						if err != nil {
+							return "", utils.FormatError(err)
+						}
+						data += tempData
+					}
+
+				case hwinfo.NicTypeVirtualNetwork:
+					if mode.Type == xmlinput.ConTypeVirtualNetwork {
+						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltVirtNetwork,
+							&VirtNetwork{port.Name, mode.VnicDriver}, templatesDir)
 						if err != nil {
 							return "", utils.FormatError(err)
 						}

@@ -1,7 +1,7 @@
-package libvirt
+package libvirt_kvm
 
 import (
-	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt"
+	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/sysinfo"
 	ssh "github.com/dorzheh/infra/comm/common"

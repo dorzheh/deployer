@@ -1,4 +1,4 @@
-package libvirt
+package libvirt_kvm
 
 var TmpltStorage = `<disk type='file' device='disk'>
 	<driver name='qemu' type='{{.StorageType}}' cache='none'/>

@@ -5,6 +5,8 @@
 package libvirt
 
 import (
+	"strings"
+
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo"
 	ssh "github.com/dorzheh/infra/comm/common"
@@ -50,6 +52,22 @@ func (hi *HostinfoDriver) NUMANodes() (map[int][]int, error) {
 }
 
 // Returns info related to the host's NICs
-func (hi *HostinfoDriver) NICs() ([]*hwinfo.NIC, error) {
-	return hi.parser.NICInfo()
+func (hi *HostinfoDriver) NICs() (hwinfo.NICList, error) {
+	nics, err := hi.parser.NICInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	out, err := hi.parser.Run("virsh net-list |awk '!/-----/ && !/Name/ && !/^$/{print $1}'")
+	if err != nil {
+		return nil, err
+	}
+	for _, net := range strings.Split(out, "\n") {
+		n := new(hwinfo.NIC)
+		n.Name = net
+		n.Type = hwinfo.NicTypeVirtualNetwork
+		n.Desc = "Virtual Network"
+		nics.Add(n)
+	}
+	return nics, nil
 }

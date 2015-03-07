@@ -3,14 +3,15 @@ package xmlinput
 type ConnectionMode string
 
 const (
-	ConTypeBridged     ConnectionMode = "bridged"
-	ConTypeOVS                        = "ovs"
-	ConTypeDirect                     = "direct"
-	ConTypePassthrough                = "passthrough"
-	ConTypeError                      = "error"
+	ConTypeBridged        ConnectionMode = "bridged"
+	ConTypeOVS                           = "ovs"
+	ConTypeDirect                        = "direct"
+	ConTypePassthrough                   = "passthrough"
+	ConTypeVirtualNetwork                = "virtnetwork"
+	ConTypeError                         = "error"
 )
 
-const Unlimited = -1
+const UnlimitedAlloc = -1
 
 type XMLInputData struct {
 	CPU

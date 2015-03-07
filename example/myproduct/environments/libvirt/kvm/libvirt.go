@@ -1,7 +1,7 @@
 //
 // FlowCreator interface implementation
 //
-package libvirt
+package kvm
 
 import (
 	"path/filepath"
@@ -10,10 +10,10 @@ import (
 	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/config/common/bundle"
 	"github.com/dorzheh/deployer/config/metadata"
-	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt"
+	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt/libvirt_kvm"
 	"github.com/dorzheh/deployer/deployer"
 	myprodcommon "github.com/dorzheh/deployer/example/myproduct/common"
-	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt"
+	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt/libvirt_kvm"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/comm/sshfs"
 )

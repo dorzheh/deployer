@@ -1,4 +1,4 @@
-package libvirt
+package libvirt_kvm
 
 import (
 	"fmt"

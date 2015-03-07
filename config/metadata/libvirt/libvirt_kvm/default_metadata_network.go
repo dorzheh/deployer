@@ -1,7 +1,9 @@
-package libvirt
+package libvirt_kvm
 
 var TmpltVirtNetwork = ` <interface type='network'>
-      <source network='{{.VirtNetwork}}'/>
+      <source network='{{.NetworkName}}'/>
+      <model type='{{.Driver}}'/>
+      <driver name='vhost'/>
     </interface>`
 
 var TmpltBridged = `<interface type='bridge'>

@@ -16,7 +16,7 @@ import (
 )
 
 type Parser struct {
-	run       func(string) (string, error)
+	Run       func(string) (string, error)
 	parse     func() error
 	cacheFile string
 }
@@ -25,7 +25,7 @@ type Parser struct {
 // The output will be represented in JSON format
 func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error) {
 	i := new(Parser)
-	i.run = utils.RunFunc(sshconf)
+	i.Run = utils.RunFunc(sshconf)
 	i.parse = parseFunc(i, cacheFile, lshwpath, sshconf)
 	return i, nil
 }
@@ -35,7 +35,7 @@ func (i *Parser) Parse() error {
 	if err := i.parse(); err != nil {
 		return utils.FormatError(err)
 	}
-	out, err := i.run("lshw -class network -class cpu -json")
+	out, err := i.Run("lshw -class network -class cpu -json")
 	if err != nil {
 		return utils.FormatError(err)
 	}
@@ -84,7 +84,7 @@ func (i *Parser) CPUInfo() (*CPU, error) {
 }
 
 func (p *Parser) CPUs() (int, error) {
-	cpustr, err := p.run(`grep -c ^processor /proc/cpuinfo`)
+	cpustr, err := p.Run(`grep -c ^processor /proc/cpuinfo`)
 	if err != nil {
 		return 0, utils.FormatError(err)
 	}
@@ -100,9 +100,10 @@ func (p *Parser) CPUs() (int, error) {
 type NicType string
 
 const (
-	NicTypePhys   NicType = "physical"
-	NicTypeOVS    NicType = "openvswitch"
-	NicTypeBridge NicType = "bridge"
+	NicTypePhys           NicType = "physical"
+	NicTypeOVS            NicType = "openvswitch"
+	NicTypeBridge         NicType = "bridge"
+	NicTypeVirtualNetwork NicType = "virtnetwork"
 )
 
 // NIC information
@@ -178,7 +179,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 						prod, ok := ch["product"].(string)
 						if ok {
 							vendor, _ := ch["vendor"].(string)
-							if _, err := p.run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
+							if _, err := p.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
 								continue
 							}
 							nic.PCIAddr = ch["businfo"].(string)
@@ -196,7 +197,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 	}
 
 	// lshw is unable to find linux bridges so let's do it manually
-	res, err := p.run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
+	res, err := p.Run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
@@ -216,14 +217,14 @@ func (p *Parser) NICInfo() (NICList, error) {
 }
 
 func (p *Parser) NUMANodes() (map[int][]int, error) {
-	out, err := p.run("ls -d  /sys/devices/system/node/node[0-9]*")
+	out, err := p.Run("ls -d  /sys/devices/system/node/node[0-9]*")
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
 
 	numaMap := make(map[int][]int)
 	for i, _ := range strings.SplitAfter(out, "\n") {
-		out, err := p.run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
+		out, err := p.Run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
@@ -243,7 +244,7 @@ func (p *Parser) NUMANodes() (map[int][]int, error) {
 
 // RAMSize gathers information related to the installed amount of RAM in MB
 func (p *Parser) RAMSize() (int, error) {
-	out, err := p.run("grep MemTotal /proc/meminfo")
+	out, err := p.Run("grep MemTotal /proc/meminfo")
 	if err != nil {
 		return 0, utils.FormatError(err)
 	}
@@ -255,7 +256,7 @@ func (p *Parser) RAMSize() (int, error) {
 func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func() error {
 	return func() error {
 		if lshwpath == "" {
-			out, err := i.run("which lshw")
+			out, err := i.Run("which lshw")
 			if err != nil {
 				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 			}

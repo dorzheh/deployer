@@ -1,22 +1,22 @@
-package libvirt
+package libvirt_kvm
 
 import (
 	"strings"
 
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/deployer/drivers/env_driver/libvirt"
+	"github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 type PostProcessor struct {
-	driver      *libvirt.Driver
+	driver      *libvirt_kvm.Driver
 	startDomain bool
 }
 
 func NewPostProcessor(sshconf *ssh.Config, startDomain bool) *PostProcessor {
 	p := new(PostProcessor)
-	p.driver = libvirt.NewDriver(sshconf)
+	p.driver = libvirt_kvm.NewDriver(sshconf)
 	p.startDomain = startDomain
 	return p
 }

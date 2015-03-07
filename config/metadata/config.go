@@ -107,7 +107,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	conf := new(gui.VmConfig)
 	conf.DisksMb = make([]int, 0)
 	if m == nil {
-		if xid.CPU.Max == xmlinput.Unlimited {
+		if xid.CPU.Max == xmlinput.UnlimitedAlloc {
 			xid.CPU.Max = driver.MaxVCPUsPerGuest()
 		}
 		conf, err = gui.UiVmConfig(d.Ui, c.Hwdriver, xid)
