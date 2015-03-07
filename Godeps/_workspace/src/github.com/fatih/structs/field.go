@@ -14,8 +14,9 @@ var (
 // Field represents a single struct field that encapsulates high level
 // functions around the field.
 type Field struct {
-	value reflect.Value
-	field reflect.StructField
+	value      reflect.Value
+	field      reflect.StructField
+	defaultTag string
 }
 
 // Tag returns the value associated with key in the tag string. If there is no
@@ -63,29 +64,23 @@ func (f *Field) Kind() reflect.Kind {
 // settable (not addresable or not exported) or if the given value's type
 // doesn't match the fields type.
 func (f *Field) Set(val interface{}) error {
-	// needed to make the field settable
-	v := reflect.Indirect(f.value)
-
+	// we can't set unexported fields, so be sure this field is exported
 	if !f.IsExported() {
 		return errNotExported
 	}
 
 	// do we get here? not sure...
-	if !v.CanSet() {
+	if !f.value.CanSet() {
 		return errNotSettable
 	}
 
 	given := reflect.ValueOf(val)
 
-	if given.Kind() == reflect.Ptr {
-		given = given.Elem()
+	if f.value.Kind() != given.Kind() {
+		return fmt.Errorf("wrong kind. got: %s want: %s", given.Kind(), f.value.Kind())
 	}
 
-	if v.Kind() != given.Kind() {
-		return fmt.Errorf("wrong kind: %s want: %s", given.Kind(), v.Kind())
-	}
-
-	v.Set(given)
+	f.value.Set(given)
 	return nil
 }
 
@@ -98,7 +93,7 @@ func (f *Field) Set(val interface{}) error {
 //
 // It panics if field is not exported or if field's kind is not struct
 func (f *Field) Fields() []*Field {
-	return getFields(f.value)
+	return getFields(f.value, f.defaultTag)
 }
 
 // Field returns the field from a nested struct. It panics if the nested struct

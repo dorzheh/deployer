@@ -62,7 +62,6 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 	}
 
 	util := &image.Utils{
-		Grub:   filepath.Join(d.RootDir, "install", d.Arch, "bin/grub"),
 		Kpartx: filepath.Join(d.RootDir, "install", d.Arch, "bin/kpartx"),
 	}
 
@@ -90,9 +89,6 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 func (c *FlowCreator) CreatePostProcessor(d *deployer.CommonData) (p deployer.PostProcessor, err error) {
 	d.Ui.Pb.SetSleep("2s")
 	d.Ui.Pb.SetStep(10)
-	p = &libvirtpost.PostProcessor{
-		Driver:      libvirtpost.NewDriver(c.config.SshConfig),
-		StartDomain: false,
-	}
+	p = libvirtpost.NewPostProcessor(c.config.SshConfig, false)
 	return
 }

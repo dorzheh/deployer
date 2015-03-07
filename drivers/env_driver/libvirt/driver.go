@@ -113,3 +113,8 @@ func (d *Driver) Version() (string, error) {
 	return strings.Split(out, " ")[2], nil
 
 }
+
+// Returns maximal Virtual CPUs per guest
+func (d *Driver) MaxVCPUsPerGuest() int {
+	return 64
+}

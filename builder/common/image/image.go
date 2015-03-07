@@ -68,7 +68,6 @@ type image struct {
 }
 
 type Utils struct {
-	Grub   string
 	Kpartx string
 	dir    string
 }
@@ -138,12 +137,11 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 }
 
 func setUtilNewPaths(i *image, u *Utils) error {
-	dir, err := utils.UploadBinaries(i.client.Config.Common, u.Grub, u.Kpartx)
+	dir, err := utils.UploadBinaries(i.client.Config.Common, u.Kpartx)
 	if err != nil {
 		return utils.FormatError(err)
 	}
 	i.utils = new(Utils)
-	i.utils.Grub = filepath.Join(dir, filepath.Base(u.Grub))
 	i.utils.Kpartx = filepath.Join(dir, filepath.Base(u.Kpartx))
 	i.utils.dir = dir
 	return nil
@@ -181,7 +179,7 @@ func (i *image) Customize(pathToConfigDir string) error {
 // by unmounting the mappers in reverse order
 // and the cleans up a temporary stuff
 // Returns error or nil
-func (i *image) CleanupPre() error {
+func (i *image) Cleanup() error {
 	if i.localmount != "" {
 		if err := i.client.Detach(i.localmount); err != nil {
 			return utils.FormatError(err)
@@ -196,10 +194,7 @@ func (i *image) CleanupPre() error {
 		i.loopDevice.amountOfMappers--
 		index--
 	}
-	return nil
-}
 
-func (i *image) CleanupPost() error {
 	// unbind mappers and image
 	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
 		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
@@ -229,9 +224,20 @@ func (i *image) CleanupPost() error {
 func (i *image) MakeBootable() error {
 	switch i.config.BootLoader {
 	case BootLoaderGrub:
-		if out, err := i.run(fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s", i.config.Path, i.utils.Grub)); err != nil {
+		grubPath, err := i.run("chroot " + i.slashpath + "  which grub")
+		if err != nil {
+			return utils.FormatError(err)
+		}
+		cmd := fmt.Sprintf("echo -e \"device (hd0) %s\nroot (hd0,0)\nsetup (hd0)\n\"|%s",
+			i.config.Path, filepath.Join(i.slashpath, grubPath))
+		out, err := i.run(cmd)
+		if err != nil {
 			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
+		if strings.Contains(out, "Error 15: File not found") {
+			return utils.FormatError(errors.New("installing GRUB [Error 15: File not found]"))
+		}
+
 	case BootLoaderGrub2:
 		dummyLoopDevice, err := bind(i.loopDevice.mappers[0].name, i.run)
 		if err != nil {
@@ -246,14 +252,20 @@ func (i *image) MakeBootable() error {
 		if out, err := i.run("mount " + dummyLoopDevice + " " + dummyLoopDeviceMp); err != nil {
 			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
-		defer i.run("umount -f " + dummyLoopDeviceMp + ";rm -rf " + dummyLoopDeviceMp)
+		defer func() {
+			cmd := "umount -l " + dummyLoopDeviceMp + "/proc " + dummyLoopDeviceMp + "/dev;"
+			cmd += "umount -f " + dummyLoopDeviceMp
+			cmd += ";rm -rf " + dummyLoopDeviceMp
+			i.run(cmd)
+		}()
 
 		cmd := fmt.Sprintf("mkdir -p %s/boot/grub; echo -e \"(hd0) %s\n(hd0,1) %s\" > %s/boot/grub/device.map;",
 			dummyLoopDeviceMp, i.loopDevice.name, dummyLoopDevice, dummyLoopDeviceMp)
-		cmd += fmt.Sprintf("mount --bind /dev %s/dev ;chroot %s mount -t proc none /proc;", dummyLoopDeviceMp, dummyLoopDeviceMp)
-		cmd += fmt.Sprintf("chroot %s grub-install --no-floppy --grub-mkdevicemap=/boot/grub/device.map %s;", dummyLoopDeviceMp, i.loopDevice.name)
-		cmd += fmt.Sprintf("chroot %s update-grub;rm -f %s/boot/grub/device.map;", dummyLoopDeviceMp, dummyLoopDeviceMp)
-		cmd += fmt.Sprintf("sed -i '/loop/d' %s/boot/grub/grub.cfg;umount -l %s/proc;umount -l %s/dev", dummyLoopDeviceMp, dummyLoopDeviceMp, dummyLoopDeviceMp)
+		cmd += "mount --bind /dev " + dummyLoopDeviceMp + "/dev ;chroot " + dummyLoopDeviceMp + " mount -t proc none /proc;"
+		cmd += "chroot " + dummyLoopDeviceMp + " grub-install --no-floppy --grub-mkdevicemap=/boot/grub/device.map " + i.loopDevice.name
+		cmd += ";chroot " + dummyLoopDeviceMp + " update-grub;"
+		cmd += "rm -f " + dummyLoopDeviceMp + "/boot/grub/device.map;"
+		cmd += "sed -i '/loop/d' " + dummyLoopDeviceMp + "/boot/grub/grub.cfg"
 
 		if out, err := i.run(cmd); err != nil {
 			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
@@ -283,8 +295,7 @@ func (i *image) ReleaseOnInterrupt() {
 		for {
 			select {
 			case <-interrupt:
-				i.CleanupPre()
-				i.CleanupPost()
+				i.Cleanup()
 			}
 		}
 	}()

@@ -1,11 +1,11 @@
 {
 	"ImportPath": "github.com/dorzheh/deployer",
-	"GoVersion": "go1.4.1",
+	"GoVersion": "go1.4.2",
 	"Deps": [
 		{
 			"ImportPath": "code.google.com/p/go.crypto/ssh",
-			"Comment": "null-215",
-			"Rev": "2a61df2221b6be21be1c1ded77821b0f71b29584"
+			"Comment": "null-236",
+			"Rev": "69e2a90ed92d03812364aeb947b7068dc42e561e"
 		},
 		{
 			"ImportPath": "github.com/clbanning/mxj",
@@ -33,7 +33,7 @@
 		},
 		{
 			"ImportPath": "github.com/fatih/structs",
-			"Rev": "ebbcf66cbe3b86b7065f7801cbcb6a3134884868"
+			"Rev": "c00d27128bb88e9c1adab1a53cda9c72c6d1ff9b"
 		}
 	]
 }

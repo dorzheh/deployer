@@ -39,7 +39,7 @@ func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	ui.Output(gui.None, msg, 6, width)
 }
 
-func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.Driver) string {
+func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDriver) string {
 	var name string
 	for {
 		ui.SetSize(8, len(defaultName)+10)

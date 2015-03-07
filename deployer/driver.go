@@ -4,9 +4,9 @@ import (
 	"github.com/dorzheh/deployer/utils/hwinfo"
 )
 
-// Driver is the interface that has to be implemented in order
-// to communicate with our appliance over appropriate API
-type Driver interface {
+// EnvDriver is the interface that has to be implemented in order
+// to communicate with VM over API belonging to appropriate environment
+type EnvDriver interface {
 	// Creates appropriate domain.
 	DefineDomain(string) error
 
@@ -32,6 +32,9 @@ type Driver interface {
 	// Returns driver version (for example if the driver is libvirt the function
 	// will return libvirt API version)
 	Version() (string, error)
+
+	// Returns maximal Virtual CPUs per guest
+	MaxVCPUsPerGuest() int
 }
 
 // HostinfoDriver is the interface that has to be implemented in order to

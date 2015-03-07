@@ -71,11 +71,11 @@ type Config struct {
 	Bundle map[string]interface{}
 }
 
-func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.Driver, metaconf deployer.MetadataConfigurator) (*Config, error) {
+func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.EnvDriver, metaconf deployer.MetadataConfigurator) (*Config, error) {
 	var err error
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
-	c.DestMetadataFile = filepath.Join(c.ExportDir, d.VaName+"-metadata")
+	c.DestMetadataFile = "/tmp/" + d.VaName + "-temp-metadata.xml"
 	// always create default metadata
 	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
 		return nil, utils.FormatError(err)
@@ -104,8 +104,12 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 		}
 	}
 
-	var conf *gui.VmConfig
+	conf := new(gui.VmConfig)
+	conf.DisksMb = make([]int, 0)
 	if m == nil {
+		if xid.CPU.Max == xmlinput.Unlimited {
+			xid.CPU.Max = driver.MaxVCPUsPerGuest()
+		}
 		conf, err = gui.UiVmConfig(d.Ui, c.Hwdriver, xid)
 		if err != nil {
 			return nil, utils.FormatError(err)

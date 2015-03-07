@@ -48,8 +48,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	// interrupt handler
 	img.ReleaseOnInterrupt()
 	defer func() {
-		img.CleanupPre()
-		img.CleanupPost()
+		img.Cleanup()
 	}()
 
 	// parse the image
@@ -66,15 +65,12 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 			return nil, utils.FormatError(err)
 		}
 	}
-	if err := img.CleanupPre(); err != nil {
-		return nil, utils.FormatError(err)
-	}
 	if b.ImageConfig.Bootable {
 		if err := img.MakeBootable(); err != nil {
 			return nil, utils.FormatError(err)
 		}
 	}
-	if err := img.CleanupPost(); err != nil {
+	if err := img.Cleanup(); err != nil {
 		return nil, utils.FormatError(err)
 	}
 	if err := img.Convert(); err != nil {

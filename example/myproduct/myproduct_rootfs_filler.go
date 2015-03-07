@@ -26,17 +26,8 @@ type RootfsFiller struct {
 }
 
 func (f *RootfsFiller) MakeRootfs(pathToRootfsMp string) error {
-	if f.PathToRootfsArchive == "" {
-		if f.PathToInjectDir != "" {
-			if err := utils.RunPrePostScripts(filepath.Join(f.PathToInjectDir,
-				"pre-deploy-scripts"), utils.PRE_SCRIPTS); err != nil {
-				return utils.FormatError(err)
-			}
-		}
-	} else {
-		if err := archutils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
-			return utils.FormatError(err)
-		}
+	if err := archutils.Extract(f.PathToRootfsArchive, pathToRootfsMp); err != nil {
+		return utils.FormatError(err)
 	}
 	if f.PathToKernelModulesArchive != "" && f.PathToKernelArchive != "" {
 		errCh := make(chan error, 2)

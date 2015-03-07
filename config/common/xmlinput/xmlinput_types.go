@@ -7,7 +7,6 @@ const (
 	ConTypeOVS                        = "ovs"
 	ConTypeDirect                     = "direct"
 	ConTypePassthrough                = "passthrough"
-        ConTypeVirtNetwork		  = "virtnetwork"
 	ConTypeError                      = "error"
 )
 
