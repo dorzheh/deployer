@@ -1,7 +1,6 @@
 package ui
 
 import (
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -150,21 +149,25 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 		}
 
 		var modes []xmlinput.ConnectionMode
-		if net.UiModeBinding != nil {
-			mode, err := uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
-			if err != nil {
-				return nil, utils.FormatError(err)
-			}
-			modes = append(modes, mode)
-		} else {
+		if net.UiModeBinding == nil || len(net.UiModeBinding) == 0 {
 			for _, mode := range net.Modes {
 				modes = append(modes, mode.Type)
+			}
+		} else {
+			var err error
+			modes, err = uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
+			if err != nil {
+				return nil, utils.FormatError(err)
 			}
 		}
 
 		retainedNics, modePassthrough, err := hwfilter.NicsByType(allowedNics, modes)
 		if err != nil {
 			return nil, utils.FormatError(err)
+		}
+		if len(retainedNics) == 0 {
+			ui.Output(gui.Warning, "no interfaces have been found.\nPress <OK> to return to menu.", 7, 2)
+			continue
 		}
 
 		var list hwinfo.NICList
@@ -199,10 +202,6 @@ func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullLis
 	}
 
 	sliceLength := len(temp)
-	if sliceLength == 0 {
-		return nil, utils.FormatError(errors.New("Make sure that XML file representing xmlinput is configured properly."))
-	}
-
 	var selected []string
 	for {
 		ui.SetSize(sliceLength+5, 95)
@@ -245,9 +244,6 @@ func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *
 	}
 
 	sliceLength := len(temp)
-	if sliceLength == 0 {
-		return nil, utils.FormatError(errors.New("Make sure that XML file representing xmlinput is configured properly."))
-	}
 	ui.SetSize(sliceLength+5, 95)
 	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
 	ifaceNum := ui.Menu(sliceLength, temp[0:]...)
@@ -265,26 +261,33 @@ func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *
 	return finalList, nil
 }
 
-func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) (xmlinput.ConnectionMode, error) {
-	sliceLength := len(modes)
-	if sliceLength == 0 {
-		return xmlinput.ConTypeError, utils.FormatError(errors.New("ui_mode_selection is not set."))
+func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) ([]xmlinput.ConnectionMode, error) {
+	matrix := make(map[string][]xmlinput.ConnectionMode)
+	for _, mode := range modes {
+		if _, ok := matrix[mode.Appear]; !ok {
+			matrix[mode.Appear] = make([]xmlinput.ConnectionMode, 0)
+		}
+		matrix[mode.Appear] = append(matrix[mode.Appear], mode.Type)
 	}
 
 	var temp []string
 	index := 1
-	for _, mode := range modes {
-		temp = append(temp, strconv.Itoa(index), mode.Appear)
+	for appear, _ := range matrix {
+		temp = append(temp, strconv.Itoa(index), appear)
 		index++
 	}
 
-	ui.SetSize(sliceLength+8, 50)
+	length := len(matrix)
+	ui.SetSize(length+8, 50)
 	ui.SetLabel(fmt.Sprintf("Network interface type for network \"%s\"", network))
-	ifaceNumInt, err := strconv.Atoi(ui.Menu(sliceLength, temp[0:]...))
+	resultInt, err := strconv.Atoi(ui.Menu(length, temp[0:]...))
 	if err != nil {
-		return xmlinput.ConTypeError, utils.FormatError(err)
+		return nil, utils.FormatError(err)
 	}
-	return modes[ifaceNumInt-1].Type, nil
+	if resultInt != 1 {
+		resultInt++
+	}
+	return matrix[temp[resultInt]], nil
 }
 
 func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInSec string, remote bool) error {

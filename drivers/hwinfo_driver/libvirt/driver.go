@@ -66,7 +66,7 @@ func (hi *HostinfoDriver) NICs() (hwinfo.NICList, error) {
 		n := new(hwinfo.NIC)
 		n.Name = net
 		n.Type = hwinfo.NicTypeVirtualNetwork
-		n.Desc = "Virtual Network"
+		n.Desc = "Virtual network"
 		nics.Add(n)
 	}
 	return nics, nil

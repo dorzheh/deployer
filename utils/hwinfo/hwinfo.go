@@ -142,8 +142,22 @@ func (p *Parser) NICInfo() (NICList, error) {
 		return nil, utils.FormatError(err)
 	}
 
-	//nics := make([]*NIC, 0)
 	list := NewNICList()
+	for _, m := range out {
+		val, err := m.ValuesForKey("id")
+		if err != nil {
+			continue
+		}
+		for _, name := range val {
+			if name == "network" {
+				nic := p.findInterface(m.Old())
+				if nic != nil {
+					list.Add(nic)
+				}
+			}
+		}
+	}
+
 	deep := []string{"children.children.children.children.children",
 		"children.children.children.children",
 		"children.children.children",
@@ -153,43 +167,8 @@ func (p *Parser) NICInfo() (NICList, error) {
 		for _, d := range deep {
 			r, _ := m.ValuesForPath(d)
 			for _, n := range r {
-				ch := n.(map[string]interface{})
-				if ch["description"] == "Ethernet interface" ||
-					ch["description"] == "Ethernet controller" {
-					name, ok := ch["logicalname"].(string)
-					if !ok {
-						name = "N/A"
-					}
-					if name == "ovs-system" {
-						continue
-					}
-					nic := new(NIC)
-					nic.Name = name
-					driver, ok := ch["configuration"].(map[string]interface{})["driver"].(string)
-					if !ok {
-						driver = "N/A"
-					}
-					switch driver {
-					case "tun", "veth", "macvlan":
-						continue
-					case "openvswitch":
-						nic.Desc = "Open vSwitch interface"
-						nic.Type = NicTypeOVS
-					default:
-						prod, ok := ch["product"].(string)
-						if ok {
-							vendor, _ := ch["vendor"].(string)
-							if _, err := p.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
-								continue
-							}
-							nic.PCIAddr = ch["businfo"].(string)
-							nic.Vendor = vendor
-							nic.Model = prod
-							nic.Desc = vendor + " " + prod
-							nic.Type = NicTypePhys
-						}
-					}
-					nic.Driver = driver
+				nic := p.findInterface(n)
+				if nic != nil {
 					list.Add(nic)
 				}
 			}
@@ -273,4 +252,47 @@ func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func(
 		i.cacheFile = cacheFile
 		return nil
 	}
+}
+
+func (p *Parser) findInterface(json interface{}) *NIC {
+	ch := json.(map[string]interface{})
+	var nic *NIC
+	if ch["description"] == "Ethernet interface" ||
+		ch["description"] == "Ethernet controller" {
+		name, ok := ch["logicalname"].(string)
+		if !ok {
+			name = "N/A"
+		}
+		if name == "ovs-system" {
+			return nil
+		}
+		nic = new(NIC)
+		nic.Name = name
+		driver, ok := ch["configuration"].(map[string]interface{})["driver"].(string)
+		if !ok {
+			driver = "N/A"
+		}
+		switch driver {
+		case "tun", "veth", "macvlan":
+			return nil
+		case "openvswitch":
+			nic.Desc = "Open vSwitch interface"
+			nic.Type = NicTypeOVS
+		default:
+			prod, ok := ch["product"].(string)
+			if ok {
+				vendor, _ := ch["vendor"].(string)
+				if _, err := p.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
+					return nil
+				}
+				nic.PCIAddr = ch["businfo"].(string)
+				nic.Vendor = vendor
+				nic.Model = prod
+				nic.Desc = vendor + " " + prod
+				nic.Type = NicTypePhys
+			}
+		}
+		nic.Driver = driver
+	}
+	return nic
 }
