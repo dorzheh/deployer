@@ -6,8 +6,8 @@ package kvm
 import (
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common"
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/common/bundle"
 	"github.com/dorzheh/deployer/config/metadata"
 	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt/libvirt_kvm"
@@ -19,7 +19,7 @@ import (
 )
 
 type FlowCreator struct {
-	Filler              image.Rootfs
+	Filler              deployer.RootfsFiller
 	SrcMetadataFile     string
 	StorageConfigFile   string
 	InputDataConfigFile string
@@ -71,7 +71,7 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 			RootfsMp:    d.RootfsMp,
 			Filler:      c.Filler,
 		}
-		imageBuilder := &common.ImageBuilder{imageData, sshfsConf, util}
+		imageBuilder := &builder.ImageBuilder{imageData, sshfsConf, util}
 		b = append(b, imageBuilder)
 	}
 
@@ -81,7 +81,7 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 		UserData: c.config.Metadata,
 	}
 
-	metadataBuilder := &common.MetadataBuilder{metaData, c.config.SshConfig}
+	metadataBuilder := &builder.MetadataBuilder{metaData, c.config.SshConfig}
 	b = append(b, metadataBuilder)
 	return
 }

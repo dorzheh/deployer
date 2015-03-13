@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/common"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/config/metadata"

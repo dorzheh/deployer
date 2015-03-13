@@ -1,4 +1,4 @@
-package common
+package builder
 
 import (
 	"fmt"
@@ -6,7 +6,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
@@ -57,7 +57,7 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 	}
 	// customize rootfs
 	if b.Filler != nil {
-		if err := b.Filler.MakeRootfs(b.RootfsMp); err != nil {
+		if err := b.Filler.CustomizeRootfs(b.RootfsMp); err != nil {
 			return nil, utils.FormatError(err)
 		}
 		// install application.
@@ -128,7 +128,7 @@ func (b *MetadataBuilder) Run() (deployer.Artifact, error) {
 // InstanceBuilder represents properties related to a local instance builder
 // The common usage of InstanceBuiler: running deployer on a cloud instance
 type InstanceBuilder struct {
-	Filler image.Rootfs
+	Filler deployer.RootfsFiller
 }
 
 func (b *InstanceBuilder) Id() string {
@@ -136,13 +136,46 @@ func (b *InstanceBuilder) Id() string {
 }
 
 func (b *InstanceBuilder) Run() (a deployer.Artifact, err error) {
-	if err = b.Filler.MakeRootfs("/"); err != nil {
+	if err = b.Filler.CustomizeRootfs("/"); err != nil {
 		err = utils.FormatError(err)
 		return
 	}
 	if err = b.Filler.InstallApp("/"); err != nil {
 		err = utils.FormatError(err)
 		return
+	}
+	return
+}
+
+// DirBuilder is intended for building directory backed appliances(LXC,OpenVZ and so forth)
+type DirBuilder struct {
+	// deployer.DirBuilderData represents common data
+	*deployer.DirBuilderData
+
+	// SshfsConfig represents remote configuration
+	// facility needed by the builder
+	SshfsConfig *sshfs.Config
+}
+
+func (b *DirBuilder) Id() string {
+	if b.SshfsConfig == nil {
+		return "LocalDirBuilder"
+	}
+	return "RemoteDirBuilder"
+}
+
+func (b *DirBuilder) Run() (a deployer.Artifact, err error) {
+	// customize rootfs
+	if b.Filler != nil {
+		if err = b.Filler.CustomizeRootfs(b.RootfsPath); err != nil {
+			err = utils.FormatError(err)
+			return
+		}
+		// install application
+		if err = b.Filler.InstallApp(b.RootfsPath); err != nil {
+			err = utils.FormatError(err)
+			return
+		}
 	}
 	return
 }

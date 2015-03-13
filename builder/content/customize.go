@@ -1,6 +1,6 @@
 // Responsible for customizing rootfs
 
-package image
+package content
 
 import (
 	"encoding/xml"

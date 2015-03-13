@@ -1,7 +1,7 @@
 package deployer
 
 import (
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 )
 
 // Implementers of the interface are responsible for creating
@@ -20,8 +20,8 @@ type ImageBuilderData struct {
 	// ImageConfig - XML metadata containing image topology configuration.
 	ImageConfig *image.Disk
 
-	// Filler - implementation of image.Rootfs interface.
-	Filler image.Rootfs
+	// Filler - implementation of deployer.RootfsFiller interface.
+	Filler RootfsFiller
 
 	// RootfsMp - path to the mount point where the image
 	// artifact will be mounted during customization.
@@ -40,4 +40,14 @@ type MetadataBuilderData struct {
 	// UserData - any data provided by user and that will be
 	// written to destination metadata.
 	UserData interface{}
+}
+
+// DirBuilderData represents the common data
+// needed by appropriate image builder.
+type DirBuilderData struct {
+	// Filler - implementation of RootfsFiller interface.
+	Filler RootfsFiller
+
+	// RootfsPath - path to rootfs
+	RootfsPath string
 }

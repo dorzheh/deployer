@@ -3,11 +3,10 @@ package myproduct
 import (
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common/image"
 	"github.com/dorzheh/deployer/deployer"
 )
 
-func ImageFiller(data *deployer.CommonData, mainConfig map[string]string) image.Rootfs {
+func ImageFiller(data *deployer.CommonData, mainConfig map[string]string) deployer.RootfsFiller {
 	return &rootfsFiller{
 		pathToKitDir:               data.RootDir,
 		pathToRootfsArchive:        filepath.Join(data.RootDir, "comp/rootfs.tgz"),
@@ -19,7 +18,7 @@ func ImageFiller(data *deployer.CommonData, mainConfig map[string]string) image.
 	}
 }
 
-func InstanceFiller(data *deployer.CommonData, mainConfig map[string]string) image.Rootfs {
+func InstanceFiller(data *deployer.CommonData, mainConfig map[string]string) deployer.RootfsFiller {
 	return &rootfsFiller{
 		pathToKitDir:               data.RootDir,
 		pathToApplArchive:          filepath.Join(data.RootDir, "comp/appl.tgz"),

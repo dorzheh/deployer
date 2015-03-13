@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/ui"

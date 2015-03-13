@@ -10,7 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/content"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/utils/archutils"
 )
@@ -25,7 +25,7 @@ type rootfsFiller struct {
 	extractApplImage           bool
 }
 
-func (f *rootfsFiller) MakeRootfs(pathToRootfsMp string) error {
+func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
 	if err := archutils.Extract(f.pathToRootfsArchive, pathToRootfsMp); err != nil {
 		return utils.FormatError(err)
 	}
@@ -64,12 +64,12 @@ func (f *rootfsFiller) MakeRootfs(pathToRootfsMp string) error {
 	pathToCommonDir := filepath.Join(pathToEnvDir, "common")
 	fd, err := os.Stat(pathToCommonDir)
 	if err == nil && fd.IsDir() {
-		if err := image.Customize(pathToRootfsMp, pathToCommonDir); err != nil {
+		if err := content.Customize(pathToRootfsMp, pathToCommonDir); err != nil {
 			return utils.FormatError(err)
 		}
 	}
 	if f.pathToInjectDir != "" {
-		if err := image.Customize(pathToRootfsMp, f.pathToInjectDir); err != nil {
+		if err := content.Customize(pathToRootfsMp, f.pathToInjectDir); err != nil {
 			return utils.FormatError(err)
 		}
 	}

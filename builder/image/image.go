@@ -14,6 +14,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/dorzheh/deployer/builder/content"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/infra/comm/sshfs"
 )
@@ -172,7 +173,7 @@ func (i *image) Customize(pathToConfigDir string) error {
 	if i.amountOfMappers == 0 {
 		return utils.FormatError(errors.New("amount of mappers is 0.Seems Parse() hasn't been called yet."))
 	}
-	return Customize(i.slashpath, pathToConfigDir)
+	return content.Customize(i.slashpath, pathToConfigDir)
 }
 
 // Release is trying to release the image correctly

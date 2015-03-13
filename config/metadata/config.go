@@ -4,7 +4,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/common"
 	"github.com/dorzheh/deployer/config/common/bundle"
 	"github.com/dorzheh/deployer/config/common/xmlinput"

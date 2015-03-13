@@ -5,7 +5,7 @@ package common
 import (
 	"fmt"
 
-	"github.com/dorzheh/deployer/builder/common/image"
+	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/utils"
