@@ -3,6 +3,7 @@
 package libvirt_kvm
 
 import (
+	"fmt"
 	"io/ioutil"
 	"path/filepath"
 	"strings"
@@ -24,7 +25,7 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
 	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil}
-	c.Hwdriver, err = hwinfodriver.NewHostinfoDriver(filepath.Join(d.RootDir, ".hwinfo.json"), i.Lshw, c.SshConfig)
+	c.Hwdriver, err = hwinfodriver.NewHostinfoDriver(c.SshConfig, i.Lshw, filepath.Join(d.RootDir, ".hwinfo.json"))
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
@@ -39,6 +40,45 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 
 func (m meta) DefaultMetadata() []byte {
 	return defaultMetdata
+}
+
+// --- metadata configuration: cpu tuning --- //
+const (
+	TmpltFileCpuTune = "template_cpu_tuning.xml"
+)
+
+type CpuTuneData struct {
+	CpuTuneData string
+}
+
+func (m meta) SetCpuTuneData(cpus map[int][]string, templatesDir string) (string, error) {
+	// assume <cputune> </cputune> exists in metadata
+	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuTune))
+	if err == nil {
+		TmpltCpuTune = string(buf)
+	}
+
+	tempData, err := utils.ProcessTemplate(TmpltCpuTune, &CpuTuneData{SetCpuTuneData(cpus)})
+	if err != nil {
+		return "", utils.FormatError(err)
+	}
+	return string(tempData) + "\n", nil
+}
+
+func SetCpuTuneData(cpus map[int][]string) string {
+	var cpuTuneData string
+	for vcpu, pcpus := range cpus {
+		var cpuset string
+		for i, pcpu := range pcpus {
+			if i == 0 {
+				cpuset = pcpu
+			} else {
+				cpuset += "," + pcpu
+			}
+		}
+		cpuTuneData += fmt.Sprintf("\n<vcpupin vcpu=\"%d\" cpuset=\"%s\"/>", vcpu, cpuset)
+	}
+	return cpuTuneData
 }
 
 // --- metadata configuration: storage --- //

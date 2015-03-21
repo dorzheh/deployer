@@ -15,31 +15,33 @@ import (
 	ssh "github.com/dorzheh/infra/comm/common"
 )
 
-type Parser struct {
-	Run       func(string) (string, error)
-	parse     func() error
-	cacheFile string
+type Collector struct {
+	Run        func(string) (string, error)
+	prepare    func() (string, error)
+	hwinfoFile string
 }
 
-// NewParser constructs new lshw parser
+// NewCollector constructs new lshw Collector
 // The output will be represented in JSON format
-func NewParser(cacheFile, lshwpath string, sshconf *ssh.Config) (*Parser, error) {
-	i := new(Parser)
-	i.Run = utils.RunFunc(sshconf)
-	i.parse = parseFunc(i, cacheFile, lshwpath, sshconf)
-	return i, nil
+func NewCollector(sshconf *ssh.Config, lshwpath, hwinfoFile string) (*Collector, error) {
+	c := new(Collector)
+	c.Run = utils.RunFunc(sshconf)
+	c.hwinfoFile = hwinfoFile
+	c.prepare = prepareFunc(c, sshconf, lshwpath)
+	return c, nil
 }
 
 // Parse parses lshw output
-func (i *Parser) Parse() error {
-	if err := i.parse(); err != nil {
-		return utils.FormatError(err)
-	}
-	out, err := i.Run("lshw -class network -class cpu -json")
+func (c *Collector) Hwinfo2Json() error {
+	lshwNewPath, err := c.prepare()
 	if err != nil {
 		return utils.FormatError(err)
 	}
-	return ioutil.WriteFile(i.cacheFile, []byte(out), 0)
+	out, err := c.Run(lshwNewPath + " -class network -class cpu -json")
+	if err != nil {
+		return utils.FormatError(err)
+	}
+	return ioutil.WriteFile(c.hwinfoFile, []byte(out), 0)
 }
 
 // CPU contains CPU description and properties
@@ -49,21 +51,21 @@ type CPU struct {
 }
 
 // CPUInfo gathers information related to installed CPUs
-func (i *Parser) CPUInfo() (*CPU, error) {
-	if _, err := os.Stat(i.cacheFile); err != nil {
-		if err = i.Parse(); err != nil {
+func (c *Collector) CPUInfo() (*CPU, error) {
+	if _, err := os.Stat(c.hwinfoFile); err != nil {
+		if err = c.Hwinfo2Json(); err != nil {
 			return nil, utils.FormatError(err)
 		}
 	}
 
-	out, err := mxj.NewMapsFromJsonFile(i.cacheFile)
+	out, err := mxj.NewMapsFromJsonFile(c.hwinfoFile)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
 
-	c := new(CPU)
-	c.Desc = make(map[string]interface{})
-	c.Cap = make(map[string]interface{})
+	cpu := new(CPU)
+	cpu.Desc = make(map[string]interface{})
+	cpu.Cap = make(map[string]interface{})
 	for _, s := range out {
 		r, _ := s.ValuesForPath("children.children")
 		for _, n := range r {
@@ -71,20 +73,20 @@ func (i *Parser) CPUInfo() (*CPU, error) {
 			if ch["id"] == "cpu:0" {
 				for k, v := range ch {
 					if k != "capabilities" {
-						c.Desc[k] = v
+						cpu.Desc[k] = v
 					}
 				}
 				for k, v := range ch["capabilities"].(map[string]interface{}) {
-					c.Cap[k] = v
+					cpu.Cap[k] = v
 				}
 			}
 		}
 	}
-	return c, nil
+	return cpu, nil
 }
 
-func (p *Parser) CPUs() (int, error) {
-	cpustr, err := p.Run(`grep -c ^processor /proc/cpuinfo`)
+func (c *Collector) CPUs() (int, error) {
+	cpustr, err := c.Run(`grep -c ^processor /proc/cpuinfo`)
 	if err != nil {
 		return 0, utils.FormatError(err)
 	}
@@ -131,13 +133,13 @@ type NIC struct {
 }
 
 // NICInfo gathers information related to installed NICs
-func (p *Parser) NICInfo() (NICList, error) {
-	if _, err := os.Stat(p.cacheFile); err != nil {
-		if err = p.Parse(); err != nil {
+func (c *Collector) NICInfo() (NICList, error) {
+	if _, err := os.Stat(c.hwinfoFile); err != nil {
+		if err = c.Hwinfo2Json(); err != nil {
 			return nil, utils.FormatError(err)
 		}
 	}
-	out, err := mxj.NewMapsFromJsonFile(p.cacheFile)
+	out, err := mxj.NewMapsFromJsonFile(c.hwinfoFile)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
@@ -150,7 +152,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 		}
 		for _, name := range val {
 			if name == "network" {
-				nic := p.findInterface(m.Old())
+				nic := c.findInterface(m.Old())
 				if nic != nil {
 					list.Add(nic)
 				}
@@ -167,7 +169,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 		for _, d := range deep {
 			r, _ := m.ValuesForPath(d)
 			for _, n := range r {
-				nic := p.findInterface(n)
+				nic := c.findInterface(n)
 				if nic != nil {
 					list.Add(nic)
 				}
@@ -176,7 +178,7 @@ func (p *Parser) NICInfo() (NICList, error) {
 	}
 
 	// lshw is unable to find linux bridges so let's do it manually
-	res, err := p.Run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
+	res, err := c.Run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
@@ -195,35 +197,9 @@ func (p *Parser) NICInfo() (NICList, error) {
 	return list, nil
 }
 
-func (p *Parser) NUMANodes() (map[int][]int, error) {
-	out, err := p.Run("ls -d  /sys/devices/system/node/node[0-9]*")
-	if err != nil {
-		return nil, utils.FormatError(err)
-	}
-
-	numaMap := make(map[int][]int)
-	for i, _ := range strings.SplitAfter(out, "\n") {
-		out, err := p.Run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
-		if err != nil {
-			return nil, utils.FormatError(err)
-		}
-		cpus := make([]int, 0)
-		for _, line := range strings.SplitAfter(out, "\n") {
-			cpuStr := strings.SplitAfter(line, "cpu")[1]
-			cpu, err := strconv.Atoi(strings.TrimSpace(cpuStr))
-			if err != nil {
-				return nil, utils.FormatError(err)
-			}
-			cpus = append(cpus, int(cpu))
-		}
-		numaMap[int(i)] = cpus
-	}
-	return numaMap, nil
-}
-
 // RAMSize gathers information related to the installed amount of RAM in MB
-func (p *Parser) RAMSize() (int, error) {
-	out, err := p.Run("grep MemTotal /proc/meminfo")
+func (c *Collector) RAMSize() (int, error) {
+	out, err := c.Run("grep MemTotal /proc/meminfo")
 	if err != nil {
 		return 0, utils.FormatError(err)
 	}
@@ -232,29 +208,70 @@ func (p *Parser) RAMSize() (int, error) {
 	return ramsize / 1024, nil
 }
 
-func parseFunc(i *Parser, cacheFile, lshwpath string, sshconf *ssh.Config) func() error {
-	return func() error {
-		if lshwpath == "" {
-			out, err := i.Run("which lshw")
-			if err != nil {
-				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
-			}
-			lshwpath = out
-		} else {
-			if sshconf != nil {
-				dir, err := utils.UploadBinaries(sshconf, lshwpath)
-				if err != nil {
-					return utils.FormatError(err)
-				}
-				lshwpath = filepath.Join(dir, filepath.Base(lshwpath))
-			}
+type NUMANodes map[int][]string
+
+func (c *Collector) NUMAInfo() (NUMANodes, error) {
+	out, err := c.Run("ls -d  /sys/devices/system/node/node[0-9]*")
+	if err != nil {
+		return nil, utils.FormatError(err)
+	}
+
+	numaMap := make(map[int][]string)
+	for i, _ := range strings.SplitAfter(out, "\n") {
+		out, err := c.Run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
+		if err != nil {
+			return nil, utils.FormatError(err)
 		}
-		i.cacheFile = cacheFile
-		return nil
+		cpus := make([]string, 0)
+		for _, line := range strings.SplitAfter(out, "\n") {
+			cpu := strings.SplitAfter(line, "cpu")[1]
+			cpus = append(cpus, strings.TrimSpace(cpu))
+		}
+		numaMap[int(i)] = cpus
+	}
+	return numaMap, nil
+}
+
+func (n NUMANodes) TotalNUMAs() int {
+	return len(n)
+}
+
+func (n NUMANodes) TotalCpus() int {
+	amount := 0
+	for _, v := range n {
+		amount += len(v)
+	}
+	return amount
+}
+
+func (n NUMANodes) CpusOnNUMA(numa int) ([]string, error) {
+	if cpus, ok := n[numa]; ok {
+		return cpus, nil
+	}
+	return nil, fmt.Errorf("NUMA %d not found", numa)
+}
+
+func prepareFunc(c *Collector, sshconf *ssh.Config, lshwpath string) func() (string, error) {
+	return func() (string, error) {
+		if lshwpath == "" {
+			out, err := c.Run("which lshw")
+			if err != nil {
+				return "", utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+			}
+			return out, nil
+		}
+		if sshconf != nil {
+			dir, err := utils.UploadBinaries(sshconf, lshwpath)
+			if err != nil {
+				return "", utils.FormatError(err)
+			}
+			return filepath.Join(dir, filepath.Base(lshwpath)), nil
+		}
+		return lshwpath, nil
 	}
 }
 
-func (p *Parser) findInterface(json interface{}) *NIC {
+func (c *Collector) findInterface(json interface{}) *NIC {
 	ch := json.(map[string]interface{})
 	var nic *NIC
 	if ch["description"] == "Ethernet interface" ||
@@ -282,7 +299,7 @@ func (p *Parser) findInterface(json interface{}) *NIC {
 			prod, ok := ch["product"].(string)
 			if ok {
 				vendor, _ := ch["vendor"].(string)
-				if _, err := p.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
+				if _, err := c.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
 					return nil
 				}
 				nic.PCIAddr = ch["businfo"].(string)

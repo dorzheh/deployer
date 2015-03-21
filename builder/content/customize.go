@@ -386,20 +386,15 @@ func serviceManip(pathToXml, pathToSlash string) error {
 			case SVC_STATUS_ON, SVC_STATUS_OFF:
 				if val.Chroot {
 					if err := exec.Command("chroot", pathToSlash,
-						"chkconfig", "--list", val.Name).Run(); err == nil {
-						if err := exec.Command("chroot", pathToSlash,
-							"chkconfig", val.Name, val.Status).Run(); err != nil {
-							return utils.FormatError(fmt.Errorf("chroot %s chkconfig %s %s", pathToSlash,
-								val.Name, val.Status))
-						}
+						"chkconfig", val.Name, val.Status).Run(); err != nil {
+						return utils.FormatError(fmt.Errorf("chroot %s chkconfig %s %s", pathToSlash,
+							val.Name, val.Status))
 					}
 				} else {
-					if err := exec.Command("chkconfig", "--list",
-						val.Name).Run(); err == nil {
-						if err := exec.Command("chkconfig", val.Name,
-							val.Status).Run(); err != nil {
-							return utils.FormatError(fmt.Errorf("chkconfig %s %s", val.Name, val.Status))
-						}
+
+					if err := exec.Command("chkconfig", val.Name,
+						val.Status).Run(); err != nil {
+						return utils.FormatError(fmt.Errorf("chkconfig %s %s", val.Name, val.Status))
 					}
 				}
 			default:

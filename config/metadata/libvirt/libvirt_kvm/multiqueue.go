@@ -13,8 +13,8 @@ const (
 )
 
 func MultiQueueSupported(sshconfig *ssh.Config) (bool, error) {
-	p := sysinfo.NewParser(sshconfig)
-	if p.KernelMajorMinorEqualOrGreaterThan(multiQueueKernelVersion) {
+	c := sysinfo.NewCollector(sshconfig)
+	if c.KernelMajorMinorEqualOrGreaterThan(multiQueueKernelVersion) {
 		d := envdriver.NewDriver(sshconfig)
 		curVersion, err := d.Version()
 		if err != nil {
@@ -29,8 +29,8 @@ func MultiQueueSupported(sshconfig *ssh.Config) (bool, error) {
 
 // For testing purpose
 func MultiQueueSupportedMock(kernelVersion, libvirtVersion string, sshconfig *ssh.Config) (bool, error) {
-	p := sysinfo.NewParser(sshconfig)
-	if p.KernelMajorMinorEqualOrGreaterThan(kernelVersion) {
+	c := sysinfo.NewCollector(sshconfig)
+	if c.KernelMajorMinorEqualOrGreaterThan(kernelVersion) {
 		d := envdriver.NewDriver(sshconfig)
 		curVersion, err := d.Version()
 		if err != nil {

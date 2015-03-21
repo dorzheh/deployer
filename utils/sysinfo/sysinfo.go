@@ -11,22 +11,22 @@ import (
 	ssh "github.com/dorzheh/infra/comm/common"
 )
 
-type Parser struct {
+type Collector struct {
 	run func(string) (string, error)
 }
 
-func NewParser(config *ssh.Config) *Parser {
-	p := new(Parser)
-	p.run = utils.RunFunc(config)
-	return p
+func NewCollector(config *ssh.Config) *Collector {
+	c := new(Collector)
+	c.run = utils.RunFunc(config)
+	return c
 }
 
-func (p *Parser) KernelVersion() (string, error) {
-	return p.run("uname -r")
+func (c *Collector) KernelVersion() (string, error) {
+	return c.run("uname -r")
 }
 
-func (p *Parser) KernelMajorMinorEqualOrGreaterThan(other string) bool {
-	current, err := p.KernelVersion()
+func (c *Collector) KernelMajorMinorEqualOrGreaterThan(other string) bool {
+	current, err := c.KernelVersion()
 	if err != nil {
 		return false
 	}

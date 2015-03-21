@@ -15,8 +15,7 @@ import (
 	"github.com/dorzheh/infra/comm/ssh"
 )
 
-// ProcessTemplate is responsible for writing appapropriate user data to
-// any metadata needed for deploying appliance at a given environment
+// ProcessTemplate is responsible for writing appapropriate user data to any metadata
 func ProcessTemplate(str string, userData interface{}) ([]byte, error) {
 	t, err := template.New(time.Now().String()).Parse(str)
 	if err != nil {

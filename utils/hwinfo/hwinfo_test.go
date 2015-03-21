@@ -18,7 +18,7 @@ var conf = &ssh.Config{
 }
 
 func TestCPUInfoLocal(t *testing.T) {
-	p, err := NewParser(tmpFile, "", nil)
+	c, err := NewCollector(nil, "", tmpFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,10 +26,10 @@ func TestCPUInfoLocal(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw locally,writing info file")
-	if err := p.Parse(); err != nil {
+	if err := c.Hwinfo2Json(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.CPUInfo()
+	_, err = c.CPUInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -37,12 +37,12 @@ func TestCPUInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	_, err = p.CPUInfo()
+	_, err = c.CPUInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cpus, err := p.CPUs()
+	cpus, err := c.CPUs()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -50,7 +50,7 @@ func TestCPUInfoLocal(t *testing.T) {
 }
 
 func TestCPUInfoRemote(t *testing.T) {
-	p, err := NewParser(tmpFile, "", conf)
+	c, err := NewCollector(conf, "", tmpFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -58,10 +58,10 @@ func TestCPUInfoRemote(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw remotely,writing info file")
-	if err := p.Parse(); err != nil {
+	if err := c.Hwinfo2Json(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.CPUInfo()
+	_, err = c.CPUInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -69,12 +69,12 @@ func TestCPUInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	_, err = p.CPUInfo()
+	_, err = c.CPUInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	cpus, err := p.CPUs()
+	cpus, err := c.CPUs()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,7 +82,7 @@ func TestCPUInfoRemote(t *testing.T) {
 }
 
 func TestNICsInfoLocal(t *testing.T) {
-	p, err := NewParser(tmpFile, "", nil)
+	c, err := NewCollector(nil, "", tmpFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,10 +90,10 @@ func TestNICsInfoLocal(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw locally,writing info file")
-	if err := p.Parse(); err != nil {
+	if err := c.Hwinfo2Json(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.NICInfo()
+	_, err = c.NICInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -101,7 +101,7 @@ func TestNICsInfoLocal(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := p.NICInfo()
+	info, err := c.NICInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +110,7 @@ func TestNICsInfoLocal(t *testing.T) {
 }
 
 func TestNICInfoRemote(t *testing.T) {
-	p, err := NewParser(tmpFile, "", conf)
+	c, err := NewCollector(conf, "", tmpFile)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,10 +118,10 @@ func TestNICInfoRemote(t *testing.T) {
 
 	// get HW info and write the info file
 	fmt.Println("===> executing lshw remotely,writing info file")
-	if err := p.Parse(); err != nil {
+	if err := c.Hwinfo2Json(); err != nil {
 		t.Fatal(err)
 	}
-	_, err = p.NICInfo()
+	_, err = c.NICInfo()
 	fmt.Println("===> parsing info file #1")
 	if err != nil {
 		t.Fatal(err)
@@ -129,7 +129,7 @@ func TestNICInfoRemote(t *testing.T) {
 
 	// read info file, do not run lshw
 	fmt.Println("===> parsing info file #2")
-	info, err := p.NICInfo()
+	info, err := c.NICInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -147,11 +147,12 @@ func printNICInfo(info []*NIC) {
 }
 
 func TestNUMANodesLocal(t *testing.T) {
-	p, err := NewParser("", "", nil)
+	c, err := NewCollector(nil, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := p.NUMANodes()
+	defer os.Remove(tmpFile)
+	n, err := c.NUMAInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -161,11 +162,11 @@ func TestNUMANodesLocal(t *testing.T) {
 }
 
 func TestNUMANodesRemote(t *testing.T) {
-	p, err := NewParser("", "", conf)
+	c, err := NewCollector(conf, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := p.NUMANodes()
+	n, err := c.NUMAInfo()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -175,11 +176,11 @@ func TestNUMANodesRemote(t *testing.T) {
 }
 
 func TestRAMSizeLocal(t *testing.T) {
-	p, err := NewParser("", "", nil)
+	c, err := NewCollector(nil, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ramsize, err := p.RAMSize()
+	ramsize, err := c.RAMSize()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -187,11 +188,11 @@ func TestRAMSizeLocal(t *testing.T) {
 }
 
 func TestRAMSizeRemote(t *testing.T) {
-	p, err := NewParser("", "", conf)
+	c, err := NewCollector(conf, "", "")
 	if err != nil {
 		t.Fatal(err)
 	}
-	ramsize, err := p.RAMSize()
+	ramsize, err := c.RAMSize()
 	if err != nil {
 		t.Fatal(err)
 	}

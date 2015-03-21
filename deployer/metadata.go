@@ -9,6 +9,10 @@ import (
 // MetadataConfigurator is the interface that has to be implemented
 // in order to manipulate appropriate metadata.
 type MetadataConfigurator interface {
+	// vCPU and list of physical CPUs the vCPU is bound to and templates directory.
+	// Returns vCPU related metadata entry and error.
+	SetCpuTuneData(map[int][]string, string) (string, error)
+
 	// Storage configuration and templates directory.
 	// Returns storage related metadata entry and error.
 	SetStorageData(*image.Config, string) (string, error)

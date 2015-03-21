@@ -5,6 +5,14 @@ import (
 	"testing"
 )
 
+var str = `
+ <name>{{.DomainName}}</name>
+  <uuid></uuid>
+  <memory>{{.MemorySize}}</memory>
+  <currentMemory>{{.MemorySize}}</currentMemory>
+  <vcpu>{{.CPUs}}</vcpu>
+`
+
 type data struct {
 	DomainName string
 	MemorySize uint
@@ -23,11 +31,3 @@ func TestProcessTemplate(t *testing.T) {
 	}
 	log.Printf("DEBUG: %s\n", out)
 }
-
-var str = `
- <name>{{.DomainName}}</name>
-  <uuid></uuid>
-  <memory>{{.MemorySize}}</memory>
-  <currentMemory>{{.MemorySize}}</currentMemory>
-  <vcpu>{{.CPUs}}</vcpu>
-`

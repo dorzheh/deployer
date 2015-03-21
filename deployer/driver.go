@@ -52,8 +52,8 @@ type HostinfoDriver interface {
 	// Returns information related to the host's CPU.
 	CPUInfo() (*hwinfo.CPU, error)
 
-	// Returns amount of NUMA nodes and appropriate CPUs per NUMA node.
-	NUMANodes() (map[int][]int, error)
+	// Returns information about installed NUMA nodes
+	NUMAInfo() (hwinfo.NUMANodes, error)
 
 	// Returns info related to the host's NICs.
 	NICs() (hwinfo.NICList, error)

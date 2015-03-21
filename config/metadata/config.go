@@ -41,6 +41,7 @@ type InputData struct {
 type Metadata struct {
 	DomainName   string
 	CPUs         int
+	CPUTune      string
 	RAM          int
 	EmulatorPath string
 	Storage      string
@@ -75,7 +76,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	var err error
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
-	c.DestMetadataFile = "/tmp/" + d.VaName + "-temp-metadata.xml"
+	c.DestMetadataFile = "/tmp/" + d.VaName + "-temp-metadata"
 	// always create default metadata
 	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
 		return nil, utils.FormatError(err)
