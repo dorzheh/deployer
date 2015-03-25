@@ -45,7 +45,7 @@ func WaitForResult(ch <-chan error, num int) error {
 
 // UploadBinaries is intended to create a temporary directory on a remote server,
 // upload binaries to the temporary location and return path to the directory.
-// The tempoary directory will be removed as soon as the function exits
+// The tempoary directory will be removed before the program exits
 func UploadBinaries(conf *sshconf.Config, pathbins ...string) (string, error) {
 	c, err := ssh.NewSshConn(conf)
 	if err != nil {

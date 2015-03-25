@@ -3,9 +3,9 @@
 package libvirt_kvm
 
 import (
-	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/dorzheh/deployer/builder/image"
@@ -76,7 +76,7 @@ func SetCpuTuneData(cpus map[int][]string) string {
 				cpuset += "," + pcpu
 			}
 		}
-		cpuTuneData += fmt.Sprintf("\n<vcpupin vcpu=\"%d\" cpuset=\"%s\"/>", vcpu, cpuset)
+		cpuTuneData += "\n" + `<vcpupin vcpu='` + strconv.Itoa(vcpu) + `' cpuset='` + cpuset + `'/>`
 	}
 	return cpuTuneData
 }

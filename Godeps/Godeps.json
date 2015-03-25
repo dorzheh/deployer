@@ -3,11 +3,6 @@
 	"GoVersion": "go1.4.2",
 	"Deps": [
 		{
-			"ImportPath": "code.google.com/p/go.crypto/ssh",
-			"Comment": "null-236",
-			"Rev": "69e2a90ed92d03812364aeb947b7068dc42e561e"
-		},
-		{
 			"ImportPath": "github.com/clbanning/mxj",
 			"Rev": "e11b85050263aff26728fb9863bf2ebaf6591279"
 		},
@@ -17,23 +12,27 @@
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/common",
-			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+			"Rev": "7a1321c45e855829b2ae9c506f1531d018b2c145"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/ssh",
-			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+			"Rev": "7a1321c45e855829b2ae9c506f1531d018b2c145"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/sshfs",
-			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+			"Rev": "7a1321c45e855829b2ae9c506f1531d018b2c145"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/utils/ioutils",
-			"Rev": "bc75ad25f305705bb2dd06037c92af94ee17e3b0"
+			"Rev": "7a1321c45e855829b2ae9c506f1531d018b2c145"
 		},
 		{
 			"ImportPath": "github.com/fatih/structs",
 			"Rev": "c00d27128bb88e9c1adab1a53cda9c72c6d1ff9b"
+		},
+		{
+			"ImportPath": "golang.org/x/crypto/ssh",
+			"Rev": "b7d6bf2c61544745a02f83dec90393985fc3a065"
 		}
 	]
 }

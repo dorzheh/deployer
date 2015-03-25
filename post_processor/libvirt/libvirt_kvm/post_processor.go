@@ -1,7 +1,8 @@
 package libvirt_kvm
 
 import (
-	"strings"
+	"io/ioutil"
+	"regexp"
 
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
@@ -27,10 +28,22 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 		case *deployer.CommonArtifact:
 			if a.GetType() == deployer.MetadataArtifact {
 				defer a.Destroy()
-				domain := strings.Split(a.GetName(), "-temp-metadata")[0]
+
 				if err := p.driver.DefineDomain(a.GetPath()); err != nil {
 					return utils.FormatError(err)
 				}
+
+				out, err := ioutil.ReadFile(a.GetPath())
+				if err != nil {
+					return err
+				}
+
+				r, err := regexp.Compile(`<name>\s*(\S+)\s*</name>`)
+				if err != nil {
+					return err
+				}
+
+				domain := string(r.FindSubmatch(out)[1])
 				if err := p.driver.SetAutostart(domain); err != nil {
 					return utils.FormatError(err)
 				}
