@@ -29,6 +29,7 @@ var TmpltSriovPassthrough = `<interface type='hostdev' managed='yes'>
       <source>
         <address type='pci' domain='0x0000' bus='0x{{.Bus}}' slot='0x{{.Slot}}' function='0x{{.Function}}'/>
       </source>
+       <rom bar='off'/>
     </interface>
 `
 var TmpltPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>

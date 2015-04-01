@@ -146,7 +146,7 @@ func (c *Collector) NICInfo() (NICList, error) {
 
 	list := NewNICList()
 	for _, m := range out {
-		val, err := m.ValuesForKey("id")
+		val, err := m.ValuesForKey("class")
 		if err != nil {
 			continue
 		}
