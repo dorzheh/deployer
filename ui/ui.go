@@ -30,6 +30,16 @@ func UiWelcomeMsg(ui *gui.DialogUi, name string) {
 	ui.Msgbox(msg)
 }
 
+func UiEulaMsg(ui *gui.DialogUi, pathToEula string) {
+	ui.SetOkLabel("Agree")
+	ui.SetExtraLabel("Disagree")
+	ui.SetTitle("End User License Agreement")
+	ui.SetSize(30, 80)
+	if err := ui.Textbox(pathToEula); err != nil {
+		os.Exit(1)
+	}
+}
+
 func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	if err != nil {
 		ui.ErrorOutput(err.Error(), 8, 14)

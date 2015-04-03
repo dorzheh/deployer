@@ -39,7 +39,9 @@ type Dialog struct {
 	left        int
 	top         int
 	shadow      bool
+	extraLabel  string
 	cancelLabel string
+	okLabel     string
 	beforeDtype []string
 	beforeSize  []string
 	afterSize   []string
@@ -102,10 +104,20 @@ func (d *Dialog) SetLabel(label string) {
 	d.label = label
 }
 
+func (d *Dialog) SetOkLabel(label string) {
+	d.okLabel = label
+}
+
+func (d *Dialog) SetExtraLabel(label string) {
+	d.extraLabel = label
+}
+
 func (d *Dialog) reset() {
 	d.title = ""
 	d.backtitle = ""
 	d.label = ""
+	d.okLabel = "OK"
+	d.extraLabel = ""
 	d.SetSize(0, 0)
 	d.beforeDtype = []string{}
 	d.afterSize = []string{}
@@ -116,6 +128,12 @@ func (d *Dialog) exec(dType string, allowLabel bool) string {
 	var arg string
 	cmd := exec.Command(d.environment)
 
+	cmd.Args = append(cmd.Args, "--ok-label", d.okLabel)
+
+	if d.extraLabel != "" {
+		cmd.Args = append(cmd.Args, "--extra-button")
+		cmd.Args = append(cmd.Args, "--extra-label", d.extraLabel)
+	}
 	if d.shadow == false {
 		cmd.Args = append(cmd.Args, "--no-shadow")
 	}
@@ -124,6 +142,9 @@ func (d *Dialog) exec(dType string, allowLabel bool) string {
 	}
 	if d.cancelLabel != "" {
 		cmd.Args = append(cmd.Args, "--cancel-label", d.cancelLabel)
+	}
+	if d.title != "" {
+		cmd.Args = append(cmd.Args, "--title", d.title)
 	}
 	for _, arg := range d.beforeDtype {
 		cmd.Args = append(cmd.Args, arg)
@@ -142,9 +163,6 @@ func (d *Dialog) exec(dType string, allowLabel bool) string {
 	}
 	for _, arg = range d.afterSize {
 		cmd.Args = append(cmd.Args, arg)
-	}
-	if d.title != "" {
-		cmd.Args = append(cmd.Args, "--title", d.title)
 	}
 	if d.environment == CONSOLE {
 		cmd.Args = append(cmd.Args, "--stdout")
@@ -167,6 +185,13 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	var arg string
 	cmd := exec.Command(d.environment)
 
+	if d.okLabel != "" {
+		cmd.Args = append(cmd.Args, "--ok-label", d.okLabel)
+	}
+	if d.extraLabel != "" {
+		cmd.Args = append(cmd.Args, "--extra-button")
+		cmd.Args = append(cmd.Args, "--extra-label", d.extraLabel)
+	}
 	if d.shadow == false {
 		cmd.Args = append(cmd.Args, "--no-shadow")
 	}
@@ -175,6 +200,9 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	}
 	if d.cancelLabel != "" {
 		cmd.Args = append(cmd.Args, "--cancel-label", d.cancelLabel)
+	}
+	if d.title != "" {
+		cmd.Args = append(cmd.Args, "--title", d.title)
 	}
 	for _, arg := range d.beforeDtype {
 		cmd.Args = append(cmd.Args, arg)
@@ -193,9 +221,6 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	}
 	for _, arg = range d.afterSize {
 		cmd.Args = append(cmd.Args, arg)
-	}
-	if d.title != "" {
-		cmd.Args = append(cmd.Args, "--title", d.title)
 	}
 	if d.environment == CONSOLE {
 		cmd.Args = append(cmd.Args, "--stdout")
@@ -374,9 +399,10 @@ func (d *Dialog) Pause(seconds int) {
 	}
 }
 
-func (d *Dialog) Textbox(filepath string) {
+func (d *Dialog) Textbox(filepath string) error {
 	d.beforeSize = append(d.beforeSize, filepath)
-	d.exec("textbox", false)
+	_, err := d.execWithError("textbox", false)
+	return err
 }
 
 func (d *Dialog) Timebox(date time.Time) string {

@@ -4,23 +4,32 @@ import (
 	"github.com/dorzheh/go-dialog"
 	//"time"
 	//"strconv"
-	"fmt"
+	//"fmt"
 )
+
+// dialog --ok-label Agree --extra-button
+// --extra-label "Disagree" --title "End User License Agreement"
+// --textbox /opt/rdwr/dfcc/bin/1  20 80
 
 func main() {
 	var d = dialog.New(dialog.CONSOLE, 0)
+	d.SetTitle("EULA")
+	// d.SetOkLabel("Agree")
+	// d.SetExtraLabel("Disagree")
+	// err := d.Textbox("/opt/1")
+	// fmt.Printf("DDD%v\n", err)
 	//var d = dialog.New(dialog.KDE, 0)
 	//var d = dialog.New(dialog.GTK, 0)
 	//var d = dialog.New(dialog.X, 0)
 	//var d = dialog.New(dialog.AUTO, 0)
 	//	d.SetBackTitle("test")
 	//	d.SetTitle("test")
-	d.SetSize(10, 40)
+	//d.SetSize(10, 40)
 	//cmd := exec.Command("/bin/bash", "-c", "/home/dorzheh/1")
 	//cmd.Run()
 
-	 l := []string{"Selection1", "1", "1", "2046", "1", "10", "20", "0", "0", "Selection2", "2", "1", "0", "2", "10", "20", "0", "0", "Selection3", "3", "1", "0", "3", "10", "20", "0", "0"}
-	  d.Mixedform("Title", l[0:]...)
+	//l := []string{"Selection1", "1", "1", "2046", "1", "10", "20", "0", "0", "Selection2", "2", "1", "0", "2", "10", "20", "0", "0", "Selection3", "3", "1", "0", "3", "10", "20", "0", "0"}
+	//d.Mixedform("Title", l[0:]...)
 
 	//strings.Trim(out.String(), "\r\n ")
 	//res := d.Calendar(time.Now())
@@ -67,8 +76,8 @@ func main() {
 	//res := d.Radiolist(0, "Tag 1", "Item 1", "on", "Tag 2", "Item 2", "off", "Tag 3", "Item 3", "off")
 	//fmt.Println(res)
 
-	res := d.Yesno()
-	fmt.Println(res)
+	//res := d.Yesno()
+	//fmt.Println(res)
 
 	//res := d.Combobox("Item 1", "Item 2", "Item 3")
 	//fmt.Println(res)

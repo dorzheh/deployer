@@ -1,5 +1,4 @@
-// Responsible for creating , partitioning and customizing RAW image
-// and writing MBR thus making the image bootable
+// Responsible for creating , partitioning and customizing RAW image and writing MBR
 
 package image
 

@@ -8,7 +8,7 @@
 		},
 		{
 			"ImportPath": "github.com/dorzheh/go-dialog",
-			"Rev": "58e5f6e542fef68ca2df94fdaf05ff387f257103"
+			"Rev": "45a7badee8431c52a37d3f6c7c2743d79deb39d2"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/common",
@@ -32,7 +32,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "b7d6bf2c61544745a02f83dec90393985fc3a065"
+			"Rev": "c57d4a71915a248dbad846d60825145062b4c18e"
 		}
 	]
 }
