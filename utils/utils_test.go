@@ -9,7 +9,6 @@ var str = `
  <name>{{.DomainName}}</name>
   <uuid></uuid>
   <memory>{{.MemorySize}}</memory>
-  <currentMemory>{{.MemorySize}}</currentMemory>
   <vcpu>{{.CPUs}}</vcpu>
 `
 

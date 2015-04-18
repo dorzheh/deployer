@@ -384,17 +384,27 @@ func serviceManip(pathToXml, pathToSlash string) error {
 		case SVC_TYPE_SYSV:
 			switch val.Status {
 			case SVC_STATUS_ON, SVC_STATUS_OFF:
+				var cmd string
+				var action string
 				if val.Chroot {
-					if err := exec.Command("chroot", pathToSlash,
-						"chkconfig", val.Name, val.Status).Run(); err != nil {
-						return utils.FormatError(fmt.Errorf("chroot %s chkconfig %s %s", pathToSlash,
-							val.Name, val.Status))
+					if err := exec.Command("chroot", pathToSlash, "which", "update-rc.d").Run(); err != nil {
+						cmd = "chkconfig"
+						action = val.Status
+					} else {
+						cmd = "update-rc.d"
+						switch val.Status {
+						case SVC_STATUS_ON:
+							action = "enable"
+						case SVC_STATUS_OFF:
+							action = "disable"
+						}
+					}
+					if err := exec.Command("chroot", pathToSlash, cmd, val.Name, action).Run(); err != nil {
+						return utils.FormatError(fmt.Errorf("chroot %s %s %s %s", pathToSlash, cmd, val.Name, action))
 					}
 				} else {
-
-					if err := exec.Command("chkconfig", val.Name,
-						val.Status).Run(); err != nil {
-						return utils.FormatError(fmt.Errorf("chkconfig %s %s", val.Name, val.Status))
+					if err := exec.Command(cmd, val.Name, action).Run(); err != nil {
+						return utils.FormatError(fmt.Errorf("%s %s %s", cmd, val.Name, action))
 					}
 				}
 			default:

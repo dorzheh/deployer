@@ -4,7 +4,6 @@ var defaultMetdata = []byte(`<domain type='kvm'>
   <name>{{.DomainName}}</name>
   <uuid></uuid>
   <memory>{{.RAM}}</memory>
-  <currentMemory>{{.RAM}}</currentMemory>
    <cpu mode='custom' match='exact'>
     <model fallback='allow'>Westmere</model>
   </cpu>
