@@ -12,10 +12,10 @@ import (
 )
 
 const (
-	Success      = "SUCCESS"
-	Error        = "ERROR"
-	Warning      = "WARNING"
-	Notification = "NOTIFICATION"
+	Success      = "Success"
+	Error        = "Failure"
+	Warning      = "Warning"
+	Notification = "Notification"
 	None         = ""
 )
 
@@ -70,26 +70,29 @@ func NewDialogUi() *DialogUi {
 
 ///// Functions providing verification services /////
 
-// ErrorOutput gets dialog session , error string and height/width
-// It prints out the error output inside dialog inforbox.
-// The session is terminated with exit 1
-func (ui *DialogUi) ErrorOutput(err string, height, widthOffset int) {
-	ui.SetSize(height, len(err)+widthOffset)
-	ui.Infobox("\n" + Error + ": " + err)
-	os.Exit(1)
+// Output gets dialog session , height/width and slice of strings
+// Prints out appropriate message
+func (ui *DialogUi) Output(ntype string, msgs ...string) {
+	msg, height, width := getMsgAndWidth(ntype, msgs...)
+	ui.SetSize(height, width)
+	ui.SetTitle(ntype)
+	if ntype == Error {
+		ui.Infobox(msg)
+		os.Exit(1)
+	}
+	ui.Msgbox(msg)
 }
 
-// Output gets dialog session and a msg string and height/width
-// It prints out appropriate output inside dialog inforbox.
-func (ui *DialogUi) Output(ntype string, msg string, height, widthOffset int) {
-	if ntype == Notification || ntype == "" {
-		ui.SetSize(height, widthOffset)
-		ui.Msgbox(msg)
-	} else {
-		ui.SetSize(height, len(msg)+widthOffset)
-		ui.Msgbox("\n" + ntype + ": " + msg)
-	}
-}
+// ReturnToMenu gets dialog session , error string and height/width
+// It prints out a message and returns to menu
+// func (ui *DialogUi) ReturnToMenu(ntype string, msgs ...string) {
+// 	msg, width := getMsgAndWidth(msgs)
+// 	ui.SetSize(7, width+5)
+// 	ui.SetTitle(ntype)
+// 	ui.Msgbox(msg)
+// }
+
+//retMsg := "\nPress <OK> to return to menu."
 
 ///// Functions for the progress bar implementation /////
 
@@ -180,10 +183,10 @@ func (ui *DialogUi) Wait(msg string, pause time.Duration, done chan error) error
 }
 
 // GetPathToFileFromInput uses a dialog session for getting path to a file
-func (ui *DialogUi) GetPathToFileFromInput(backtitle string) string {
+func (ui *DialogUi) GetPathToFileFromInput(title string) string {
 	var result string
 	for {
-		ui.SetBackTitle(backtitle)
+		ui.SetTitle(title)
 		ui.SetSize(10, 50)
 		result = ui.Fselect("/")
 		if result != "" {
@@ -197,10 +200,10 @@ func (ui *DialogUi) GetPathToFileFromInput(backtitle string) string {
 }
 
 // GetPathToDirFromInput uses a dialog session for getting path to a directory to upload
-func (ui *DialogUi) GetPathToDirFromInput(backtitle, defaultDir string) string {
+func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) string {
 	var result string
 	for {
-		ui.SetBackTitle(backtitle)
+		ui.SetTitle(title)
 		ui.SetSize(10, 50)
 		result = ui.Dselect(defaultDir)
 		if result != "" {
@@ -215,17 +218,16 @@ func (ui *DialogUi) GetPathToDirFromInput(backtitle, defaultDir string) string {
 
 // GetIpFromInput uses a dialog session for reading IP from user input
 // Returns host IP (remote or local)
-func (ui *DialogUi) GetIpFromInput(labelMsg string) string {
+func (ui *DialogUi) GetIpFromInput(title string) string {
 	var ipAddr string
-	width := len(labelMsg) + 5
+	width := len(title) + 7
 	for {
 		ui.SetSize(8, width)
-		ui.SetLabel(labelMsg)
+		ui.SetTitle(title)
 		ipAddr = ui.Inputbox("")
 		// validate the IP
 		if net.ParseIP(ipAddr) == nil {
-			ui.SetSize(5, 20)
-			ui.Msgbox("Invalid IP!")
+			ui.Output(Warning, "Invalid IP.", "Press <OK> to return to menu.")
 			continue
 		}
 		break
@@ -235,11 +237,11 @@ func (ui *DialogUi) GetIpFromInput(labelMsg string) string {
 
 // GetFromInput uses a dialog session for reading from stdin
 // Returns user input
-func (ui *DialogUi) GetFromInput(labelMsg string, defaultInput string) string {
+func (ui *DialogUi) GetFromInput(title, defaultInput string) string {
 	var input string
 	for {
-		ui.SetSize(8, len(labelMsg)+5)
-		ui.SetLabel(labelMsg)
+		ui.SetSize(8, len(title)+5)
+		ui.SetTitle(title)
 		input = ui.Inputbox(defaultInput)
 		if input != "" {
 			break
@@ -255,7 +257,7 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 		msg := fmt.Sprintf("\"%s\" password on the host %s", user, host)
 		for {
 			ui.SetSize(8, len(msg)+5)
-			ui.SetLabel(msg)
+			ui.SetTitle(msg)
 			passwd1 = ui.Passwordbox(true)
 			if passwd1 != "" {
 				return
@@ -266,7 +268,7 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 			msg = "Password confirmation for user \"" + user + "\""
 			for {
 				ui.SetSize(8, len(msg)+5)
-				ui.SetLabel(msg)
+				ui.SetTitle(msg)
 				passwd2 = ui.Passwordbox(true)
 				if passwd2 != "" {
 					break
@@ -278,4 +280,20 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 		}
 	}
 	return
+}
+
+func getMsgAndWidth(mtype string, stroki ...string) (string, int, int) {
+	var msg string
+	height := 6
+	width := 0
+	for _, str := range stroki {
+		strLength := len(str)
+		if strLength > width {
+			width = strLength
+		}
+		height++
+		msg += "\n" + str
+
+	}
+	return msg + "\n", height, width + 5
 }

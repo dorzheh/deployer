@@ -1,7 +1,9 @@
 package metadata
 
 import (
+	"fmt"
 	"io/ioutil"
+	"os"
 	"path/filepath"
 
 	"github.com/dorzheh/deployer/builder/image"
@@ -11,7 +13,7 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/deployer/utils/hwfilter"
+	"github.com/dorzheh/deployer/utils/host_hwfilter"
 )
 
 // InputData provides a static data
@@ -68,6 +70,9 @@ type Config struct {
 	// Path to metadata file
 	DestMetadataFile string
 
+	// Network data
+	NetData *deployer.OutputNetworkData
+
 	// Bundle config
 	Bundle map[string]interface{}
 }
@@ -76,7 +81,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	var err error
 	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
-	c.DestMetadataFile = "/tmp/" + d.VaName + "-temp-metadata"
+	c.DestMetadataFile = fmt.Sprintf("/tmp/%s-temp-metadata.%d", d.VaName, os.Getpid())
 	// always create default metadata
 	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
 		return nil, utils.FormatError(err)
@@ -133,16 +138,16 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 		return nil, utils.FormatError(err)
 	}
 	if xid.Networks.Configure {
-		nics, err := hwfilter.GetAllowedNICs(xid, c.Hwdriver)
+		nics, err := host_hwfilter.GetAllowedNICs(xid, c.Hwdriver)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
-		nets, err := gui.UiNetworks(d.Ui, xid, nics)
+		c.NetData, err = gui.UiNetworks(d.Ui, xid, nics)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
 
-		c.Metadata.Networks, err = metaconf.SetNetworkData(nets, i.TemplatesDir)
+		c.Metadata.Networks, err = metaconf.SetNetworkData(c.NetData, i.TemplatesDir)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}

@@ -18,7 +18,8 @@ type XMLInputData struct {
 	RAM
 	Disks
 	Networks
-	NICs
+	HostNics
+	GuestNic
 }
 
 type CPU struct {
@@ -48,8 +49,6 @@ type Disks struct {
 
 type Network struct {
 	Name          string        `xml:"name,attr"`
-	MaxIfaces     int           `xml:"max_ifaces,attr"`
-	Mandatory     bool          `xml:"mandatory,attr"`
 	Modes         []*Mode       `xml:"mode"`
 	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
 }
@@ -85,7 +84,18 @@ type Deny struct {
 	Model  string `xml:"model,attr"`
 }
 
-type NICs struct {
-	Allowed []*Allow `xml:"nics>allow"`
-	Denied  []*Deny  `xml:"nics>deny"`
+type HostNics struct {
+	Allowed []*Allow `xml:"host_nics>allow"`
+	Denied  []*Deny  `xml:"host_nics>deny"`
+}
+
+type PciAddress struct {
+	Domain    string `xml:"domain"`
+	Bus       string `xml:"bus"`
+	FirstSlot int    `xml:"first_slot"`
+	Function  string `xml:"function"`
+}
+
+type GuestNic struct {
+	PCI *PciAddress `xml:"guest_nics>pci"`
 }

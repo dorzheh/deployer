@@ -20,8 +20,8 @@ func BuildProgress(c *CommonData, builders []Builder) (artifacts []Artifact, err
 		errChan <- err
 	}()
 
-	progressBarTitle := c.VaName + " installation in progress (artifacts building stage)"
-	progressBarMsg := "\n\nPlease wait..."
+	progressBarTitle := "Building artifacts"
+	progressBarMsg := "\n" + c.VaName + " installation in progress.Please wait..."
 	if err = c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan); err != nil {
 		err = utils.FormatError(err)
 	}

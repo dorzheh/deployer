@@ -27,8 +27,6 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 		switch a.(type) {
 		case *deployer.CommonArtifact:
 			if a.GetType() == deployer.MetadataArtifact {
-				defer a.Destroy()
-
 				if err := p.driver.DefineDomain(a.GetPath()); err != nil {
 					return utils.FormatError(err)
 				}
@@ -51,6 +49,9 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 					if err := p.driver.StartDomain(domain); err != nil {
 						return nil
 					}
+				}
+				if err := a.Destroy(); err != nil {
+					return utils.FormatError(err)
 				}
 			}
 		}

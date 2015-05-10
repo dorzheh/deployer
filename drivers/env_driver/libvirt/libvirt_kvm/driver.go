@@ -106,11 +106,11 @@ func (d *Driver) Emulator(arch string) (string, error) {
 
 // Version returns libvirt API version
 func (d *Driver) Version() (string, error) {
-	out, err := d.run("libvirtd --version")
+	out, err := d.run("virsh version|grep \"Using library\"")
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
-	return strings.Split(out, " ")[2], nil
+	return strings.Split(out, " ")[3], nil
 
 }
 

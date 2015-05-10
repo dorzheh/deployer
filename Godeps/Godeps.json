@@ -4,11 +4,11 @@
 	"Deps": [
 		{
 			"ImportPath": "github.com/clbanning/mxj",
-			"Rev": "e11b85050263aff26728fb9863bf2ebaf6591279"
+			"Rev": "da17de41d4c2e579884683ad838411fac440984d"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/go-dialog",
-			"Rev": "45a7badee8431c52a37d3f6c7c2743d79deb39d2"
+			"Rev": "3e4192dc94da1cfb34ed4a6479d94fac5622f702"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/common",
@@ -28,11 +28,11 @@
 		},
 		{
 			"ImportPath": "github.com/fatih/structs",
-			"Rev": "c00d27128bb88e9c1adab1a53cda9c72c6d1ff9b"
+			"Rev": "b4641b79cf37cd07961c25c5460be637ab27da76"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "c57d4a71915a248dbad846d60825145062b4c18e"
+			"Rev": "24ffb5feb3312a39054178a4b0a4554fc2201248"
 		}
 	]
 }

@@ -1,6 +1,7 @@
-package hwinfo
+package host
 
 import (
+	"errors"
 	"fmt"
 	"sort"
 
@@ -43,6 +44,15 @@ func (list NICList) SearchIndexByName(name string) (int, error) {
 		return i, nil
 	}
 	return -1, utils.FormatError(fmt.Errorf("index for Name %s not found", name))
+}
+
+func (list NICList) SearchIndexByObj(n *NIC) (int, error) {
+	for i, nic := range list {
+		if nic == n {
+			return i, nil
+		}
+	}
+	return -1, utils.FormatError(errors.New("NIC object not found"))
 }
 
 func (list NICList) Length() int {

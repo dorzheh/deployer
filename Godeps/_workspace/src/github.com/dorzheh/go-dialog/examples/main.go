@@ -13,20 +13,6 @@ import (
 
 func main() {
 	var d = dialog.New(dialog.CONSOLE, 0)
-	d.SetTitle("EULA")
-	// d.SetOkLabel("Agree")
-	// d.SetExtraLabel("Disagree")
-	// err := d.Textbox("/opt/1")
-	// fmt.Printf("DDD%v\n", err)
-	//var d = dialog.New(dialog.KDE, 0)
-	//var d = dialog.New(dialog.GTK, 0)
-	//var d = dialog.New(dialog.X, 0)
-	//var d = dialog.New(dialog.AUTO, 0)
-	//	d.SetBackTitle("test")
-	//	d.SetTitle("test")
-	//d.SetSize(10, 40)
-	//cmd := exec.Command("/bin/bash", "-c", "/home/dorzheh/1")
-	//cmd.Run()
 
 	//l := []string{"Selection1", "1", "1", "2046", "1", "10", "20", "0", "0", "Selection2", "2", "1", "0", "2", "10", "20", "0", "0", "Selection3", "3", "1", "0", "3", "10", "20", "0", "0"}
 	//d.Mixedform("Title", l[0:]...)

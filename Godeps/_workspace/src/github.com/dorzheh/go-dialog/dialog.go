@@ -356,12 +356,12 @@ func (d *Dialog) Inputmenu(menuHeight int, tagItem ...string) []string {
 	return strings.Split(d.exec(command, true), "\n")
 }
 
-func (d *Dialog) Menu(menuHeight int, tagItem ...string) string {
+func (d *Dialog) Menu(menuHeight int, tagItem ...string) (string, error) {
 	d.afterSize = append(d.afterSize, strconv.Itoa(menuHeight))
 	for _, param := range tagItem {
 		d.afterSize = append(d.afterSize, param)
 	}
-	return d.exec("menu", true)
+	return d.execWithError("menu", true)
 }
 
 func (d *Dialog) Msgbox(text string) {

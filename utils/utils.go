@@ -93,3 +93,11 @@ func FormatError(err error) error {
 	pc, fn, line, _ := runtime.Caller(1)
 	return fmt.Errorf("%v\nTRACE: %s[%s:%d]", err, runtime.FuncForPC(pc).Name(), filepath.Base(fn), line)
 }
+
+func IntToHexString(number int) string {
+	str := fmt.Sprintf("%x", number)
+	if len(str) == 1 {
+		return "0" + str
+	}
+	return str
+}

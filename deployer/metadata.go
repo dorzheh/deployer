@@ -3,7 +3,7 @@ package deployer
 import (
 	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/hwinfo/guest"
 )
 
 // MetadataConfigurator is the interface that has to be implemented
@@ -27,6 +27,6 @@ type MetadataConfigurator interface {
 }
 
 type OutputNetworkData struct {
-	NICLists []hwinfo.NICList
+	NICLists []guest.NICList
 	Networks []*xmlinput.Network
 }

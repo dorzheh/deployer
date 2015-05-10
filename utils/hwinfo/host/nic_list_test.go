@@ -1,4 +1,4 @@
-package hwinfo
+package host
 
 import (
 	"testing"

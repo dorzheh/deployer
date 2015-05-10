@@ -17,8 +17,8 @@ func PostProcessProgress(c *CommonData, p PostProcessor, artifacts []Artifact) e
 		errChan <- p.PostProcess(artifacts)
 	}()
 
-	progressBarTitle := c.VaName + " installation in progress (post-processing stage)"
-	progressBarMsg := "\n\nPlease wait..."
+	progressBarTitle := "Post-processing"
+	progressBarMsg := "\n" + c.VaName + " installation in progress.Please wait..."
 	if err := c.Ui.Progress(progressBarTitle, progressBarMsg, c.Ui.Pb.Sleep(), c.Ui.Pb.Step(), errChan); err != nil {
 		return utils.FormatError(err)
 	}

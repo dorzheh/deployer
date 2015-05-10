@@ -2,6 +2,8 @@
 package deployer
 
 import (
+	"fmt"
+
 	"github.com/dorzheh/deployer/utils"
 	ssh "github.com/dorzheh/infra/comm/common"
 )
@@ -27,6 +29,9 @@ type Artifact interface {
 
 	// Destroys the artifact.
 	Destroy() error
+
+	// Print properties
+	String() string
 }
 
 // CommonArtifact represents an artifact properties.
@@ -55,8 +60,12 @@ func (a *CommonArtifact) GetType() ArtifactType {
 // Destroy is responsible for removing appropriate artifact.
 func (a *CommonArtifact) Destroy() error {
 	run := utils.RunFunc(a.SshConfig)
-	if _, err := run("rm -f " + a.Path); err != nil {
+	if _, err := run("rm " + a.Path); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
+}
+
+func (a *CommonArtifact) String() string {
+	return fmt.Sprintf("Name: %s\nPath: %s\nType: %v\n", a.Name, a.Path, a.Type)
 }

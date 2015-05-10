@@ -36,7 +36,7 @@ func Deploy(c *deployer.CommonData, prodType string) error {
 	ui := c.Ui
 	for {
 		ui.SetLabel("Environment:")
-		deployType := ui.Menu(4, "1", "Libvirt+Virsh(KVM)",
+		deployType, _ := ui.Menu(4, "1", "Libvirt+Virsh(KVM)",
 			"2", "dummy2",
 			"3", "dummy3",
 			"4", "dummy4")

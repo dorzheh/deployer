@@ -1,4 +1,4 @@
-package hwfilter
+package host_hwfilter
 
 import (
 	"errors"
@@ -7,21 +7,21 @@ import (
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/hwinfo/host"
 )
 
-func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (hwinfo.NICList, error) {
-	allowedNics := hwinfo.NewNICList()
+func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDriver) (host.NICList, error) {
+	allowedNics := host.NewNICList()
 	nics, err := hidriver.NICs()
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
 	for _, n := range nics {
-		if deniedNIC(n, &data.NICs) {
+		if deniedNIC(n, &data.HostNics) {
 			continue
 		}
-		if n.Type == hwinfo.NicTypePhys {
-			if !allowedNIC(n, &data.NICs) {
+		if n.Type == host.NicTypePhys {
+			if !allowedNIC(n, &data.HostNics) {
 				continue
 			}
 		}
@@ -30,51 +30,49 @@ func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDrive
 	return allowedNics, nil
 }
 
-func NicsByType(nics hwinfo.NICList, types []xmlinput.ConnectionMode) (hwinfo.NICList, bool, error) {
-	modePassthrough := false
+func NicsByType(nics host.NICList, types []xmlinput.ConnectionMode) (host.NICList, error) {
 	if len(nics) == 0 {
-		return nil, modePassthrough, utils.FormatError(errors.New("nics of type hwinfo.NICList is empty"))
+		return nil, utils.FormatError(errors.New("nics of type host.NICList is empty"))
 	}
 
-	list := hwinfo.NewNICList()
+	list := host.NewNICList()
 	for _, contype := range types {
 		for _, nic := range nics {
 			switch contype {
 			case xmlinput.ConTypeBridged:
-				if nic.Type == hwinfo.NicTypeBridge {
+				if nic.Type == host.NicTypeBridge {
 					list.Add(nic)
 				}
 
 			case xmlinput.ConTypeOVS:
-				if nic.Type == hwinfo.NicTypeOVS {
+				if nic.Type == host.NicTypeOVS {
 					list.Add(nic)
 				}
 
 			case xmlinput.ConTypeDirect:
-				if nic.Type == hwinfo.NicTypePhys {
+				if nic.Type == host.NicTypePhys {
 					list.Add(nic)
 				}
 
 			case xmlinput.ConTypePassthrough:
-				if nic.Type == hwinfo.NicTypePhys {
+				if nic.Type == host.NicTypePhys {
 					list.Add(nic)
 				}
-				modePassthrough = true
 
 			case xmlinput.ConTypeVirtualNetwork:
-				if nic.Type == hwinfo.NicTypeVirtualNetwork {
+				if nic.Type == host.NicTypeVirtualNetwork {
 					list.Add(nic)
 				}
 
 			default:
-				return nil, modePassthrough, utils.FormatError(errors.New("unexpected type " + string(contype)))
+				return nil, utils.FormatError(errors.New("unexpected type " + string(contype)))
 			}
 		}
 	}
-	return list, modePassthrough, nil
+	return list, nil
 }
 
-func deniedNIC(hwnics *hwinfo.NIC, nics *xmlinput.NICs) bool {
+func deniedNIC(hwnics *host.NIC, nics *xmlinput.HostNics) bool {
 	for _, nic := range nics.Denied {
 		if nic.Model == "" {
 			if strings.Contains(hwnics.Vendor, nic.Vendor) {
@@ -87,7 +85,7 @@ func deniedNIC(hwnics *hwinfo.NIC, nics *xmlinput.NICs) bool {
 	return false
 }
 
-func allowedNIC(n *hwinfo.NIC, nics *xmlinput.NICs) bool {
+func allowedNIC(n *host.NIC, nics *xmlinput.HostNics) bool {
 	if nics.Allowed == nil {
 		return true
 	}

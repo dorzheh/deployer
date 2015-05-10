@@ -34,7 +34,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </disks>
   <networks>
     <configure>true</configure>
-	<network name="Management" max_ifaces="1" mandatory="true">
+	<network name="Management">
 		<!-- In common cases the templates provided by deployer are good enough -->
 		<!-- however you may provide your own templates -->
 		<!-- template_name is the name of your template file and -->
@@ -46,7 +46,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<mode type="direct" vnic_driver="e1000"/>
         <mode type="ovs" vnic_driver="virtio"/>   
 	</network>
-	<network name="Traffic" max_ifaces="9" mandatory="true"> 
+	<network name="Traffic"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<ui_mode_selection>
@@ -54,18 +54,22 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 			<appearance mode_type="passthrough" appear="pass-through"/>
 		</ui_mode_selection>
 	</network>
-	<network name="Bkp" max_ifaces="2" mandatory="false"> 
-		<mode type="bridged" vnic_driver="virtio"/>
-		<mode type="passthrough"/>
-	</network>
   </networks>
-  <nics>
+  <host_nics>
 	<!-- Allowed vendors and models -->
 	<allow vendor="Intel" model=""/>
 	<allow vendor="Broadcom" model=""/>
 	<!-- Denied vendors and models -->
 	<deny vendor="Broadcom" model=""/>
-  </nics>
+  </host_nics>
+   <guest_nics>
+    <pci>
+	    <domain>0000</domain>
+	    <bus>00</bus>
+	    <function>0</function>
+	    <first_slot>6</first_slot>
+	</pci>
+  </guest_nics>
 </input_data>`)
 
 func TestParseXMLInput(t *testing.T) {
@@ -82,6 +86,8 @@ func TestParseXMLInput(t *testing.T) {
 			fmt.Printf("%v\n", m.Type)
 		}
 	}
+
+	fmt.Printf("%v\n", d.GuestNic.PCI)
 
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",
@@ -117,12 +123,12 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </disks>
   <networks>
     <configure>true</configure>
-	<network name="Management" max_ifaces="1" mandatory="true">
+	<network name="Management">
 	    <mode type="bridged" vnic_driver="e1000"/>
 		<mode type="direct" vnic_driver="e1000"/>
 		<ui_mode_selection enable="false"/>
 	</network>
-	<network name="Traffic" max_ifaces="9" mandatory="true"> 
+	<network name="Traffic"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<mode type="direct"/>
@@ -131,18 +137,26 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 			<appearance mode_type="passthrough" appear="passthrough"/>
 		</ui_mode_selection>
 	</network>
-	<network name="Bkp" max_ifaces="2" mandatory="true"> 
+	<network name="Bkp"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 	</network>
   </networks>
-  <nics>
+   <host_nics>
 	<!-- Allowed vendors and models -->
 	<allow vendor="Intel" model=""/>
 	<allow vendor="Broadcom" model=""/>
 	<!-- Denied vendors and models -->
 	<deny vendor="Broadcom" model=""/>
-  </nics>
+  </host_nics>
+  <guest_nics>
+    <pci>
+	    <domain>0000</domain>
+	    <bus>00</bus>
+	    <function>0</function>
+	    <first_slot>6</first_slot>
+	</pci>
+  </guest_nics>
 </input_data>`)
 
 func TestParseXMLInputBad(t *testing.T) {

@@ -38,7 +38,7 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 		//IMPORTANT! Make sure that "Defaults !requiretty" is set in sudoers on remote system
 		outstr, errstr, err := c.Run("sudo " + command)
 		if err != nil {
-			return "", fmt.Errorf("executing %s : %s [%s]", command, errstr, err)
+			return "", fmt.Errorf("executing sudo %s : %s [%s]", command, errstr, err)
 		}
 		return strings.TrimSpace(outstr), nil
 	}

@@ -1,6 +1,6 @@
 // Responsible for parsing lshw output
 
-package hwinfo
+package host
 
 import (
 	"fmt"
@@ -125,6 +125,9 @@ type NIC struct {
 	// PCI Address
 	PCIAddr string
 
+	// NUMA Node
+	NUMANode int
+
 	// Description
 	Desc string
 
@@ -185,10 +188,12 @@ func (c *Collector) NICInfo() (NICList, error) {
 	if res != "" {
 		for _, n := range strings.Split(res, " ") {
 			br := &NIC{
-				Name:   n,
-				Driver: "bridge",
-				Desc:   "Bridge interface",
-				Type:   NicTypeBridge,
+				Name:     n,
+				Driver:   "bridge",
+				Desc:     "Bridge interface",
+				NUMANode: -1,
+				PCIAddr:  "N/A",
+				Type:     NicTypeBridge,
 			}
 			list.Add(br)
 		}
@@ -285,6 +290,8 @@ func (c *Collector) findInterface(json interface{}) *NIC {
 		}
 		nic = new(NIC)
 		nic.Name = name
+		nic.PCIAddr = "N/A"
+		nic.NUMANode = -1
 		driver, ok := ch["configuration"].(map[string]interface{})["driver"].(string)
 		if !ok {
 			driver = "N/A"
@@ -302,9 +309,14 @@ func (c *Collector) findInterface(json interface{}) *NIC {
 				if _, err := c.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
 					return nil
 				}
-				nic.PCIAddr = ch["businfo"].(string)
+				nic.PCIAddr = strings.Split(ch["businfo"].(string), "@")[1]
 				nic.Vendor = vendor
 				nic.Model = prod
+				numa, err := numa4Nic(nic.PCIAddr)
+				if err != nil {
+					return nil
+				}
+				nic.NUMANode = numa
 				nic.Desc = vendor + " " + prod
 				nic.Type = NicTypePhys
 			}
@@ -312,4 +324,29 @@ func (c *Collector) findInterface(json interface{}) *NIC {
 		nic.Driver = driver
 	}
 	return nic
+}
+
+func numa4Nic(pciAddr string) (int, error) {
+	numaInt := 0
+	fileSlice, err := filepath.Glob("/sys/devices/*/" + pciAddr + "/numa_node")
+	if err != nil {
+		return 0, err
+	}
+	if len(fileSlice) == 0 {
+		return numaInt, nil
+	}
+
+	out, err := ioutil.ReadFile(fileSlice[0])
+	if err != nil {
+		return numaInt, err
+	}
+
+	numaInt, err = strconv.Atoi(strings.Trim(string(out), "\n"))
+	if err != nil {
+		return numaInt, err
+	}
+	if numaInt == -1 {
+		numaInt = 0
+	}
+	return numaInt, nil
 }

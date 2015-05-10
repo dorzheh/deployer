@@ -16,7 +16,8 @@ import (
 	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
 	hwinfodriver "github.com/dorzheh/deployer/drivers/hwinfo_driver/libvirt"
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/hwinfo/guest"
+	"github.com/dorzheh/deployer/utils/hwinfo/host"
 )
 
 type meta struct{}
@@ -24,7 +25,7 @@ type meta struct{}
 func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Config, error) {
 	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
-	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil}
+	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil, nil}
 	c.Hwdriver, err = hwinfodriver.NewHostinfoDriver(c.SshConfig, i.Lshw, filepath.Join(d.RootDir, ".hwinfo.json"))
 	if err != nil {
 		return nil, utils.FormatError(err)
@@ -122,29 +123,49 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 // --- metadata configuration: network --- //
 
 type PassthroughData struct {
-	Bus      string
-	Slot     string
-	Function string
+	HostNicBus       string
+	HostNicSlot      string
+	HostNicFunction  string
+	GuestNicDomain   string
+	GuestNicBus      string
+	GuestNicSlot     string
+	GuestNicFunction string
 }
 
 type BridgedOVSData struct {
-	OVSBridge string
-	Driver    string
+	OVSBridge        string
+	Driver           string
+	GuestNicDomain   string
+	GuestNicBus      string
+	GuestNicSlot     string
+	GuestNicFunction string
 }
 
 type BridgedData struct {
-	Bridge string
-	Driver string
+	Bridge           string
+	Driver           string
+	GuestNicDomain   string
+	GuestNicBus      string
+	GuestNicSlot     string
+	GuestNicFunction string
 }
 
 type DirectData struct {
-	IfaceName string
-	Driver    string
+	IfaceName        string
+	Driver           string
+	GuestNicDomain   string
+	GuestNicBus      string
+	GuestNicSlot     string
+	GuestNicFunction string
 }
 
 type VirtNetwork struct {
-	NetworkName string
-	Driver      string
+	NetworkName      string
+	Driver           string
+	GuestNicDomain   string
+	GuestNicBus      string
+	GuestNicSlot     string
+	GuestNicFunction string
 }
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
@@ -155,8 +176,8 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 		list := mapping.NICLists[i]
 		for _, mode := range network.Modes {
 			for _, port := range list {
-				switch port.Type {
-				case hwinfo.NicTypePhys:
+				switch port.HostNIC.Type {
+				case host.NicTypePhys:
 					if mode.Type == xmlinput.ConTypePassthrough || mode.Type == xmlinput.ConTypeDirect {
 						out, err := treatPhysical(port, mode, templatesDir)
 						if err != nil {
@@ -165,30 +186,33 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 						data += out
 					}
 
-				case hwinfo.NicTypeOVS:
+				case host.NicTypeOVS:
 					if mode.Type == xmlinput.ConTypeOVS {
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridgedOVS,
-							&BridgedOVSData{port.Name, mode.VnicDriver}, templatesDir)
+							&BridgedOVSData{port.HostNIC.Name, mode.VnicDriver, port.PCIAddr.Domain,
+								port.PCIAddr.Bus, port.PCIAddr.Slot, port.PCIAddr.Function}, templatesDir)
 						if err != nil {
 							return "", utils.FormatError(err)
 						}
 						data += tempData
 					}
 
-				case hwinfo.NicTypeBridge:
+				case host.NicTypeBridge:
 					if mode.Type == xmlinput.ConTypeBridged {
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridged,
-							&BridgedData{port.Name, mode.VnicDriver}, templatesDir)
+							&BridgedData{port.HostNIC.Name, mode.VnicDriver, port.PCIAddr.Domain,
+								port.PCIAddr.Bus, port.PCIAddr.Slot, port.PCIAddr.Function}, templatesDir)
 						if err != nil {
 							return "", utils.FormatError(err)
 						}
 						data += tempData
 					}
 
-				case hwinfo.NicTypeVirtualNetwork:
+				case host.NicTypeVirtualNetwork:
 					if mode.Type == xmlinput.ConTypeVirtualNetwork {
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltVirtNetwork,
-							&VirtNetwork{port.Name, mode.VnicDriver}, templatesDir)
+							&VirtNetwork{port.HostNIC.Name, mode.VnicDriver, port.PCIAddr.Domain,
+								port.PCIAddr.Bus, port.PCIAddr.Slot, port.PCIAddr.Function}, templatesDir)
 						if err != nil {
 							return "", utils.FormatError(err)
 						}
@@ -201,13 +225,17 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 	return data, nil
 }
 
-func ProcessTemplatePassthrough(pci string) (string, error) {
-	pciSlice := strings.Split(pci, ":")
+func ProcessTemplatePassthrough(port *guest.NIC) (string, error) {
+	pciSlice := strings.Split(port.HostNIC.PCIAddr, ":")
 	d := new(PassthroughData)
-	d.Bus = pciSlice[1]
+	d.HostNicBus = pciSlice[1]
 	temp := strings.Split(pciSlice[2], ".")
-	d.Slot = temp[0]
-	d.Function = temp[1]
+	d.HostNicSlot = temp[0]
+	d.HostNicFunction = temp[1]
+	d.GuestNicDomain = port.PCIAddr.Domain
+	d.GuestNicBus = port.PCIAddr.Bus
+	d.GuestNicSlot = port.PCIAddr.Slot
+	d.GuestNicFunction = port.PCIAddr.Function
 	data, err := utils.ProcessTemplate(TmpltPassthrough, d)
 	if err != nil {
 		return "", utils.FormatError(err)
@@ -215,18 +243,19 @@ func ProcessTemplatePassthrough(pci string) (string, error) {
 	return string(data), nil
 }
 
-func treatPhysical(port *hwinfo.NIC, mode *xmlinput.Mode, templatesDir string) (string, error) {
+func treatPhysical(port *guest.NIC, mode *xmlinput.Mode, templatesDir string) (string, error) {
 	var err error
 	var tempData string
 
 	switch mode.Type {
 	case xmlinput.ConTypePassthrough:
-		if tempData, err = ProcessTemplatePassthrough(port.PCIAddr); err != nil {
+		if tempData, err = ProcessTemplatePassthrough(port); err != nil {
 			return "", utils.FormatError(err)
 		}
 	case xmlinput.ConTypeDirect:
 		if tempData, err = metadata.ProcessNetworkTemplate(mode, TmpltDirect,
-			&DirectData{port.Name, mode.VnicDriver}, templatesDir); err != nil {
+			&DirectData{port.HostNIC.Name, mode.VnicDriver, port.PCIAddr.Domain, port.PCIAddr.Bus,
+				port.PCIAddr.Slot, port.PCIAddr.Function}, templatesDir); err != nil {
 			return "", utils.FormatError(err)
 		}
 	}

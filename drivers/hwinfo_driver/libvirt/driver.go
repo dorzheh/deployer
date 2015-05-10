@@ -8,17 +8,17 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/hwinfo/host"
 	ssh "github.com/dorzheh/infra/comm/common"
 )
 
 type HostinfoDriver struct {
-	c *hwinfo.Collector
+	c *host.Collector
 }
 
 func NewHostinfoDriver(conf *ssh.Config, lshwpath, hwinfoFile string) (hi *HostinfoDriver, err error) {
 	hi = new(HostinfoDriver)
-	hi.c, err = hwinfo.NewCollector(conf, lshwpath, hwinfoFile)
+	hi.c, err = host.NewCollector(conf, lshwpath, hwinfoFile)
 	if err != nil {
 		hi = nil
 		err = utils.FormatError(err)
@@ -42,17 +42,17 @@ func (hi *HostinfoDriver) CPUs() (int, error) {
 }
 
 // Returns information related to the host's CPU
-func (hi *HostinfoDriver) CPUInfo() (*hwinfo.CPU, error) {
+func (hi *HostinfoDriver) CPUInfo() (*host.CPU, error) {
 	return hi.c.CPUInfo()
 }
 
 // Returns amount of NUMA nodes and appropriate CPUs per NUMA node
-func (hi *HostinfoDriver) NUMAInfo() (hwinfo.NUMANodes, error) {
+func (hi *HostinfoDriver) NUMAInfo() (host.NUMANodes, error) {
 	return hi.c.NUMAInfo()
 }
 
 // Returns info related to the host's NICs
-func (hi *HostinfoDriver) NICs() (hwinfo.NICList, error) {
+func (hi *HostinfoDriver) NICs() (host.NICList, error) {
 	nics, err := hi.c.NICInfo()
 	if err != nil {
 		return nil, err
@@ -63,9 +63,11 @@ func (hi *HostinfoDriver) NICs() (hwinfo.NICList, error) {
 		return nil, err
 	}
 	for _, net := range strings.Split(out, "\n") {
-		n := new(hwinfo.NIC)
+		n := new(host.NIC)
 		n.Name = net
-		n.Type = hwinfo.NicTypeVirtualNetwork
+		n.NUMANode = -1
+		n.PCIAddr = "N/A"
+		n.Type = host.NicTypeVirtualNetwork
 		n.Desc = "Virtual network"
 		nics.Add(n)
 	}

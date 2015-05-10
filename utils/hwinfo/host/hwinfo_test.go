@@ -1,4 +1,4 @@
-package hwinfo
+package host
 
 import (
 	"fmt"
@@ -197,4 +197,12 @@ func TestRAMSizeRemote(t *testing.T) {
 		t.Fatal(err)
 	}
 	fmt.Printf("===> remote ramsize = %d ", ramsize)
+}
+
+func TestNuma4Nic(t *testing.T) {
+	n, err := numa4Nic("0000:00:20.0")
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("NUMA for 0000:00:19.0: %d\n", n)
 }

@@ -12,15 +12,16 @@ import (
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/deployer/utils/hwfilter"
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/host_hwfilter"
+	"github.com/dorzheh/deployer/utils/hwinfo/guest"
+	"github.com/dorzheh/deployer/utils/hwinfo/host"
 	sshconf "github.com/dorzheh/infra/comm/common"
 	infrautils "github.com/dorzheh/infra/utils"
 )
 
 func UiValidateUser(ui *gui.DialogUi, userId int) {
 	if err := infrautils.ValidateUserID(userId); err != nil {
-		ui.ErrorOutput(err.Error(), 6, 14)
+		ui.Output(gui.Error, err.Error())
 	}
 }
 
@@ -42,23 +43,22 @@ func UiEulaMsg(ui *gui.DialogUi, pathToEula string) {
 
 func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	if err != nil {
-		ui.ErrorOutput(err.Error(), 8, 14)
+		ui.Output(gui.Error, err.Error())
 	}
-	width := len(msg) + 5
-	ui.Output(gui.None, msg, 6, width)
+	ui.Output(gui.Success, msg)
 }
 
 func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDriver) string {
 	var name string
 	for {
 		ui.SetSize(8, len(defaultName)+10)
-		ui.SetLabel("Virtual machine name")
+		ui.SetTitle("Virtual machine name")
 		name = ui.Inputbox(defaultName)
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
 			if driver != nil {
 				if driver.DomainExists(name) {
-					ui.Output(gui.Warning, "domain "+name+" already exists.\nPress <OK> and choose another name", 7, 2)
+					ui.Output(gui.Warning, "domain "+name+" already exists.", "Press <OK> to return to menu.")
 					continue
 				}
 			}
@@ -83,14 +83,15 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) string {
 }
 
 func UiRemoteMode(ui *gui.DialogUi) bool {
-	ui.SetLabel("Deployment Mode")
-	answer := ui.Menu(2, "1", "Local", "2", "Remote")
+	ui.SetTitle("Deployment Mode")
+	ui.SetSize(9, 28)
+	answer, _ := ui.Menu(2, "1", "Local", "2", "Remote")
 	if answer == "1" {
 		return false
 	}
 
 	if _, err := exec.LookPath("sshfs"); err != nil {
-		ui.ErrorOutput("sshfs utility is not installed", 8, 14)
+		ui.Output(gui.Error, "sshfs utility is not installed")
 	}
 	return true
 }
@@ -113,8 +114,10 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 		}
 
 		cfg.User = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
-		ui.SetLabel("Authentication method")
-		switch ui.Menu(2, "1", "Password", "2", "Private key") {
+		ui.SetTitle("Authentication method")
+		val, _ := ui.Menu(2, "1", "Password", "2", "Private key")
+
+		switch val {
 		case "1":
 			cfg.Password = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
 		case "2":
@@ -134,30 +137,19 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 		if err == nil {
 			break
 		}
-		ui.Output(gui.Warning, "Unable to establish SSH connection.\nPress <OK> to proceed.", 7, 2)
+		ui.Output(gui.Warning, "Unable to establish SSH connection.", "Press <OK> to return to menu.")
 	}
 	return cfg
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinfo.NICList) (*deployer.OutputNetworkData, error) {
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.NICList) (*deployer.OutputNetworkData, error) {
 	netMetaData := new(deployer.OutputNetworkData)
 	netMetaData.Networks = make([]*xmlinput.Network, 0)
-	netMetaData.NICLists = make([]hwinfo.NICList, 0)
+	netMetaData.NICLists = make([]guest.NICList, 0)
+	guestPciSlotCounter := data.GuestNic.PCI.FirstSlot
+	portCounter := 1
 
-	for i, net := range data.Networks.Configs {
-		if !net.Mandatory {
-			ui.SetSize(5, 60)
-			if i == 0 {
-				ui.SetLabel(fmt.Sprintf("Would you like to configure network (%s)?", net.Name))
-			} else {
-				ui.SetLabel("Would you like to configure additional network?")
-			}
-			if !ui.Yesno() {
-				// do not configure rest of the networks
-				break
-			}
-		}
-
+	for _, net := range data.Networks.Configs {
 		var modes []xmlinput.ConnectionMode
 		if net.UiModeBinding == nil || len(net.UiModeBinding) == 0 {
 			for _, mode := range net.Modes {
@@ -171,104 +163,107 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics hwinf
 			}
 		}
 
-		retainedNics, modePassthrough, err := hwfilter.NicsByType(allowedNics, modes)
+		retainedNics, err := host_hwfilter.NicsByType(allowedNics, modes)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
 		if len(retainedNics) == 0 {
-			ui.Output(gui.Warning, "no interfaces have been found.\nPress <OK> to return to menu.", 7, 2)
+			ui.Output(gui.Warning, "No interfaces have been found.", "Press <OK> to return to menu.")
 			continue
 		}
 
-		var list hwinfo.NICList
-		switch {
-		case net.MaxIfaces > 1 && retainedNics.Length() > 1:
-			list, err = uiSelectMultipleNics(ui, retainedNics, &allowedNics, modePassthrough, net)
-			if err != nil {
-				return nil, utils.FormatError(err)
-			}
-		default:
-			list, err = uiSelectSingleNic(ui, retainedNics, &allowedNics, modePassthrough, net.Name)
-			if err != nil {
-				return nil, utils.FormatError(err)
-			}
-
+		list, err := uiNicSelectMenu(ui, data.GuestNic.PCI, &portCounter, &guestPciSlotCounter, retainedNics, net.Name)
+		if err != nil {
+			return nil, utils.FormatError(err)
 		}
+
 		netMetaData.Networks = append(netMetaData.Networks, net)
 		netMetaData.NICLists = append(netMetaData.NICLists, list)
 	}
 	return netMetaData, nil
 }
 
-func uiSelectMultipleNics(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *hwinfo.NICList, modePassthrough bool, network *xmlinput.Network) (hwinfo.NICList, error) {
-	var temp []string
-	keeper := make(map[string]*hwinfo.NIC)
+func uiNicSelectMenu(ui *gui.DialogUi, pci *xmlinput.PciAddress, guestPortCounter *int,
+	guestPciSlotCounter *int, hnics host.NICList, netName string) (guest.NICList, error) {
+	list := make([]string, 0)
+	keeper := make(map[string]*host.NIC)
 	indexInt := 1
-	for _, nic := range selectedList {
+	for _, hnic := range hnics {
 		indexStr := strconv.Itoa(indexInt)
-		temp = append(temp, indexStr, fmt.Sprintf("%-14s %-10s", nic.Name, nic.Desc), "off")
-		keeper[indexStr] = nic
+		var numa string
+		if hnic.NUMANode == -1 {
+			numa = "N/A"
+		} else {
+			numa = strconv.Itoa(hnic.NUMANode)
+		}
+		list = append(list, indexStr, fmt.Sprintf("%-22s%-15s%-68s%-10s", hnic.Name, hnic.PCIAddr, hnic.Desc, numa))
+		keeper[indexStr] = hnic
 		indexInt++
 	}
 
-	sliceLength := len(temp)
-	var selected []string
+	listLength := len(list)
+	gnics := guest.NewNICList()
+
 	for {
-		ui.SetSize(sliceLength+5, 95)
-		ui.SetLabel(fmt.Sprintf("Select interfaces for network \"%s\"", network.Name))
-		selected = ui.Checklist(sliceLength, temp[0:]...)
-		// for some reason Checklist returns slice of length 1 even nothing was selected
-		if selected[0] == "" {
-			continue
-		}
-		if len(selected) > network.MaxIfaces {
-			continue
-		}
-		break
-	}
-
-	finalList := hwinfo.NewNICList()
-	for _, index := range selected {
-		nic := keeper[index]
-		finalList.Add(nic)
-		if modePassthrough && nic.Type == hwinfo.NicTypePhys {
-			i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
-			if err != nil {
-				return nil, utils.FormatError(err)
+		width := uiHeaderSelectNics(ui)
+		ui.SetSize(listLength+8, width+5)
+		ui.SetTitle("Select interface for network " + netName)
+		nicNumStr, err := ui.Menu(listLength+5, list[0:]...)
+		if err != nil {
+			errStr := err.Error()
+			if errStr == "exit status 3" {
+				break
+			} else if errStr == "exit status 1" {
+				os.Exit(0)
 			}
-			fullList.Remove(i)
 		}
-	}
-	return finalList, nil
-}
 
-func uiSelectSingleNic(ui *gui.DialogUi, selectedList hwinfo.NICList, fullList *hwinfo.NICList, modePassthrough bool, network string) (hwinfo.NICList, error) {
-	var temp []string
-	keeper := make(map[string]*hwinfo.NIC)
-	indexInt := 1
-	for _, nic := range selectedList {
-		indexStr := strconv.Itoa(indexInt)
-		temp = append(temp, indexStr, fmt.Sprintf("%-14s %-10s", nic.Name, nic.Desc))
-		keeper[indexStr] = nic
-		indexInt++
-	}
+		hnic := keeper[nicNumStr]
+		if _, err := gnics.SearchHostNicIndexByObj(hnic); err == nil {
+			continue
+		}
 
-	sliceLength := len(temp)
-	ui.SetSize(sliceLength+5, 95)
-	ui.SetLabel(fmt.Sprintf("Select interface for network \"%s\"", network))
-	ifaceNum := ui.Menu(sliceLength, temp[0:]...)
-	nic := keeper[ifaceNum]
-	if modePassthrough && nic.Type == hwinfo.NicTypePhys {
-		i, err := fullList.SearchIndexByPCI(nic.PCIAddr)
+		nicNumInt, err := strconv.Atoi(nicNumStr)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
-		fullList.Remove(i)
-	}
 
-	finalList := hwinfo.NewNICList()
-	finalList.Add(nic)
-	return finalList, nil
+		var numa string
+		if hnic.NUMANode == -1 {
+			numa = "N/A"
+		} else {
+			numa = strconv.Itoa(hnic.NUMANode)
+		}
+
+		if nicNumInt > 1 {
+			nicNumInt += nicNumInt - 1
+		}
+
+		list[nicNumInt] = fmt.Sprintf("%-22s%-15s%-68s%-9s%d", hnic.Name, hnic.PCIAddr, hnic.Desc, numa, *guestPortCounter)
+		gnic := guest.NewNIC()
+		gnic.Network = netName
+		gnic.PCIAddr.Domain = pci.Domain
+		gnic.PCIAddr.Bus = pci.Bus
+		gnic.PCIAddr.Slot = utils.IntToHexString(*guestPciSlotCounter)
+		gnic.PCIAddr.Function = pci.Function
+		gnic.HostNIC = hnic
+		gnics.Add(gnic)
+		*guestPciSlotCounter++
+		*guestPortCounter++
+	}
+	return gnics, nil
+}
+
+func uiHeaderSelectNics(ui *gui.DialogUi) int {
+	str := " ___________________________________________________________________________________________________________________________"
+	width := len(str)
+	str += "\n|____________________________________________________HOST__________________________________________________________|___VM___|"
+
+	str += fmt.Sprintf("\n|________%s________|__%s__|_______________ %s _________________|__%s__|__%s__|", "Port Name", "PCI Address", "Network Interface Description", "NUMA", "Port")
+	ui.SetLabel(str)
+	ui.SetExtraLabel("Finish")
+	ui.SetOkLabel("Select")
+	return width
 }
 
 func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) ([]xmlinput.ConnectionMode, error) {
@@ -289,8 +284,9 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 
 	length := len(matrix)
 	ui.SetSize(length+8, 50)
-	ui.SetLabel(fmt.Sprintf("Network interface type for network \"%s\"", network))
-	resultInt, err := strconv.Atoi(ui.Menu(length, temp[0:]...))
+	ui.SetTitle(fmt.Sprintf("Network interface type for network \"%s\"", network))
+	val, _ := ui.Menu(length, temp[0:]...)
+	resultInt, err := strconv.Atoi(val)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
@@ -315,7 +311,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 	if remote {
 		msg = "Gathering harwdare information from remote host.\nPlease wait..."
 	} else {
-		msg = "Gathering hardware information.\nPlease wait..."
+		msg = "Gathering hardware information from local host.\nPlease wait..."
 	}
 	return ui.Wait(msg, sleep, errCh)
 }
@@ -367,7 +363,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			index++
 		}
 	}
-	str := "Virtual Machine Configuration\n------------------------------------------\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
+	str := "------------------------------------------\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
 
 	installedCpus, err := driver.CPUs()
 	if err != nil {
@@ -380,7 +376,8 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 
 	MainLoop:
 		for {
-			ui.SetSize(13, 46)
+			ui.SetSize(11, 46)
+			ui.SetTitle("Virtual Machine configuration")
 			resultIndex := 0
 			result := ui.Mixedform(str, list[0:]...)
 			if len(result) < index {
@@ -427,18 +424,19 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 }
 
 func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus int) bool {
-	ui.SetSize(7, 85)
-	ui.SetLabel(fmt.Sprintf("WARNING:The host only has %d CPUs.Overcommitting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
+	ui.SetSize(8, 75)
+	ui.SetTitle(gui.Warning)
+	ui.SetLabel(fmt.Sprintf("\nThe host only has %d CPUs.Overcommitting vCPUs can reduce performance!\nWould you like to proceed?", installedCpus))
 	return ui.Yesno()
 }
 
 func uiCpuNotOK(ui *gui.DialogUi, selectedCpus, installedCpus, minCpus, maxCpus int) bool {
 	if selectedCpus < minCpus {
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.\nPress <OK> to return to menu.", minCpus), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum vCPUs requirement is %d.", minCpus), "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedCpus > maxCpus {
-		ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).\nPress <OK> to return to menu.", maxCpus), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Amount of vCPUs exceeds maximum supported vCPUs(%d).", maxCpus), "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedCpus > installedCpus {
@@ -451,15 +449,15 @@ func uiCpuNotOK(ui *gui.DialogUi, selectedCpus, installedCpus, minCpus, maxCpus 
 
 func uiRamNotOK(ui *gui.DialogUi, selectedRamInMb, installedRamMb, minRamInMb, maxRamInMb int) bool {
 	if selectedRamInMb > installedRamMb {
-		ui.Output(gui.Warning, "Required RAM exceeds host machine available memory.\nPress <OK> to return to menu.", 7, 2)
+		ui.Output(gui.Warning, "Required RAM exceeds host machine available memory.", "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedRamInMb < minRamInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dGB.\nPress <OK> to return to menu.", minRamInMb/1024), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dGB.", minRamInMb/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedRamInMb > maxRamInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dGB.\nPress <OK> to return to menu.", maxRamInMb/1024), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dGB.", maxRamInMb/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	return false
@@ -467,11 +465,11 @@ func uiRamNotOK(ui *gui.DialogUi, selectedRamInMb, installedRamMb, minRamInMb, m
 
 func uiDiskNotOK(ui *gui.DialogUi, selectedDiskInMb, minDiskInMb, maxDiskInMb int) bool {
 	if selectedDiskInMb < minDiskInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum disk size requirement is %dGB.\nPress <OK> to return to menu.", minDiskInMb/1024), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum disk size requirement is %dGB.", minDiskInMb/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedDiskInMb > maxDiskInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Maximum disk size requirement is %dGB.\nPress <OK> to return to menu.", maxDiskInMb/1024), 7, 2)
+		ui.Output(gui.Warning, fmt.Sprintf("Maximum disk size requirement is %dGB.", maxDiskInMb/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	return false

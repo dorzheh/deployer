@@ -1,7 +1,7 @@
 package deployer
 
 import (
-	"github.com/dorzheh/deployer/utils/hwinfo"
+	"github.com/dorzheh/deployer/utils/hwinfo/host"
 )
 
 // EnvDriver is the interface that has to be implemented in order
@@ -50,11 +50,11 @@ type HostinfoDriver interface {
 	CPUs() (int, error)
 
 	// Returns information related to the host's CPU.
-	CPUInfo() (*hwinfo.CPU, error)
+	CPUInfo() (*host.CPU, error)
 
 	// Returns information about installed NUMA nodes
-	NUMAInfo() (hwinfo.NUMANodes, error)
+	NUMAInfo() (host.NUMANodes, error)
 
 	// Returns info related to the host's NICs.
-	NICs() (hwinfo.NICList, error)
+	NICs() (host.NICList, error)
 }

@@ -121,6 +121,7 @@ func New(config *Disk, rootfsMp string, bins *Utils, remoteConfig *sshfs.Config)
 	}
 
 	i.config = config
+	i.config.Path = config.Path + ".raw"
 	if _, err = i.run("ls" + config.Path); err != nil {
 		if err = i.create(); err != nil {
 			err = utils.FormatError(err)
@@ -495,7 +496,7 @@ func (i *image) getMappers(loopDeviceName string) ([]string, error) {
 // convert is responsible for converting RAW image to other format
 func (i *image) convert() error {
 	// set the new path - append extention
-	newPath := fmt.Sprintf("%s.%s", i.config.Path, i.config.Type)
+	newPath := fmt.Sprintf("%s.%s", strings.TrimSuffix(i.config.Path, ".raw"), i.config.Type)
 	if out, err := i.run(fmt.Sprintf("qemu-img convert -f raw -O %s %s %s", i.config.Type, i.config.Path, newPath)); err != nil {
 		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 	}
