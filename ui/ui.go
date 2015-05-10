@@ -207,7 +207,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, pci *xmlinput.PciAddress, guestPortCounte
 	for {
 		width := uiHeaderSelectNics(ui)
 		ui.SetSize(listLength+8, width+5)
-		ui.SetTitle("Select interface for network " + netName)
+		ui.SetTitle(fmt.Sprintf("Select interface for network \"%s\"", netName))
 		nicNumStr, err := ui.Menu(listLength+5, list[0:]...)
 		if err != nil {
 			errStr := err.Error()
