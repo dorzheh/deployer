@@ -42,5 +42,6 @@ var TmpltPassthrough = `<hostdev mode='subsystem' type='pci' managed='yes'>
       <address type='pci' domain='0x0000' bus='0x{{.HostNicBus}}' slot='0x{{.HostNicSlot}}' function='0x{{.HostNicFunction}}'/>
       </source>
       <address type='pci' domain='0x{{.GuestNicDomain}}' bus='0x{{.GuestNicBus}}' slot='0x{{.GuestNicSlot}}' function='0x{{.GuestNicFunction}}'/>
+      <rom bar='off'/>
   </hostdev>
 `
