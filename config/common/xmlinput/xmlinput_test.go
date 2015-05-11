@@ -49,6 +49,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<network name="Traffic"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
+		<ui_reset_counter>true</ui_reset_counter>
 		<ui_mode_selection>
 			<appearance mode_type="bridged" appear="virtio"/>
 			<appearance mode_type="passthrough" appear="pass-through"/>
@@ -88,6 +89,7 @@ func TestParseXMLInput(t *testing.T) {
 	}
 
 	fmt.Printf("%v\n", d.GuestNic.PCI)
+	fmt.Printf("%v\n", d.Networks.Configs[1].UiResetCounter)
 
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",

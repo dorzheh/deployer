@@ -36,13 +36,13 @@ func (list NICList) SearchIndexByPCISlot(pcislot string) (int, error) {
 	return -1, utils.FormatError(fmt.Errorf("index for PCI slot %s not found", pcislot))
 }
 
-func (list NICList) SearchHostNicIndexByObj(n *host.NIC) (int, error) {
+func (list NICList) SearchGuestNicByHostNicObj(n *host.NIC) (*NIC, int, error) {
 	for i, nic := range list {
 		if nic.HostNIC == n {
-			return i, nil
+			return nic, i, nil
 		}
 	}
-	return -1, utils.FormatError(errors.New("Host NIC object not found"))
+	return nil, -1, utils.FormatError(errors.New("Host NIC object not found"))
 }
 
 func (list NICList) Length() int {

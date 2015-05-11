@@ -48,9 +48,10 @@ type Disks struct {
 }
 
 type Network struct {
-	Name          string        `xml:"name,attr"`
-	Modes         []*Mode       `xml:"mode"`
-	UiModeBinding []*Appearance `xml:"ui_mode_selection>appearance"`
+	Name           string        `xml:"name,attr"`
+	UiResetCounter bool          `xml:"ui_reset_counter"`
+	Modes          []*Mode       `xml:"mode"`
+	UiModeBinding  []*Appearance `xml:"ui_mode_selection>appearance"`
 }
 
 type Networks struct {

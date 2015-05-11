@@ -171,8 +171,10 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.
 			ui.Output(gui.Warning, "No interfaces have been found.", "Press <OK> to return to menu.")
 			continue
 		}
-
-		list, err := uiNicSelectMenu(ui, data.GuestNic.PCI, &portCounter, &guestPciSlotCounter, retainedNics, net.Name)
+		if net.UiResetCounter {
+			portCounter = 1
+		}
+		list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net.Name)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
@@ -183,21 +185,24 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.
 	return netMetaData, nil
 }
 
-func uiNicSelectMenu(ui *gui.DialogUi, pci *xmlinput.PciAddress, guestPortCounter *int,
+func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCounter *int,
 	guestPciSlotCounter *int, hnics host.NICList, netName string) (guest.NICList, error) {
 	list := make([]string, 0)
 	keeper := make(map[string]*host.NIC)
+	indexStrToInt := make(map[string][]int)
 	indexInt := 1
 	for _, hnic := range hnics {
 		indexStr := strconv.Itoa(indexInt)
-		var numa string
-		if hnic.NUMANode == -1 {
-			numa = "N/A"
-		} else {
-			numa = strconv.Itoa(hnic.NUMANode)
-		}
-		list = append(list, indexStr, fmt.Sprintf("%-22s%-15s%-68s%-10s", hnic.Name, hnic.PCIAddr, hnic.Desc, numa))
+		list = append(list, indexStr, fmt.Sprintf("%-22s%-15s%-68s%-10s", hnic.Name, hnic.PCIAddr, hnic.Desc, uiNUMAIntToString(hnic.NUMANode)))
 		keeper[indexStr] = hnic
+		if indexInt == 1 {
+			// index 0 - element index in the list
+			// index 1 - element couner
+			// index 2 - PCI slot number represented as integer
+			indexStrToInt[indexStr] = []int{1, 0, 0}
+		} else {
+			indexStrToInt[indexStr] = []int{indexInt*2 - 1, 0, 0}
+		}
 		indexInt++
 	}
 
@@ -219,39 +224,65 @@ func uiNicSelectMenu(ui *gui.DialogUi, pci *xmlinput.PciAddress, guestPortCounte
 		}
 
 		hnic := keeper[nicNumStr]
-		if _, err := gnics.SearchHostNicIndexByObj(hnic); err == nil {
+		delNicCounter := indexStrToInt[nicNumStr][1]
+		// counter for the NIC found, treat entire data structure
+		if delNicCounter > 0 {
+			if _, index, err := gnics.SearchGuestNicByHostNicObj(hnic); err == nil {
+				gnics.Remove(index)
+				if *guestPortCounter > 0 {
+					*guestPortCounter--
+				}
+				if *guestPciSlotCounter > data.GuestNic.PCI.FirstSlot {
+					*guestPciSlotCounter--
+				}
+
+				list[indexStrToInt[nicNumStr][0]] = fmt.Sprintf("%-22s%-15s%-68s%-10s", hnic.Name, hnic.PCIAddr, hnic.Desc, uiNUMAIntToString(hnic.NUMANode))
+				indexStrToInt[nicNumStr][1] = 0
+				indexStrToInt[nicNumStr][2] = 0
+			}
+			for nicIndex, data := range indexStrToInt {
+				nicCounter := data[1]
+				if nicCounter > delNicCounter {
+					tmpNic := keeper[nicIndex]
+					nicCounter--
+					list[data[0]] = fmt.Sprintf("%-22s%-15s%-68s%-9s%d", tmpNic.Name, tmpNic.PCIAddr,
+						tmpNic.Desc, uiNUMAIntToString(tmpNic.NUMANode), nicCounter)
+					indexStrToInt[nicIndex][1] = nicCounter
+					indexStrToInt[nicIndex][2]--
+					if gnic, _, err := gnics.SearchGuestNicByHostNicObj(tmpNic); err == nil {
+						gnic.PCIAddr.Slot = utils.IntToHexString(indexStrToInt[nicIndex][2])
+					}
+				}
+			}
 			continue
 		}
-
-		nicNumInt, err := strconv.Atoi(nicNumStr)
-		if err != nil {
-			return nil, utils.FormatError(err)
-		}
-
-		var numa string
-		if hnic.NUMANode == -1 {
-			numa = "N/A"
-		} else {
-			numa = strconv.Itoa(hnic.NUMANode)
-		}
-
-		if nicNumInt > 1 {
-			nicNumInt += nicNumInt - 1
-		}
-
-		list[nicNumInt] = fmt.Sprintf("%-22s%-15s%-68s%-9s%d", hnic.Name, hnic.PCIAddr, hnic.Desc, numa, *guestPortCounter)
+		// create new guest NIC, set his  number and counter
+		indexStrToInt[nicNumStr][1] = *guestPortCounter
+		indexStrToInt[nicNumStr][2] = *guestPciSlotCounter
+		list[indexStrToInt[nicNumStr][0]] = fmt.Sprintf("%-22s%-15s%-68s%-9s%d", hnic.Name, hnic.PCIAddr,
+			hnic.Desc, uiNUMAIntToString(hnic.NUMANode), *guestPortCounter)
 		gnic := guest.NewNIC()
 		gnic.Network = netName
-		gnic.PCIAddr.Domain = pci.Domain
-		gnic.PCIAddr.Bus = pci.Bus
+		gnic.PCIAddr.Domain = data.PCI.Domain
+		gnic.PCIAddr.Bus = data.PCI.Bus
 		gnic.PCIAddr.Slot = utils.IntToHexString(*guestPciSlotCounter)
-		gnic.PCIAddr.Function = pci.Function
+		gnic.PCIAddr.Function = data.PCI.Function
 		gnic.HostNIC = hnic
 		gnics.Add(gnic)
 		*guestPciSlotCounter++
 		*guestPortCounter++
 	}
 	return gnics, nil
+}
+
+func uiNUMAIntToString(numaInt int) string {
+	var numaStr string
+	if numaInt == -1 {
+		numaStr = "N/A"
+	} else {
+		numaStr = strconv.Itoa(numaInt)
+	}
+	return numaStr
 }
 
 func uiHeaderSelectNics(ui *gui.DialogUi) int {
@@ -363,8 +394,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			index++
 		}
 	}
-	str := "------------------------------------------\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
-
+	str := " ________________________________________\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
 	installedCpus, err := driver.CPUs()
 	if err != nil {
 		return nil, utils.FormatError(err)
