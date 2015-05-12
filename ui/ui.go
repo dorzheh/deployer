@@ -217,9 +217,13 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		if err != nil {
 			errStr := err.Error()
 			if errStr == "exit status 3" {
+				if len(gnics) == 0 {
+					continue
+				}
 				break
-			} else if errStr == "exit status 1" {
-				os.Exit(0)
+			}
+			if errStr == "exit status 1" {
+				os.Exit(1)
 			}
 		}
 
@@ -316,7 +320,10 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 	length := len(matrix)
 	ui.SetSize(length+8, 50)
 	ui.SetTitle(fmt.Sprintf("Network interface type for network \"%s\"", network))
-	val, _ := ui.Menu(length, temp[0:]...)
+	val, err := ui.Menu(length, temp[0:]...)
+	if err != nil && err.Error() == "exit status 1" {
+		os.Exit(1)
+	}
 	resultInt, err := strconv.Atoi(val)
 	if err != nil {
 		return nil, utils.FormatError(err)

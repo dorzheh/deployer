@@ -237,10 +237,12 @@ func (c *Collector) NUMAInfo() (NUMANodes, error) {
 	return numaMap, nil
 }
 
+// TotalNUMAs returns amount of NUMA nodes installed on the host
 func (n NUMANodes) TotalNUMAs() int {
 	return len(n)
 }
 
+// TotalCpus returns amount of CPUs bound to the NUMA
 func (n NUMANodes) TotalCpus() int {
 	amount := 0
 	for _, v := range n {
@@ -249,6 +251,7 @@ func (n NUMANodes) TotalCpus() int {
 	return amount
 }
 
+// CpusOnNUMA returns a slice of CPUs bound to the given NUMA node
 func (n NUMANodes) CpusOnNUMA(numa int) ([]string, error) {
 	if cpus, ok := n[numa]; ok {
 		return cpus, nil
@@ -276,6 +279,8 @@ func prepareFunc(c *Collector, sshconf *ssh.Config, lshwpath string) func() (str
 	}
 }
 
+// findInterface parses appropriate data structure and gather
+// information related to the Network interfaces
 func (c *Collector) findInterface(json interface{}) *NIC {
 	ch := json.(map[string]interface{})
 	var nic *NIC
@@ -326,22 +331,14 @@ func (c *Collector) findInterface(json interface{}) *NIC {
 	return nic
 }
 
+// numa4Nic fetchs NUMA node for appropriate PCI device
 func numa4Nic(pciAddr string) (int, error) {
 	numaInt := 0
-	fileSlice, err := filepath.Glob("/sys/devices/*/" + pciAddr + "/numa_node")
+	buf, err := ioutil.ReadFile("/sys/bus/pci/devices/" + pciAddr + "/numa_node")
 	if err != nil {
 		return 0, err
 	}
-	if len(fileSlice) == 0 {
-		return numaInt, nil
-	}
-
-	out, err := ioutil.ReadFile(fileSlice[0])
-	if err != nil {
-		return numaInt, err
-	}
-
-	numaInt, err = strconv.Atoi(strings.Trim(string(out), "\n"))
+	numaInt, err = strconv.Atoi(strings.Trim(string(buf), "\n"))
 	if err != nil {
 		return numaInt, err
 	}
