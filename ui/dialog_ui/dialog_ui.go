@@ -12,6 +12,12 @@ import (
 )
 
 const (
+	DIALOG_EXIT      = "exit status 1"
+	DIALOG_MOVE_BACK = "exit status 2"
+	DIALOG_FINISH    = "exit status 3"
+)
+
+const (
 	Success      = "Success"
 	Error        = "Failure"
 	Warning      = "Warning"
@@ -183,12 +189,17 @@ func (ui *DialogUi) Wait(msg string, pause time.Duration, done chan error) error
 }
 
 // GetPathToFileFromInput uses a dialog session for getting path to a file
-func (ui *DialogUi) GetPathToFileFromInput(title string) string {
+func (ui *DialogUi) GetPathToFileFromInput(title string) (string, error) {
 	var result string
+	var err error
+
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
-		result = ui.Fselect("/")
+		result, err = ui.Fselect("/")
+		if err != nil {
+			return result, err
+		}
 		if result != "" {
 			stat, err := os.Stat(result)
 			if err == nil && !stat.IsDir() {
@@ -196,16 +207,21 @@ func (ui *DialogUi) GetPathToFileFromInput(title string) string {
 			}
 		}
 	}
-	return result
+	return result, nil
 }
 
 // GetPathToDirFromInput uses a dialog session for getting path to a directory to upload
-func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) string {
+func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) (string, error) {
 	var result string
+	var err error
+
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
-		result = ui.Dselect(defaultDir)
+		result, err = ui.Dselect(defaultDir)
+		if err != nil {
+			return result, err
+		}
 		if result != "" {
 			stat, err := os.Stat(result)
 			if err == nil && stat.IsDir() {
@@ -213,18 +229,23 @@ func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) string {
 			}
 		}
 	}
-	return result
+	return result, nil
 }
 
 // GetIpFromInput uses a dialog session for reading IP from user input
 // Returns host IP (remote or local)
-func (ui *DialogUi) GetIpFromInput(title string) string {
+func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
 	var ipAddr string
+	var err error
+
 	width := len(title) + 7
 	for {
 		ui.SetSize(8, width)
 		ui.SetTitle(title)
-		ipAddr = ui.Inputbox("")
+		ipAddr, err = ui.Inputbox("")
+		if err != nil {
+			return ipAddr, err
+		}
 		// validate the IP
 		if net.ParseIP(ipAddr) == nil {
 			ui.Output(Warning, "Invalid IP.", "Press <OK> to return to menu.")
@@ -232,33 +253,42 @@ func (ui *DialogUi) GetIpFromInput(title string) string {
 		}
 		break
 	}
-	return ipAddr
+	return ipAddr, nil
 }
 
 // GetFromInput uses a dialog session for reading from stdin
 // Returns user input
-func (ui *DialogUi) GetFromInput(title, defaultInput string) string {
+func (ui *DialogUi) GetFromInput(title, defaultInput string) (string, error) {
 	var input string
+	var err error
+
 	for {
 		ui.SetSize(8, len(title)+5)
 		ui.SetTitle(title)
-		input = ui.Inputbox(defaultInput)
+		input, err = ui.Inputbox(defaultInput)
+		if err != nil {
+			return input, err
+		}
 		if input != "" {
 			break
 		}
 	}
-	return input
+	return input, nil
 }
 
 //GetPasswordFromInput uses a dialog session for reading user password from user input
 //Returns password string
-func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passwd1 string) {
+func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passwd1 string, err error) {
+MainLoop:
 	for {
 		msg := fmt.Sprintf("\"%s\" password on the host %s", user, host)
 		for {
 			ui.SetSize(8, len(msg)+5)
 			ui.SetTitle(msg)
-			passwd1 = ui.Passwordbox(true)
+			passwd1, err = ui.Passwordbox(true)
+			if err != nil {
+				return passwd1, err
+			}
 			if passwd1 != "" {
 				return
 			}
@@ -267,9 +297,14 @@ func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passw
 			var passwd2 string
 			msg = "Password confirmation for user \"" + user + "\""
 			for {
+				ui.HelpButton(true)
+				ui.SetHelpLabel("Back")
 				ui.SetSize(8, len(msg)+5)
 				ui.SetTitle(msg)
-				passwd2 = ui.Passwordbox(true)
+				passwd2, err = ui.Passwordbox(true)
+				if err.Error() == DIALOG_MOVE_BACK {
+					continue MainLoop
+				}
 				if passwd2 != "" {
 					break
 				}

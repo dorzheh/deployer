@@ -48,6 +48,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	</network>
 	<network name="Traffic"> 
 		<mode type="bridged" vnic_driver="virtio"/>
+		<mode type="ovs" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<ui_reset_counter>true</ui_reset_counter>
 		<ui_mode_selection>
@@ -84,7 +85,7 @@ func TestParseXMLInput(t *testing.T) {
 	}
 	for _, n := range d.Networks.Configs {
 		for _, m := range n.Modes {
-			fmt.Printf("%v\n", m.Type)
+			fmt.Printf("Network : %s mode: %v\n", n.Name, m.Type)
 		}
 	}
 
@@ -127,6 +128,7 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
     <configure>true</configure>
 	<network name="Management">
 	    <mode type="bridged" vnic_driver="e1000"/>
+	    <mode type="ovs" vnic_driver="e1000"/>
 		<mode type="direct" vnic_driver="e1000"/>
 		<ui_mode_selection enable="false"/>
 	</network>

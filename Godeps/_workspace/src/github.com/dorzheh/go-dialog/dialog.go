@@ -9,7 +9,6 @@ package dialog
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -26,7 +25,11 @@ const (
 	AUTO    = "auto"
 )
 
-var exit = errors.New("exit status 1")
+const (
+	DIALOG_ERR_CANCEL = "exit status 1"
+	DIALOG_ERR_HELP   = "exit status 2"
+	DIALOG_ERR_EXTRA  = "exit status 3"
+)
 
 type Dialog struct {
 	environment string
@@ -39,6 +42,8 @@ type Dialog struct {
 	left        int
 	top         int
 	shadow      bool
+	helpButton  bool
+	helpLabel   string
 	extraLabel  string
 	cancelLabel string
 	okLabel     string
@@ -108,6 +113,14 @@ func (d *Dialog) SetOkLabel(label string) {
 	d.okLabel = label
 }
 
+func (d *Dialog) HelpButton(truefalse bool) {
+	d.helpButton = truefalse
+}
+
+func (d *Dialog) SetHelpLabel(label string) {
+	d.helpLabel = label
+}
+
 func (d *Dialog) SetExtraLabel(label string) {
 	d.extraLabel = label
 }
@@ -118,70 +131,15 @@ func (d *Dialog) reset() {
 	d.label = ""
 	d.okLabel = "OK"
 	d.extraLabel = ""
+	d.helpButton = false
+	d.helpLabel = ""
 	d.SetSize(0, 0)
 	d.beforeDtype = []string{}
 	d.afterSize = []string{}
 	d.beforeSize = []string{}
 }
 
-func (d *Dialog) exec(dType string, allowLabel bool) string {
-	var arg string
-	cmd := exec.Command(d.environment)
-
-	cmd.Args = append(cmd.Args, "--ok-label", d.okLabel)
-
-	if d.extraLabel != "" {
-		cmd.Args = append(cmd.Args, "--extra-button")
-		cmd.Args = append(cmd.Args, "--extra-label", d.extraLabel)
-	}
-	if d.shadow == false {
-		cmd.Args = append(cmd.Args, "--no-shadow")
-	}
-	if d.backtitle != "" {
-		cmd.Args = append(cmd.Args, "--backtitle", d.backtitle)
-	}
-	if d.cancelLabel != "" {
-		cmd.Args = append(cmd.Args, "--cancel-label", d.cancelLabel)
-	}
-	if d.title != "" {
-		cmd.Args = append(cmd.Args, "--title", d.title)
-	}
-	for _, arg := range d.beforeDtype {
-		cmd.Args = append(cmd.Args, arg)
-	}
-	cmd.Args = append(cmd.Args, "--"+dType)
-
-	if allowLabel == true {
-		cmd.Args = append(cmd.Args, d.label)
-	}
-	for _, arg = range d.beforeSize {
-		cmd.Args = append(cmd.Args, arg)
-	}
-	if d.environment != KDE {
-		cmd.Args = append(cmd.Args, strconv.Itoa(d.height))
-		cmd.Args = append(cmd.Args, strconv.Itoa(d.width))
-	}
-	for _, arg = range d.afterSize {
-		cmd.Args = append(cmd.Args, arg)
-	}
-	if d.environment == CONSOLE {
-		cmd.Args = append(cmd.Args, "--stdout")
-	} else {
-		cmd.Args = append(cmd.Args, "--attach")
-		cmd.Args = append(cmd.Args, strconv.Itoa(d.parentId))
-	}
-	var out bytes.Buffer
-	cmd.Stdout = &out
-	if err := cmd.Run(); err != nil {
-		if err.Error() == exit.Error() {
-			os.Exit(0)
-		}
-	}
-	d.reset()
-	return strings.Trim(out.String(), "\r\n ")
-}
-
-func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
+func (d *Dialog) exec(dType string, allowLabel bool) (string, error) {
 	var arg string
 	cmd := exec.Command(d.environment)
 
@@ -191,6 +149,12 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	if d.extraLabel != "" {
 		cmd.Args = append(cmd.Args, "--extra-button")
 		cmd.Args = append(cmd.Args, "--extra-label", d.extraLabel)
+	}
+	if d.helpButton {
+		cmd.Args = append(cmd.Args, "--help-button")
+		if d.helpLabel != "" {
+			cmd.Args = append(cmd.Args, "--help-label", d.helpLabel)
+		}
 	}
 	if d.shadow == false {
 		cmd.Args = append(cmd.Args, "--no-shadow")
@@ -236,12 +200,16 @@ func (d *Dialog) execWithError(dType string, allowLabel bool) (string, error) {
 	return strings.Trim(out.String(), "\r\n "), err
 }
 
-func (d *Dialog) Slider(min int, max int, step int) int {
+func (d *Dialog) Slider(min int, max int, step int) (int, error) {
 	d.afterSize = append(d.afterSize, strconv.Itoa(min))
 	d.afterSize = append(d.afterSize, strconv.Itoa(max))
 	d.afterSize = append(d.afterSize, strconv.Itoa(step))
-	res, _ := strconv.Atoi(d.exec("slider", true))
-	return res
+	val, err := d.exec("slider", true)
+	res, err1 := strconv.Atoi(val)
+	if err1 != nil {
+		return res, err1
+	}
+	return res, err
 }
 
 func (d *Dialog) Passivepopup(text string, timeout int) {
@@ -251,14 +219,16 @@ func (d *Dialog) Passivepopup(text string, timeout int) {
 }
 
 func (d *Dialog) Geticon() string {
-	return d.exec("geticon", false)
+	val, _ := d.exec("geticon", false)
+	return val
 }
 
 func (d *Dialog) Getcolor() string {
-	return d.exec("getcolor", false)
+	val, _ := d.exec("getcolor", false)
+	return val
 }
 
-func (d *Dialog) Combobox(item ...string) string {
+func (d *Dialog) Combobox(item ...string) (string, error) {
 	var command string
 	if d.environment == CONSOLE {
 		d.afterSize = append(d.afterSize, "0")
@@ -276,31 +246,27 @@ func (d *Dialog) Combobox(item ...string) string {
 	return d.exec(command, true)
 }
 
-func (d *Dialog) Calendar(date time.Time) string {
+func (d *Dialog) Calendar(date time.Time) (string, error) {
 	d.afterSize = append(d.afterSize, date.Format("2006"))
 	d.afterSize = append(d.afterSize, date.Format("01"))
 	d.afterSize = append(d.afterSize, date.Format("02"))
-	var str = d.exec("calendar", true)
-	//@TODO Добавить универсальную функцию для преобразования дат из string в time.Time
-	return str
+	return d.exec("calendar", true)
 }
 
-func (d *Dialog) Checklist(listHeight int, tagItemStatus ...string) []string {
-	var str string
+func (d *Dialog) Checklist(listHeight int, tagItemStatus ...string) ([]string, error) {
 	var list []string
 	d.afterSize = append(d.afterSize, strconv.Itoa(listHeight))
 	for _, param := range tagItemStatus {
 		d.afterSize = append(d.afterSize, param)
 	}
-	str = d.exec("checklist", true)
+	str, err := d.exec("checklist", true)
 	for _, item := range strings.Split(str, " ") {
 		list = append(list, strings.Replace(item, "\"", "", -1))
 	}
-	return list
+	return list, err
 }
 
-func (d *Dialog) Mixedform(title string, tagItemStatus ...string) []string {
-	var str string
+func (d *Dialog) Mixedform(title string, tagItemStatus ...string) ([]string, error) {
 	var list []string
 	d.afterSize = append(d.afterSize, "0")
 	for _, param := range tagItemStatus {
@@ -308,14 +274,14 @@ func (d *Dialog) Mixedform(title string, tagItemStatus ...string) []string {
 	}
 
 	d.beforeSize = append(d.beforeSize, title)
-	str = d.exec("mixedform", false)
+	str, err := d.exec("mixedform", false)
 	for _, item := range strings.SplitAfter(str, "\n") {
 		list = append(list, strings.TrimSpace(item))
 	}
-	return list
+	return list, err
 }
 
-func (d *Dialog) Fselect(filepath string) string {
+func (d *Dialog) Fselect(filepath string) (string, error) {
 	d.beforeSize = append(d.beforeSize, filepath)
 	var command string
 	if d.environment == KDE {
@@ -337,23 +303,27 @@ func (d *Dialog) Infobox(text string) {
 	d.exec(command, false)
 }
 
-func (d *Dialog) Inputbox(value string) string {
+func (d *Dialog) Inputbox(value string) (string, error) {
 	d.afterSize = append(d.afterSize, value)
 	return d.exec("inputbox", true)
 }
 
-func (d *Dialog) Inputmenu(menuHeight int, tagItem ...string) []string {
+func (d *Dialog) Inputmenu(menuHeight int, tagItem ...string) ([]string, error) {
 	d.afterSize = append(d.afterSize, strconv.Itoa(menuHeight))
 	for _, param := range tagItem {
 		d.afterSize = append(d.afterSize, param)
 	}
+
 	var command string
 	if d.environment == KDE {
 		command = "menu"
 	} else {
 		command = "inputmenu"
 	}
-	return strings.Split(d.exec(command, true), "\n")
+
+	val, err := d.exec(command, true)
+	res := strings.Split(val, "\n")
+	return res, err
 }
 
 func (d *Dialog) Menu(menuHeight int, tagItem ...string) (string, error) {
@@ -361,7 +331,7 @@ func (d *Dialog) Menu(menuHeight int, tagItem ...string) (string, error) {
 	for _, param := range tagItem {
 		d.afterSize = append(d.afterSize, param)
 	}
-	return d.execWithError("menu", true)
+	return d.exec("menu", true)
 }
 
 func (d *Dialog) Msgbox(text string) {
@@ -369,7 +339,7 @@ func (d *Dialog) Msgbox(text string) {
 	d.exec("msgbox", false)
 }
 
-func (d *Dialog) Passwordbox(insecure bool) string {
+func (d *Dialog) Passwordbox(insecure bool) (string, error) {
 	var command string
 	if d.environment == KDE {
 		command = "password"
@@ -401,41 +371,41 @@ func (d *Dialog) Pause(seconds int) {
 
 func (d *Dialog) Textbox(filepath string) error {
 	d.beforeSize = append(d.beforeSize, filepath)
-	_, err := d.execWithError("textbox", false)
+	_, err := d.exec("textbox", false)
 	return err
 }
 
-func (d *Dialog) Timebox(date time.Time) string {
+func (d *Dialog) Timebox(date time.Time) (string, error) {
 	d.afterSize = append(d.afterSize, date.Format("15"))
 	d.afterSize = append(d.afterSize, date.Format("04"))
 	d.afterSize = append(d.afterSize, date.Format("05"))
-	var str = d.exec("timebox", true)
-	//@TODO Добавить универсальную функцию для преобразования дат из string в time.Time
-	return str
+	return d.exec("timebox", true)
 }
 
 func (d *Dialog) Yesno() bool {
-	if _, err := d.execWithError("yesno", true); err != nil {
-		if err.Error() == "exit status 1" {
+	if _, err := d.exec("yesno", true); err != nil {
+		if err.Error() == DIALOG_ERR_CANCEL {
 			return false
 		}
 	}
 	return true
 }
 
-func (d *Dialog) Radiolist(listHeight int, tagItemStatus ...string) string {
+func (d *Dialog) Radiolist(listHeight int, tagItemStatus ...string) (string, error) {
 	d.afterSize = append(d.afterSize, strconv.Itoa(listHeight))
 	for _, param := range tagItemStatus {
 		d.afterSize = append(d.afterSize, param)
 	}
-	return strings.Replace(d.exec("radiolist", true), "\"", "", -1)
+	val, err := d.exec("radiolist", true)
+	str := strings.Replace(val, "\"", "", -1)
+	return str, err
 }
 
-func (d *Dialog) Dselect(dirpath string) string {
+func (d *Dialog) Dselect(dirpath string) (string, error) {
 	d.beforeSize = append(d.beforeSize, dirpath)
 	var command string
 	if d.environment == KDE {
-		return ""
+		return "", nil
 	}
 	command = "dselect"
 	return d.exec(command, false)

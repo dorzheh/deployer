@@ -48,12 +48,17 @@ func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	ui.Output(gui.Success, msg)
 }
 
-func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDriver) string {
+func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDriver) (string, error) {
 	var name string
+	var err error
+
 	for {
 		ui.SetSize(8, len(defaultName)+10)
 		ui.SetTitle("Virtual machine name")
-		name = ui.Inputbox(defaultName)
+		name, err = ui.Inputbox(defaultName)
+		if err != nil {
+			return name, err
+		}
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
 			if driver != nil {
@@ -65,47 +70,56 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 			break
 		}
 	}
-	return name
+	return name, nil
 }
 
-func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) string {
+func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string, error) {
 	if remote {
 		return ui.GetFromInput("Select directory on remote server to install the VA image on", defaultLocation)
 	}
+
 	var location string
+	var err error
+
 	for {
-		location = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation)
+		location, err = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation)
+		if err != nil {
+			return location, err
+		}
 		if _, err := os.Stat(location); err == nil {
 			break
 		}
 	}
-	return location
+	return location, nil
 }
 
-func UiRemoteMode(ui *gui.DialogUi) bool {
+func UiRemoteMode(ui *gui.DialogUi) (bool, error) {
 	ui.SetTitle("Deployment Mode")
 	ui.SetSize(9, 28)
-	answer, _ := ui.Menu(2, "1", "Local", "2", "Remote")
+	answer, err := ui.Menu(2, "1", "Local", "2", "Remote")
+	if err != nil {
+		return false, err
+	}
 	if answer == "1" {
-		return false
+		return false, nil
 	}
 
 	if _, err := exec.LookPath("sshfs"); err != nil {
 		ui.Output(gui.Error, "sshfs utility is not installed")
 	}
-	return true
+	return true, nil
 }
 
-func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
+func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 	errCh := make(chan error)
 	defer close(errCh)
 	cfg := new(sshconf.Config)
 
 	for {
-		cfg.Host = ui.GetIpFromInput("Remote server IP")
+		cfg.Host, _ = ui.GetIpFromInput("Remote server IP")
 		cfg.Port = "22"
 		for {
-			cfg.Port = ui.GetFromInput("SSH port", cfg.Port)
+			cfg.Port, _ = ui.GetFromInput("SSH port", cfg.Port)
 			if portDig, err := strconv.Atoi(cfg.Port); err == nil {
 				if portDig < 65536 {
 					break
@@ -113,15 +127,15 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 			}
 		}
 
-		cfg.User = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
+		cfg.User, _ = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
 		ui.SetTitle("Authentication method")
 		val, _ := ui.Menu(2, "1", "Password", "2", "Private key")
 
 		switch val {
 		case "1":
-			cfg.Password = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
+			cfg.Password, _ = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
 		case "2":
-			cfg.PrvtKeyFile = ui.GetPathToFileFromInput("Path to ssh private key file")
+			cfg.PrvtKeyFile, _ = ui.GetPathToFileFromInput("Path to ssh private key file")
 
 		}
 
@@ -139,7 +153,7 @@ func UiSshConfig(ui *gui.DialogUi) *sshconf.Config {
 		}
 		ui.Output(gui.Warning, "Unable to establish SSH connection.", "Press <OK> to return to menu.")
 	}
-	return cfg
+	return cfg, nil
 }
 
 func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.NICList) (*deployer.OutputNetworkData, error) {
@@ -147,46 +161,90 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.
 	netMetaData.Networks = make([]*xmlinput.Network, 0)
 	netMetaData.NICLists = make([]guest.NICList, 0)
 	guestPciSlotCounter := data.GuestNic.PCI.FirstSlot
+	lastGuestPciSlotCounter := guestPciSlotCounter
 	portCounter := 1
+	lastPortCounter := portCounter
+	i := 0
 
-	for _, net := range data.Networks.Configs {
-		var modes []xmlinput.ConnectionMode
-		if net.UiModeBinding == nil || len(net.UiModeBinding) == 0 {
-			for _, mode := range net.Modes {
-				modes = append(modes, mode.Type)
+MainLoop:
+	for i < len(data.Networks.Configs) {
+		fmt.Println(lastGuestPciSlotCounter)
+		fmt.Println(lastPortCounter)
+		net := data.Networks.Configs[i]
+	PolicyLoop:
+		for {
+			var modes []xmlinput.ConnectionMode
+
+			if net.UiModeBinding == nil || len(net.UiModeBinding) == 0 {
+				for _, mode := range net.Modes {
+					modes = append(modes, mode.Type)
+				}
+			} else {
+				var err error
+				modes, err = uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
+				if err != nil {
+					switch err.Error() {
+					case gui.DIALOG_MOVE_BACK:
+						netMetaData.Networks = netMetaData.Networks[:i]
+						netMetaData.NICLists = netMetaData.NICLists[:i]
+						portCounter = lastPortCounter - 1
+						guestPciSlotCounter = lastGuestPciSlotCounter - 1
+						if i > 0 {
+							i--
+						}
+						continue MainLoop
+					case gui.DIALOG_EXIT:
+						os.Exit(1)
+					default:
+						return nil, err
+					}
+
+				}
 			}
-		} else {
-			var err error
-			modes, err = uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
+
+			retainedNics, err := host_hwfilter.NicsByType(allowedNics, modes)
 			if err != nil {
 				return nil, utils.FormatError(err)
 			}
-		}
+			if len(retainedNics) == 0 {
+				ui.Output(gui.Warning, "No interfaces have been found.", "Press <OK> to return to menu.")
+				continue MainLoop
+			}
+			if net.UiResetCounter {
+				portCounter = 1
+			}
+			list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net.Name, i)
+			if err != nil {
+				switch err.Error() {
+				case gui.DIALOG_MOVE_BACK:
+					netMetaData.Networks = netMetaData.Networks[:i]
+					netMetaData.NICLists = netMetaData.NICLists[:i]
+					portCounter = lastPortCounter - 1
+					guestPciSlotCounter = lastGuestPciSlotCounter - 1
+					if i > 0 {
+						i--
+					}
+					continue PolicyLoop
+				case gui.DIALOG_EXIT:
+					os.Exit(1)
+					// default:
+					// 	return nil, err
+				}
+			}
 
-		retainedNics, err := host_hwfilter.NicsByType(allowedNics, modes)
-		if err != nil {
-			return nil, utils.FormatError(err)
+			netMetaData.Networks = append(netMetaData.Networks, net)
+			netMetaData.NICLists = append(netMetaData.NICLists, list)
+			lastPortCounter = portCounter
+			lastGuestPciSlotCounter = guestPciSlotCounter
+			i++
+			break
 		}
-		if len(retainedNics) == 0 {
-			ui.Output(gui.Warning, "No interfaces have been found.", "Press <OK> to return to menu.")
-			continue
-		}
-		if net.UiResetCounter {
-			portCounter = 1
-		}
-		list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net.Name)
-		if err != nil {
-			return nil, utils.FormatError(err)
-		}
-
-		netMetaData.Networks = append(netMetaData.Networks, net)
-		netMetaData.NICLists = append(netMetaData.NICLists, list)
 	}
 	return netMetaData, nil
 }
 
 func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCounter *int,
-	guestPciSlotCounter *int, hnics host.NICList, netName string) (guest.NICList, error) {
+	guestPciSlotCounter *int, hnics host.NICList, netName string, index int) (guest.NICList, error) {
 	list := make([]string, 0)
 	keeper := make(map[string]*host.NIC)
 	indexStrToInt := make(map[string][]int)
@@ -210,21 +268,22 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 	gnics := guest.NewNICList()
 
 	for {
+		if index > 0 {
+			ui.HelpButton(true)
+			ui.SetHelpLabel("Back")
+		}
 		width := uiHeaderSelectNics(ui)
 		ui.SetSize(listLength+8, width+5)
 		ui.SetTitle(fmt.Sprintf("Select interface for network \"%s\"", netName))
 		nicNumStr, err := ui.Menu(listLength+5, list[0:]...)
 		if err != nil {
-			errStr := err.Error()
-			if errStr == "exit status 3" {
+			if err.Error() == gui.DIALOG_FINISH {
 				if len(gnics) == 0 {
 					continue
 				}
 				break
 			}
-			if errStr == "exit status 1" {
-				os.Exit(1)
-			}
+			return nil, err
 		}
 
 		hnic := keeper[nicNumStr]
@@ -298,6 +357,8 @@ func uiHeaderSelectNics(ui *gui.DialogUi) int {
 	ui.SetLabel(str)
 	ui.SetExtraLabel("Finish")
 	ui.SetOkLabel("Select")
+	//ui.HelpButton(true)
+	//ui.SetHelpLabel("Back")
 	return width
 }
 
@@ -320,9 +381,11 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 	length := len(matrix)
 	ui.SetSize(length+8, 50)
 	ui.SetTitle(fmt.Sprintf("Network interface type for network \"%s\"", network))
+	ui.HelpButton(true)
+	ui.SetHelpLabel("Back")
 	val, err := ui.Menu(length, temp[0:]...)
-	if err != nil && err.Error() == "exit status 1" {
-		os.Exit(1)
+	if err != nil {
+		return nil, err
 	}
 	resultInt, err := strconv.Atoi(val)
 	if err != nil {
@@ -416,7 +479,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			ui.SetSize(11, 46)
 			ui.SetTitle("Virtual Machine configuration")
 			resultIndex := 0
-			result := ui.Mixedform(str, list[0:]...)
+			result, _ := ui.Mixedform(str, list[0:]...)
 			if len(result) < index {
 				continue
 			}

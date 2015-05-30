@@ -8,7 +8,7 @@
 		},
 		{
 			"ImportPath": "github.com/dorzheh/go-dialog",
-			"Rev": "3e4192dc94da1cfb34ed4a6479d94fac5622f702"
+			"Rev": "a6612b58155911a97d58da6ea3e88cfb305226c8"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/infra/comm/common",

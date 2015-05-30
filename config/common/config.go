@@ -13,11 +13,11 @@ import (
 
 func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
 	c := new(deployer.CommonConfig)
-	c.RemoteMode = gui.UiRemoteMode(d.Ui)
+	c.RemoteMode, _ = gui.UiRemoteMode(d.Ui)
 	if c.RemoteMode {
-		c.SshConfig = gui.UiSshConfig(d.Ui)
+		c.SshConfig, _ = gui.UiSshConfig(d.Ui)
 	}
-	c.ExportDir = gui.UiImagePath(d.Ui, d.DefaultExportDir, c.RemoteMode)
+	c.ExportDir, _ = gui.UiImagePath(d.Ui, d.DefaultExportDir, c.RemoteMode)
 	return c
 }
 

@@ -79,7 +79,7 @@ type Config struct {
 
 func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.EnvDriver, metaconf deployer.MetadataConfigurator) (*Config, error) {
 	var err error
-	d.VaName = gui.UiApplianceName(d.Ui, d.VaName, driver)
+	d.VaName, _ = gui.UiApplianceName(d.Ui, d.VaName, driver)
 	c.Metadata.DomainName = d.VaName
 	c.DestMetadataFile = fmt.Sprintf("/tmp/%s-temp-metadata.%d", d.VaName, os.Getpid())
 	// always create default metadata

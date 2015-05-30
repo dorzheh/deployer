@@ -63,13 +63,15 @@ func (hi *HostinfoDriver) NICs() (host.NICList, error) {
 		return nil, err
 	}
 	for _, net := range strings.Split(out, "\n") {
-		n := new(host.NIC)
-		n.Name = net
-		n.NUMANode = -1
-		n.PCIAddr = "N/A"
-		n.Type = host.NicTypeVirtualNetwork
-		n.Desc = "Virtual network"
-		nics.Add(n)
+		if net != "" {
+			n := new(host.NIC)
+			n.Name = net
+			n.NUMANode = -1
+			n.PCIAddr = "N/A"
+			n.Type = host.NicTypeVirtualNetwork
+			n.Desc = "Virtual network"
+			nics.Add(n)
+		}
 	}
 	return nics, nil
 }
