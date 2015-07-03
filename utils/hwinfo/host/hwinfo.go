@@ -46,8 +46,11 @@ func (c *Collector) Hwinfo2Json() error {
 
 // CPU contains CPU description and properties
 type CPU struct {
-	Desc map[string]interface{}
-	Cap  map[string]interface{}
+	Type     string
+	Capacity float64
+	Clock    float64
+	Config   map[string]interface{}
+	Cap      map[string]interface{}
 }
 
 // CPUInfo gathers information related to installed CPUs
@@ -64,20 +67,32 @@ func (c *Collector) CPUInfo() (*CPU, error) {
 	}
 
 	cpu := new(CPU)
-	cpu.Desc = make(map[string]interface{})
+	cpu.Config = make(map[string]interface{})
 	cpu.Cap = make(map[string]interface{})
-	for _, s := range out {
-		r, _ := s.ValuesForPath("children.children")
-		for _, n := range r {
-			ch := n.(map[string]interface{})
-			if ch["id"] == "cpu:0" {
-				for k, v := range ch {
-					if k != "capabilities" {
-						cpu.Desc[k] = v
+	for _, m := range out {
+		if val, err := m.ValueForPathString("id"); err == nil {
+			if val == "cpu" || val == "cpu:0" {
+				if val, err := m.ValueForPathString("product"); err == nil {
+					cpu.Type = val
+				}
+				if val, err := m.ValueForPath("capacity"); err == nil {
+					cpu.Capacity = val.(float64)
+				}
+				if val, err := m.ValueForPath("clock"); err == nil {
+					cpu.Clock = val.(float64)
+				}
+
+				conf, err := m.ValueForPath("configuration")
+				if err == nil {
+					for k, v := range conf.(map[string]interface{}) {
+						cpu.Config[k] = v
 					}
 				}
-				for k, v := range ch["capabilities"].(map[string]interface{}) {
-					cpu.Cap[k] = v
+				caps, err := m.ValueForPath("capabilities")
+				if err == nil {
+					for k, v := range caps.(map[string]interface{}) {
+						cpu.Cap[k] = v
+					}
 				}
 			}
 		}
@@ -149,38 +164,66 @@ func (c *Collector) NICInfo() (NICList, error) {
 
 	list := NewNICList()
 	for _, m := range out {
-		val, err := m.ValuesForKey("class")
-		if err != nil {
-			continue
-		}
-		for _, name := range val {
-			if name == "network" {
-				nic := c.findInterface(m.Old())
-				if nic != nil {
-					list.Add(nic)
+		if val, err := m.ValueForPathString("class"); err == nil && val == "network" {
+			if desc, err := m.ValueForPathString("description"); err == nil &&
+				(desc == "Ethernet interface" || desc == "Ethernet controller" ||
+					desc == "Network controller" || desc == "interface") {
+				var name string
+				name, err := m.ValueForPathString("logicalname")
+				if err != nil {
+					name = "N/A"
+				} else {
+					if name == "ovs-system" {
+						continue
+					}
 				}
+
+				nic := new(NIC)
+				nic.Name = name
+				nic.PCIAddr = "N/A"
+				nic.NUMANode = -1
+
+				conf, err := m.ValueForPath("configuration")
+				if err != nil {
+					nic.Driver = "N/A"
+				} else {
+					nic.Driver = conf.(map[string]interface{})["driver"].(string)
+				}
+				switch nic.Driver {
+				case "tun", "veth", "macvlan":
+					continue
+				case "openvswitch":
+					nic.Desc = "Open vSwitch interface"
+					nic.Type = NicTypeOVS
+				default:
+					if prod, err := m.ValueForPathString("product"); err == nil {
+						if vendor, err := m.ValueForPathString("vendor"); err == nil {
+							if _, err := c.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", nic.Name, nic.Name)); err == nil {
+								// the interface is part of a bridge
+								continue
+							}
+							if businfo, err := m.ValueForPathString("businfo"); err == nil {
+								nic.PCIAddr = strings.Split(businfo, "@")[1]
+							}
+
+							nic.Model = prod
+							nic.Vendor = vendor
+							numa, err := numa4Nic(nic.PCIAddr)
+							if err != nil {
+								return nil, err
+							}
+							nic.NUMANode = numa
+							nic.Desc = vendor + " " + prod
+							nic.Type = NicTypePhys
+						}
+					}
+				}
+				list.Add(nic)
 			}
 		}
 	}
 
-	deep := []string{"children.children.children.children.children",
-		"children.children.children.children",
-		"children.children.children",
-		"children.children",
-		"children"}
-	for _, m := range out {
-		for _, d := range deep {
-			r, _ := m.ValuesForPath(d)
-			for _, n := range r {
-				nic := c.findInterface(n)
-				if nic != nil {
-					list.Add(nic)
-				}
-			}
-		}
-	}
-
-	// lshw is unable to find linux bridges so let's do it manually
+	// lshw cannot treat linux bridges so let's do it manually
 	res, err := c.Run(`out="";for n in /sys/class/net/*;do [ -d $n/bridge ] && out="$out ${n##/sys/class/net/}";done;echo $out`)
 	if err != nil {
 		return nil, utils.FormatError(err)
@@ -279,64 +322,12 @@ func prepareFunc(c *Collector, sshconf *ssh.Config, lshwpath string) func() (str
 	}
 }
 
-// findInterface parses appropriate data structure and gather
-// information related to the Network interfaces
-func (c *Collector) findInterface(json interface{}) *NIC {
-	ch := json.(map[string]interface{})
-	var nic *NIC
-	if ch["description"] == "Ethernet interface" ||
-		ch["description"] == "Ethernet controller" {
-		name, ok := ch["logicalname"].(string)
-		if !ok {
-			name = "N/A"
-		}
-		if name == "ovs-system" {
-			return nil
-		}
-		nic = new(NIC)
-		nic.Name = name
-		nic.PCIAddr = "N/A"
-		nic.NUMANode = -1
-		driver, ok := ch["configuration"].(map[string]interface{})["driver"].(string)
-		if !ok {
-			driver = "N/A"
-		}
-		switch driver {
-		case "tun", "veth", "macvlan":
-			return nil
-		case "openvswitch":
-			nic.Desc = "Open vSwitch interface"
-			nic.Type = NicTypeOVS
-		default:
-			prod, ok := ch["product"].(string)
-			if ok {
-				vendor, _ := ch["vendor"].(string)
-				if _, err := c.Run(fmt.Sprintf("[[ -d /sys/class/net/%s/master || -d /sys/class/net/%s/brport ]]", name, name)); err == nil {
-					return nil
-				}
-				nic.PCIAddr = strings.Split(ch["businfo"].(string), "@")[1]
-				nic.Vendor = vendor
-				nic.Model = prod
-				numa, err := numa4Nic(nic.PCIAddr)
-				if err != nil {
-					return nil
-				}
-				nic.NUMANode = numa
-				nic.Desc = vendor + " " + prod
-				nic.Type = NicTypePhys
-			}
-		}
-		nic.Driver = driver
-	}
-	return nic
-}
-
 // numa4Nic fetchs NUMA node for appropriate PCI device
 func numa4Nic(pciAddr string) (int, error) {
 	numaInt := 0
 	buf, err := ioutil.ReadFile("/sys/bus/pci/devices/" + pciAddr + "/numa_node")
 	if err != nil {
-		return 0, err
+		return numaInt, err
 	}
 	numaInt, err = strconv.Atoi(strings.Trim(string(buf), "\n"))
 	if err != nil {

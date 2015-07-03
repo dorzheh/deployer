@@ -76,8 +76,9 @@ type Appearance struct {
 }
 
 type Allow struct {
-	Vendor string `xml:"vendor,attr"`
-	Model  string `xml:"model,attr"`
+	Vendor   string `xml:"vendor,attr"`
+	Model    string `xml:"model,attr"`
+	Priority bool   `xml:"priority,attr"`
 }
 
 type Deny struct {

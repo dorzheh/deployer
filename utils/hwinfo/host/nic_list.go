@@ -18,6 +18,10 @@ func (list *NICList) Add(n *NIC) {
 	*list = append(*list, n)
 }
 
+func (list *NICList) AppendList(l NICList) {
+	*list = append(*list, l[:]...)
+}
+
 func (list *NICList) Remove(index int) {
 	temp := *list
 	temp = append(temp[:index], temp[index+1:]...)

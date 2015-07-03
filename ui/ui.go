@@ -57,6 +57,9 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 		ui.SetTitle("Virtual machine name")
 		name, err = ui.Inputbox(defaultName)
 		if err != nil {
+			if err.Error() == gui.DialogExit {
+				os.Exit(1)
+			}
 			return name, err
 		}
 		if name != "" {
@@ -98,6 +101,9 @@ func UiRemoteMode(ui *gui.DialogUi) (bool, error) {
 	ui.SetSize(9, 28)
 	answer, err := ui.Menu(2, "1", "Local", "2", "Remote")
 	if err != nil {
+		if err.Error() == gui.DialogExit {
+			os.Exit(1)
+		}
 		return false, err
 	}
 	if answer == "1" {
@@ -111,15 +117,23 @@ func UiRemoteMode(ui *gui.DialogUi) (bool, error) {
 }
 
 func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
+	var err error
 	errCh := make(chan error)
 	defer close(errCh)
 	cfg := new(sshconf.Config)
 
 	for {
-		cfg.Host, _ = ui.GetIpFromInput("Remote server IP")
+		cfg.Host, err = ui.GetIpFromInput("Remote server IP")
+		if err != nil {
+			return nil, err
+		}
+
 		cfg.Port = "22"
 		for {
-			cfg.Port, _ = ui.GetFromInput("SSH port", cfg.Port)
+			cfg.Port, err = ui.GetFromInput("SSH port", cfg.Port)
+			if err != nil {
+				return nil, err
+			}
 			if portDig, err := strconv.Atoi(cfg.Port); err == nil {
 				if portDig < 65536 {
 					break
@@ -129,14 +143,20 @@ func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 
 		cfg.User, _ = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
 		ui.SetTitle("Authentication method")
-		val, _ := ui.Menu(2, "1", "Password", "2", "Private key")
+		val, err := ui.Menu(2, "1", "Password", "2", "Private key")
+		if err != nil && err.Error() == gui.DialogExit {
+			os.Exit(1)
+		}
 
 		switch val {
 		case "1":
-			cfg.Password, _ = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
+			cfg.Password, err = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
 		case "2":
-			cfg.PrvtKeyFile, _ = ui.GetPathToFileFromInput("Path to ssh private key file")
+			cfg.PrvtKeyFile, err = ui.GetPathToFileFromInput("Path to ssh private key file")
 
+		}
+		if err != nil && err.Error() == gui.DialogExit {
+			os.Exit(1)
 		}
 
 		go func() {
@@ -147,8 +167,7 @@ func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 		}()
 
 		sleep, _ := time.ParseDuration("1s")
-		err := ui.Wait("Trying to establish SSH connection to remote host.\nPlease wait...", sleep, errCh)
-		if err == nil {
+		if err = ui.Wait("Trying to establish SSH connection to remote host.\nPlease wait...", sleep, errCh); err == nil {
 			break
 		}
 		ui.Output(gui.Warning, "Unable to establish SSH connection.", "Press <OK> to return to menu.")
@@ -168,8 +187,6 @@ func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.
 
 MainLoop:
 	for i < len(data.Networks.Configs) {
-		fmt.Println(lastGuestPciSlotCounter)
-		fmt.Println(lastPortCounter)
 		net := data.Networks.Configs[i]
 	PolicyLoop:
 		for {
@@ -184,7 +201,7 @@ MainLoop:
 				modes, err = uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
 				if err != nil {
 					switch err.Error() {
-					case gui.DIALOG_MOVE_BACK:
+					case gui.DialogMoveBack:
 						netMetaData.Networks = netMetaData.Networks[:i]
 						netMetaData.NICLists = netMetaData.NICLists[:i]
 						portCounter = lastPortCounter - 1
@@ -193,7 +210,7 @@ MainLoop:
 							i--
 						}
 						continue MainLoop
-					case gui.DIALOG_EXIT:
+					case gui.DialogExit:
 						os.Exit(1)
 					default:
 						return nil, err
@@ -216,7 +233,7 @@ MainLoop:
 			list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net.Name, i)
 			if err != nil {
 				switch err.Error() {
-				case gui.DIALOG_MOVE_BACK:
+				case gui.DialogMoveBack:
 					netMetaData.Networks = netMetaData.Networks[:i]
 					netMetaData.NICLists = netMetaData.NICLists[:i]
 					portCounter = lastPortCounter - 1
@@ -225,10 +242,8 @@ MainLoop:
 						i--
 					}
 					continue PolicyLoop
-				case gui.DIALOG_EXIT:
+				case gui.DialogExit:
 					os.Exit(1)
-					// default:
-					// 	return nil, err
 				}
 			}
 
@@ -277,7 +292,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		ui.SetTitle(fmt.Sprintf("Select interface for network \"%s\"", netName))
 		nicNumStr, err := ui.Menu(listLength+5, list[0:]...)
 		if err != nil {
-			if err.Error() == gui.DIALOG_FINISH {
+			if err.Error() == gui.DialogNext {
 				if len(gnics) == 0 {
 					continue
 				}
@@ -355,7 +370,7 @@ func uiHeaderSelectNics(ui *gui.DialogUi) int {
 
 	str += fmt.Sprintf("\n|________%s________|__%s__|_______________ %s _________________|__%s__|__%s__|", "Port Name", "PCI Address", "Network Interface Description", "NUMA", "Port")
 	ui.SetLabel(str)
-	ui.SetExtraLabel("Finish")
+	ui.SetExtraLabel("Next")
 	ui.SetOkLabel("Select")
 	//ui.HelpButton(true)
 	//ui.SetHelpLabel("Back")
@@ -479,7 +494,10 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			ui.SetSize(11, 46)
 			ui.SetTitle("Virtual Machine configuration")
 			resultIndex := 0
-			result, _ := ui.Mixedform(str, list[0:]...)
+			result, err := ui.Mixedform(str, list[0:]...)
+			if err != nil && err.Error() == gui.DialogExit {
+				os.Exit(1)
+			}
 			if len(result) < index {
 				continue
 			}

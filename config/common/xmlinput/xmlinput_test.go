@@ -59,8 +59,8 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   </networks>
   <host_nics>
 	<!-- Allowed vendors and models -->
-	<allow vendor="Intel" model=""/>
-	<allow vendor="Broadcom" model=""/>
+	<allow vendor="Intel" model="" priority="true"/>
+	<allow vendor="Mellanox" model=""/>
 	<!-- Denied vendors and models -->
 	<deny vendor="Broadcom" model=""/>
   </host_nics>

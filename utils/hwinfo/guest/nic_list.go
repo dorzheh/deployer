@@ -53,6 +53,20 @@ func (list NICList) SortByPCISlot() {
 	sort.Sort(SortByPCISlot(list))
 }
 
+func (list NICList) SearchGuestNicsByHostNicVendor(vendor string) NICList {
+	var newList NICList
+
+	for _, nic := range list {
+		if nic.HostNIC.Vendor == vendor {
+			if newList == nil {
+				newList = NewNICList()
+			}
+			newList.Add(nic)
+		}
+	}
+	return newList
+}
+
 type SortByPCISlot NICList
 
 func (list SortByPCISlot) Len() int           { return len(list) }

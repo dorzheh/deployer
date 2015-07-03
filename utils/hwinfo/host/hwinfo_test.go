@@ -140,8 +140,8 @@ func TestNICInfoRemote(t *testing.T) {
 func printNICInfo(info []*NIC) {
 	fmt.Println("==== Slice Content ======")
 	for _, n := range info {
-		fmt.Printf("NIC type => %v\nNIC name => %v\nNIC PCI addr => %v\nNIC vendor => %v\nNIC model => %v\nNIC desc => %v\nNIC driver => %v\n",
-			string(n.Type), n.Name, n.PCIAddr, n.Vendor, n.Model, n.Desc, n.Driver)
+		fmt.Printf("NIC type => %v\nNIC name => %v\nNIC PCI addr => %v\nNIC vendor => %v\nNIC model => %v\nNIC desc => %v\nNIC driver => %v\nNUMA node => %v\n",
+			string(n.Type), n.Name, n.PCIAddr, n.Vendor, n.Model, n.Desc, n.Driver, n.NUMANode)
 		fmt.Println("==================")
 	}
 }

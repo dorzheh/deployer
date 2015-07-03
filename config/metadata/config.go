@@ -79,22 +79,19 @@ type Config struct {
 
 func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.EnvDriver, metaconf deployer.MetadataConfigurator) (*Config, error) {
 	var err error
-	d.VaName, _ = gui.UiApplianceName(d.Ui, d.VaName, driver)
-	c.Metadata.DomainName = d.VaName
-	c.DestMetadataFile = fmt.Sprintf("/tmp/%s-temp-metadata.%d", d.VaName, os.Getpid())
-	// always create default metadata
-	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
-		return nil, utils.FormatError(err)
-	}
 
 	xid, err := xmlinput.ParseXMLInput(i.InputDataConfigFile)
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
+	d.VaName, _ = gui.UiApplianceName(d.Ui, d.VaName, driver)
+	c.Metadata.DomainName = d.VaName
+
 	if err := gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
 		return nil, utils.FormatError(err)
 	}
 
+	// VM configuration
 	var storageConfigIndex image.ConfigIndex = 0
 	var m map[string]interface{}
 	if i.BundleParser != nil {
@@ -137,6 +134,8 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
+
+	// Network configuration
 	if xid.Networks.Configure {
 		nics, err := host_hwfilter.GetAllowedNICs(xid, c.Hwdriver)
 		if err != nil {
@@ -151,6 +150,12 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
+	}
+
+	c.DestMetadataFile = fmt.Sprintf("/tmp/%s-temp-metadata.%d", d.VaName, os.Getpid())
+	// always create default metadata
+	if err := ioutil.WriteFile(c.DestMetadataFile, metaconf.DefaultMetadata(), 0); err != nil {
+		return nil, utils.FormatError(err)
 	}
 	return c, nil
 }

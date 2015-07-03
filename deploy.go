@@ -5,6 +5,11 @@ import (
 	"github.com/dorzheh/deployer/utils"
 )
 
+// Deploy is implementing entire flow
+// The flow consists of the following stages:
+// - CreateConfig creates appropriate configuration(user interaction against UI).
+// - CreateBuilders creates appropriate builders and passes them to the build process
+// - CreatePostProcessors creates appropriate post-processors and passes them for post-processing
 func Deploy(c *deployer.CommonData, f deployer.FlowCreator) error {
 	if err := f.CreateConfig(c); err != nil {
 		return utils.FormatError(err)
