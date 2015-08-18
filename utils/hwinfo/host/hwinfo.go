@@ -164,7 +164,7 @@ func (c *Collector) NICInfo() (NICList, error) {
 
 	list := NewNICList()
 	for _, m := range out {
-		if val, err := m.ValueForPathString("class"); err == nil && val == "network" {
+		if val, err := m.ValueForPathString("id"); err == nil && strings.HasPrefix(val, "network") {
 			if desc, err := m.ValueForPathString("description"); err == nil &&
 				(desc == "Ethernet interface" || desc == "Ethernet controller" ||
 					desc == "Network controller" || desc == "interface") {
@@ -187,7 +187,9 @@ func (c *Collector) NICInfo() (NICList, error) {
 				if err != nil {
 					nic.Driver = "N/A"
 				} else {
-					nic.Driver = conf.(map[string]interface{})["driver"].(string)
+					if val, ok := conf.(map[string]interface{})["driver"]; ok {
+						nic.Driver = val.(string)
+					}
 				}
 				switch nic.Driver {
 				case "tun", "veth", "macvlan":
@@ -208,9 +210,9 @@ func (c *Collector) NICInfo() (NICList, error) {
 
 							nic.Model = prod
 							nic.Vendor = vendor
-							numa, err := numa4Nic(nic.PCIAddr)
+							numa, err := c.numa4Nic(nic.PCIAddr)
 							if err != nil {
-								return nil, err
+								return nil, utils.FormatError(err)
 							}
 							nic.NUMANode = numa
 							nic.Desc = vendor + " " + prod
@@ -243,6 +245,23 @@ func (c *Collector) NICInfo() (NICList, error) {
 	}
 	list.SortByPCI()
 	return list, nil
+}
+
+// numa4Nic fetchs NUMA node for appropriate PCI device
+func (c *Collector) numa4Nic(pciAddr string) (int, error) {
+	numaInt := 0
+	numaStr, err := c.Run("cat /sys/bus/pci/devices/" + pciAddr + "/numa_node")
+	if err != nil {
+		return numaInt, utils.FormatError(err)
+	}
+	if numaStr == "-1" {
+		numaInt = 0
+	}
+	numaInt, err = strconv.Atoi(numaStr)
+	if err != nil {
+		return numaInt, utils.FormatError(err)
+	}
+	return numaInt, nil
 }
 
 // RAMSize gathers information related to the installed amount of RAM in MB
@@ -320,21 +339,4 @@ func prepareFunc(c *Collector, sshconf *ssh.Config, lshwpath string) func() (str
 		}
 		return lshwpath, nil
 	}
-}
-
-// numa4Nic fetchs NUMA node for appropriate PCI device
-func numa4Nic(pciAddr string) (int, error) {
-	numaInt := 0
-	buf, err := ioutil.ReadFile("/sys/bus/pci/devices/" + pciAddr + "/numa_node")
-	if err != nil {
-		return numaInt, err
-	}
-	numaInt, err = strconv.Atoi(strings.Trim(string(buf), "\n"))
-	if err != nil {
-		return numaInt, err
-	}
-	if numaInt == -1 {
-		numaInt = 0
-	}
-	return numaInt, nil
 }

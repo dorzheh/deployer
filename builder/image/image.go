@@ -152,7 +152,7 @@ func setUtilNewPaths(i *image, u *Utils) error {
 // Returns error/nil
 func (i *image) Parse() error {
 	var err error
-	if i.loopDevice.name, err = bind(i.config.Path, i.run); err != nil {
+	if i.loopDevice.name, err = i.bind(i.config.Path); err != nil {
 		return utils.FormatError(err)
 	}
 	if i.needToFormat {
@@ -189,13 +189,17 @@ func (i *image) Cleanup() error {
 	// Release registered mount points
 	var index uint8 = i.loopDevice.amountOfMappers - 1
 	for i.loopDevice.amountOfMappers != 0 {
-		if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
-			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+		if i.loopDevice.mappers[index].mountPoint != "/" {
+			if out, err := i.run(fmt.Sprintf("umount -l %s", i.loopDevice.mappers[index].mountPoint)); err != nil {
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+			}
+			i.loopDevice.amountOfMappers--
+			index--
 		}
-		i.loopDevice.amountOfMappers--
-		index--
 	}
-
+	if out, err := i.run(fmt.Sprintf("umount -l %s", i.slashpath)); err != nil {
+		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+	}
 	// unbind mappers and image
 	if out, err := i.run(i.utils.Kpartx + " -d " + i.loopDevice.name); err != nil {
 		return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
@@ -240,7 +244,7 @@ func (i *image) MakeBootable() error {
 		}
 
 	case BootLoaderGrub2:
-		dummyLoopDevice, err := bind(i.loopDevice.mappers[0].name, i.run)
+		dummyLoopDevice, err := i.bind(i.loopDevice.mappers[0].name)
 		if err != nil {
 			return utils.FormatError(err)
 		}
@@ -268,6 +272,35 @@ func (i *image) MakeBootable() error {
 		cmd += "rm -f " + dummyLoopDeviceMp + "/boot/grub/device.map;"
 		cmd += "sed -i '/loop/d' " + dummyLoopDeviceMp + "/boot/grub/grub.cfg"
 
+		if out, err := i.run(cmd); err != nil {
+			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+		}
+
+	case BootLoaderExtlinux:
+		if _, err := i.run("chroot " + i.slashpath + " which extlinux"); err != nil {
+			return utils.FormatError(fmt.Errorf("%s [%v]", "Extlinux not found", err))
+		}
+
+		defer func() {
+			i.run("umount -l " + i.slashpath + "/proc " + i.slashpath + "/dev")
+		}()
+
+		var extlinuxMbrPath string
+		if _, err := i.run("ls " + i.slashpath + "/usr/lib/EXTLINUX/mbr.bin"); err == nil {
+			extlinuxMbrPath = "/usr/lib/EXTLINUX/mbr.bin"
+		} else if _, err := i.run("ls " + i.slashpath + "/usr/lib/extlinux/mbr.bin"); err == nil {
+			extlinuxMbrPath = "/usr/lib/extlinux/mbr.bin"
+		} else {
+			return utils.FormatError(errors.New("Extlinux mbr binary not found"))
+		}
+
+		cmd := "mount --bind /dev " + i.slashpath + "/dev;"
+		cmd += "chroot " + i.slashpath + " /bin/bash -c "
+		cmd += "\"LC_ALL=C export PATH=/usr/local/bin:/usr/local/sbin:/usr/bin:/usr/sbin:/bin:/sbin;"
+		cmd += "mount -t proc none /proc;"
+		cmd += "dd if=" + extlinuxMbrPath + " of=" + i.loopDevice.name + " bs=440 count=1 conv=notrunc;"
+		cmd += "extlinux -i /boot/extlinux;"
+		cmd += "extlinux-update || true\""
 		if out, err := i.run(cmd); err != nil {
 			return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 		}
@@ -320,14 +353,27 @@ func (i *image) partTableMakefs() error {
 	if err != nil {
 		return utils.FormatError(err)
 	}
+	// first iteration - find root mount point and mount it
+	for index, part := range i.config.Partitions {
+		if part.MountPoint == "/" {
+			cmd := fmt.Sprintf("mkfs -t %v -L %s %s %s", part.FileSystem,
+				part.Label, part.FileSystemArgs, mappers[index])
+			if out, err := i.run(cmd); err != nil {
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+			}
+			if out, err := i.run(fmt.Sprintf("mount %s %s", mappers[index], i.slashpath)); err != nil {
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+			}
+		}
+	}
+	// second iteration - treat everything else except / and SWAP
 	for index, part := range i.config.Partitions {
 		mapper := mappers[index]
-		// create SWAP and do not add to the mappers slice
-		if strings.ToLower(part.FileSystem) == "swap" {
+		if part.Type == 82 {
 			if out, err := i.run(fmt.Sprintf("mkswap -L %s %s", part.Label, mapper)); err != nil {
 				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
 			}
-		} else {
+		} else if part.MountPoint != "/" {
 			cmd := fmt.Sprintf("mkfs -t %v -L %s %s %s", part.FileSystem,
 				part.Label, part.FileSystemArgs, mapper)
 			if out, err := i.run(cmd); err != nil {
@@ -360,7 +406,7 @@ func (i *image) generateFdiskCmd() {
 
 	// header of the command
 	i.config.FdiskCmd = `o\n`
-	for _, part := range i.config.Partitions {
+	for index, part := range i.config.Partitions {
 		// in case partition size in megabytes is set to -1
 		// caclulate partition size in percents
 		if part.SizeMb == calcInPercents {
@@ -392,15 +438,17 @@ func (i *image) generateFdiskCmd() {
 		default:
 			i.config.FdiskCmd += fmt.Sprintf(`n\n\n+%dM\n`, part.SizeMb)
 		}
-		// if this partitiona supposed to be "active"
-		if part.BootFlag {
-			i.config.FdiskCmd += fmt.Sprintf(`a\n%d\n`, part.Sequence)
-		}
-		// swap partition
-		if strings.ToLower(part.FileSystem) == "swap" {
-			i.config.FdiskCmd += fmt.Sprintf(`t\n%d\n82\n`, part.Sequence)
+		if index == 0 {
+			i.config.FdiskCmd += fmt.Sprintf(`t\n%d\n`, part.Type)
+		} else {
+			i.config.FdiskCmd += fmt.Sprintf(`t\n%d\n%d\n`, part.Sequence, part.Type)
 		}
 	}
+
+	if i.config.Bootable {
+		i.config.FdiskCmd += fmt.Sprintf(`a\n%d\n`, i.config.ActivePartition)
+	}
+
 	// write changes
 	i.config.FdiskCmd += `w`
 }
@@ -411,11 +459,19 @@ func (i *image) addMappers() error {
 	if err != nil {
 		return utils.FormatError(err)
 	}
+	// first iteration - find root mount point and mount it
 	for index, part := range i.config.Partitions {
-		mapper := mappers[index]
+		if part.MountPoint == "/" {
+			if out, err := i.run(fmt.Sprintf("mount %s %s", mappers[index], i.slashpath)); err != nil {
+				return utils.FormatError(fmt.Errorf("%s [%v]", out, err))
+			}
+		}
+	}
+	// second iteration - treat everything else except / and SWAP
+	for index, part := range i.config.Partitions {
 		// create SWAP and do not add to the mappers slice
-		if strings.ToLower(part.FileSystem) != "swap" {
-			if err := i.addMapper(mapper, part.MountPoint); err != nil {
+		if part.Type != 82 && part.MountPoint != "/" {
+			if err := i.addMapper(mappers[index], part.MountPoint); err != nil {
 				return utils.FormatError(err)
 			}
 		}
@@ -509,14 +565,14 @@ func (i *image) convert() error {
 	return nil
 }
 
-func bind(imagePath string, run func(string) (string, error)) (loopDevice string, err error) {
-	loopDevice, err = run("losetup -f")
+func (i *image) bind(imagePath string) (loopDevice string, err error) {
+	loopDevice, err = i.run("losetup -f")
 	if err != nil {
 		err = utils.FormatError(err)
 		return
 	}
 	cmd := fmt.Sprintf("losetup %s %s", loopDevice, imagePath)
-	if out, er := run(cmd); err != nil {
+	if out, er := i.run(cmd); err != nil {
 		err = utils.FormatError(fmt.Errorf("%s [%v]", out, er))
 		return
 	}

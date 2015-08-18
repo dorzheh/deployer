@@ -6,27 +6,49 @@ package myproduct
 import (
 	"errors"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 
 	"github.com/dorzheh/deployer/builder/content"
+	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/utils"
-	"github.com/dorzheh/infra/utils/archutils"
+	archutils "github.com/dorzheh/infra/utils/archutils"
+)
+
+const (
+	ERROR_SKIP_A = "create_inode: failed to change uid and gids on"
+	ERROR_SKIP_B = "Cannot change ownership to uid 0, gid 0"
 )
 
 type rootfsFiller struct {
 	pathToKitDir               string
-	pathToRootfsArchive        string
+	pathToRootfsSquashfs       string
 	pathToKernelArchive        string
 	pathToKernelModulesArchive string
 	pathToApplArchive          string
-	pathToInjectDir            string
+	pathToConfigDir            string
 	extractApplImage           bool
 }
 
 func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
-	if err := archutils.Extract(f.pathToRootfsArchive, pathToRootfsMp); err != nil {
+	unsquashfs, err := exec.LookPath("unsquashfs")
+	if err != nil {
+		unsquashfs = filepath.Join(f.pathToKitDir, "install/x86_64/bin/unsquashfs")
+	}
+
+	path := filepath.Join(pathToRootfsMp, "rootfs")
+	exec.Command(unsquashfs, "-dest", path, f.pathToRootfsSquashfs).Run()
+	dir, err := ioutil.ReadDir(path)
+	if err != nil {
+		return utils.FormatError(err)
+	}
+	for _, cont := range dir {
+		exec.Command("cp", "-a", filepath.Join(path, cont.Name()), pathToRootfsMp).CombinedOutput()
+	}
+	if err := os.RemoveAll(path); err != nil {
 		return utils.FormatError(err)
 	}
 	if f.pathToKernelModulesArchive != "" && f.pathToKernelArchive != "" {
@@ -40,7 +62,9 @@ func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
 			errCh <- archutils.Extract(f.pathToKernelModulesArchive, filepath.Join(pathToRootfsMp, "lib/modules"))
 		}()
 		if err := utils.WaitForResult(errCh, 2); err != nil {
-			return utils.FormatError(err)
+			if !strings.Contains(err.Error(), ERROR_SKIP_B) {
+				return utils.FormatError(err)
+			}
 		}
 
 		modulesDir, err := filepath.Glob(filepath.Join(pathToRootfsMp, "lib/modules/*"))
@@ -48,7 +72,7 @@ func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
 			return utils.FormatError(err)
 		}
 		if len(modulesDir) == 0 {
-			return utils.FormatError(errors.New("modules not found"))
+			return errors.New("modules not found")
 		}
 
 		kernelVersion := filepath.Base(modulesDir[0])
@@ -60,16 +84,15 @@ func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
 		}
 	}
 
-	pathToEnvDir := filepath.Join(f.pathToKitDir, "env")
-	pathToCommonDir := filepath.Join(pathToEnvDir, "common")
+	pathToCommonDir := filepath.Join(f.pathToKitDir, "comp/env/common/config")
 	fd, err := os.Stat(pathToCommonDir)
 	if err == nil && fd.IsDir() {
 		if err := content.Customize(pathToRootfsMp, pathToCommonDir); err != nil {
 			return utils.FormatError(err)
 		}
 	}
-	if f.pathToInjectDir != "" {
-		if err := content.Customize(pathToRootfsMp, f.pathToInjectDir); err != nil {
+	if f.pathToConfigDir != "" {
+		if err := content.Customize(pathToRootfsMp, f.pathToConfigDir); err != nil {
 			return utils.FormatError(err)
 		}
 	}
@@ -78,7 +101,7 @@ func (f *rootfsFiller) CustomizeRootfs(pathToRootfsMp string) error {
 
 // InstallApp is responsible for application installation
 func (f *rootfsFiller) InstallApp(pathToRootfsMp string) error {
-	if err := archutils.Extract(f.pathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/compact_flash")); err != nil {
+	if err := archutils.Extract(f.pathToApplArchive, filepath.Join(pathToRootfsMp, "mnt/cf")); err != nil {
 		return utils.FormatError(err)
 	}
 	if f.extractApplImage {
@@ -87,13 +110,25 @@ func (f *rootfsFiller) InstallApp(pathToRootfsMp string) error {
 	return nil
 }
 
-// extractApplImage is responsible for extracting application image
+// extractAppImage is responsible for extracting application image in a chroot environment
 func extractApplImage(pathRootMp string) error {
-	if err := os.Chdir(filepath.Join(pathRootMp, "/mnt/compact_flash")); err != nil {
+	if err := os.Chdir(filepath.Join(pathRootMp, "mnt/cf")); err != nil {
 		return utils.FormatError(err)
 	}
-	if err := exec.Command("/bin/bash", "-c", "./Myappl*").Run(); err != nil {
-		return utils.FormatError(fmt.Errorf("extracting application image : %v", err.Error()))
+	if err := exec.Command("/bin/bash", "-c", "./myapp*").Run(); err != nil {
+		return fmt.Errorf("extracting application image : %v", err.Error())
 	}
 	return os.Chdir("/")
+}
+
+func ImageFiller(data *deployer.CommonData, mainConfig map[string]string) deployer.RootfsFiller {
+	return &rootfsFiller{
+		pathToKitDir:               data.RootDir,
+		pathToRootfsSquashfs:       filepath.Join(data.RootDir, "comp/rootfs.squashfs"),
+		pathToKernelArchive:        filepath.Join(data.RootDir, "comp/kernel.tgz"),
+		pathToKernelModulesArchive: filepath.Join(data.RootDir, "comp/modules.tgz"),
+		pathToApplArchive:          filepath.Join(data.RootDir, "comp/appl.tgz"),
+		pathToConfigDir:            filepath.Join(data.RootDir, "comp/env", mainConfig["config_dir"]),
+		extractApplImage:           false,
+	}
 }

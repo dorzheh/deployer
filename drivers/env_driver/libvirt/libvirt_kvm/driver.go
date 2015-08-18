@@ -12,12 +12,12 @@ import (
 
 type Driver struct {
 	sync.Mutex
-	run func(string) (string, error)
+	Run func(string) (string, error)
 }
 
 func NewDriver(config *ssh.Config) *Driver {
 	d := new(Driver)
-	d.run = utils.RunFunc(config)
+	d.Run = utils.RunFunc(config)
 	return d
 }
 
@@ -25,7 +25,7 @@ func (d *Driver) DefineDomain(domainConfig string) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh define " + domainConfig); err != nil {
+	if _, err := d.Run("virsh define " + domainConfig); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
@@ -35,7 +35,7 @@ func (d *Driver) StartDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh start " + name); err != nil {
+	if _, err := d.Run("virsh start " + name); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
@@ -45,7 +45,7 @@ func (d *Driver) DestroyDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh destroy " + name); err != nil {
+	if _, err := d.Run("virsh destroy " + name); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
@@ -55,7 +55,7 @@ func (d *Driver) UndefineDomain(name string) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh undefine " + name); err != nil {
+	if _, err := d.Run("virsh undefine " + name); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
@@ -65,7 +65,7 @@ func (d *Driver) SetAutostart(name string) error {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh autostart " + name); err != nil {
+	if _, err := d.Run("virsh autostart " + name); err != nil {
 		return utils.FormatError(err)
 	}
 	return nil
@@ -75,7 +75,7 @@ func (d *Driver) DomainExists(name string) bool {
 	d.Lock()
 	defer d.Unlock()
 
-	if _, err := d.run("virsh dominfo " + name); err != nil {
+	if _, err := d.Run("virsh dominfo " + name); err != nil {
 		return false
 	}
 	return true
@@ -90,7 +90,7 @@ func (d *Driver) Emulator(arch string) (string, error) {
 		return "", utils.FormatError(fmt.Errorf("Unsupported architecture(%s).Only i686 and x86_64 supported", arch))
 	}
 
-	out, err := d.run("virsh capabilities")
+	out, err := d.Run("virsh capabilities")
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
@@ -106,7 +106,7 @@ func (d *Driver) Emulator(arch string) (string, error) {
 
 // Version returns libvirt API version
 func (d *Driver) Version() (string, error) {
-	out, err := d.run("virsh version|grep \"Using library\"")
+	out, err := d.Run("virsh version|grep \"Using library\"")
 	if err != nil {
 		return "", utils.FormatError(err)
 	}

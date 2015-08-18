@@ -116,7 +116,10 @@ func uiBundleConfig(ui *gui.DialogUi, configs []*Config) (*Config, error) {
 	for {
 		ui.SetSize(sliceLength+6, 50)
 		ui.SetLabel("Select Virtual Machine configuration")
-		configNumStr, _ = ui.Menu(sliceLength+6, temp[0:]...)
+		configNumStr, err = ui.Menu(sliceLength+6, temp[0:]...)
+		if err != nil {
+			return nil, err
+		}
 		if configNumStr != "" {
 			break
 		}

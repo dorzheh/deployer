@@ -35,10 +35,18 @@ func RunFunc(config *sshconf.Config) func(string) (string, error) {
 			return "", FormatError(err)
 		}
 		defer c.ConnClose()
-		//IMPORTANT! Make sure that "Defaults !requiretty" is set in sudoers on remote system
-		outstr, errstr, err := c.Run("sudo " + command)
+
+		var cmd string
+		if strings.TrimSpace(config.User) == "root" {
+			cmd = command
+		} else {
+			//IMPORTANT! Make sure that "Defaults !requiretty" is set in sudoers on remote system
+			cmd = "sudo " + command
+		}
+
+		outstr, errstr, err := c.Run(cmd)
 		if err != nil {
-			return "", fmt.Errorf("executing sudo %s : %s [%s]", command, errstr, err)
+			return "", fmt.Errorf("executing %s : %s [%s]", cmd, errstr, err)
 		}
 		return strings.TrimSpace(outstr), nil
 	}

@@ -1,7 +1,6 @@
 package libvirt_kvm
 
 import (
-	"io/ioutil"
 	"regexp"
 
 	"github.com/dorzheh/deployer/deployer"
@@ -31,7 +30,7 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 					return utils.FormatError(err)
 				}
 
-				out, err := ioutil.ReadFile(a.GetPath())
+				out, err := p.driver.Run("cat " + a.GetPath())
 				if err != nil {
 					return err
 				}
@@ -41,7 +40,7 @@ func (p *PostProcessor) PostProcess(artifacts []deployer.Artifact) error {
 					return err
 				}
 
-				domain := string(r.FindSubmatch(out)[1])
+				domain := r.FindStringSubmatch(out)[1]
 				if err := p.driver.SetAutostart(domain); err != nil {
 					return utils.FormatError(err)
 				}

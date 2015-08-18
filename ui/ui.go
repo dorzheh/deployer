@@ -8,6 +8,7 @@ import (
 	"strings"
 	"time"
 
+	main "github.com/dorzheh/deployer"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
@@ -41,6 +42,28 @@ func UiEulaMsg(ui *gui.DialogUi, pathToEula string) {
 	}
 }
 
+func UiDeploy(c *deployer.CommonData, envList []string, envs []deployer.FlowCreator) error {
+	var menuList []string
+	indexInt := 1
+
+	for _, env := range envList {
+		menuList = append(menuList, strconv.Itoa(indexInt), env)
+		indexInt++
+	}
+
+	envsNum := len(envs)
+
+	c.Ui.SetTitle("Select environment")
+	c.Ui.SetSize(envsNum+7, 30)
+	resStr, _ := c.Ui.Menu(envsNum, menuList[0:]...)
+	dType, err := strconv.Atoi(resStr)
+	if err != nil {
+		return utils.FormatError(err)
+	}
+	dType--
+	return main.Deploy(c, envs[dType])
+}
+
 func UiDeploymentResult(ui *gui.DialogUi, msg string, err error) {
 	if err != nil {
 		ui.Output(gui.Error, err.Error())
@@ -55,12 +78,11 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 	for {
 		ui.SetSize(8, len(defaultName)+10)
 		ui.SetTitle("Virtual machine name")
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		name, err = ui.Inputbox(defaultName)
 		if err != nil {
-			if err.Error() == gui.DialogExit {
-				os.Exit(1)
-			}
-			return name, err
+			return "", err
 		}
 		if name != "" {
 			name = strings.Replace(name, ".", "-", -1)
@@ -78,6 +100,8 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 
 func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string, error) {
 	if remote {
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		return ui.GetFromInput("Select directory on remote server to install the VA image on", defaultLocation)
 	}
 
@@ -85,9 +109,11 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string,
 	var err error
 
 	for {
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		location, err = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation)
 		if err != nil {
-			return location, err
+			return "", err
 		}
 		if _, err := os.Stat(location); err == nil {
 			break
@@ -101,9 +127,6 @@ func UiRemoteMode(ui *gui.DialogUi) (bool, error) {
 	ui.SetSize(9, 28)
 	answer, err := ui.Menu(2, "1", "Local", "2", "Remote")
 	if err != nil {
-		if err.Error() == gui.DialogExit {
-			os.Exit(1)
-		}
 		return false, err
 	}
 	if answer == "1" {
@@ -123,6 +146,8 @@ func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 	cfg := new(sshconf.Config)
 
 	for {
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		cfg.Host, err = ui.GetIpFromInput("Remote server IP")
 		if err != nil {
 			return nil, err
@@ -130,6 +155,8 @@ func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 
 		cfg.Port = "22"
 		for {
+			ui.HelpButton(true)
+			ui.SetHelpLabel("Back")
 			cfg.Port, err = ui.GetFromInput("SSH port", cfg.Port)
 			if err != nil {
 				return nil, err
@@ -141,11 +168,18 @@ func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
 			}
 		}
 
-		cfg.User, _ = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
+		cfg.User, err = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
+		if err != nil {
+			return nil, err
+		}
 		ui.SetTitle("Authentication method")
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		val, err := ui.Menu(2, "1", "Password", "2", "Private key")
-		if err != nil && err.Error() == gui.DialogExit {
-			os.Exit(1)
+		if err != nil {
+			return nil, err
 		}
 
 		switch val {
@@ -206,9 +240,10 @@ MainLoop:
 						netMetaData.NICLists = netMetaData.NICLists[:i]
 						portCounter = lastPortCounter - 1
 						guestPciSlotCounter = lastGuestPciSlotCounter - 1
-						if i > 0 {
-							i--
+						if i == 0 {
+							return nil, err
 						}
+						i--
 						continue MainLoop
 					case gui.DialogExit:
 						os.Exit(1)
@@ -234,13 +269,11 @@ MainLoop:
 			if err != nil {
 				switch err.Error() {
 				case gui.DialogMoveBack:
+					if i == 0 {
+						return nil, err
+					}
 					netMetaData.Networks = netMetaData.Networks[:i]
 					netMetaData.NICLists = netMetaData.NICLists[:i]
-					portCounter = lastPortCounter - 1
-					guestPciSlotCounter = lastGuestPciSlotCounter - 1
-					if i > 0 {
-						i--
-					}
 					continue PolicyLoop
 				case gui.DialogExit:
 					os.Exit(1)
@@ -270,7 +303,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		keeper[indexStr] = hnic
 		if indexInt == 1 {
 			// index 0 - element index in the list
-			// index 1 - element couner
+			// index 1 - element counter
 			// index 2 - PCI slot number represented as integer
 			indexStrToInt[indexStr] = []int{1, 0, 0}
 		} else {
@@ -298,6 +331,8 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 				}
 				break
 			}
+			*guestPciSlotCounter -= len(gnics)
+			*guestPortCounter -= len(gnics)
 			return nil, err
 		}
 
@@ -372,8 +407,8 @@ func uiHeaderSelectNics(ui *gui.DialogUi) int {
 	ui.SetLabel(str)
 	ui.SetExtraLabel("Next")
 	ui.SetOkLabel("Select")
-	//ui.HelpButton(true)
-	//ui.SetHelpLabel("Back")
+	ui.HelpButton(true)
+	ui.SetHelpLabel("Back")
 	return width
 }
 
@@ -493,10 +528,12 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 		for {
 			ui.SetSize(11, 46)
 			ui.SetTitle("Virtual Machine configuration")
+			ui.HelpButton(true)
+			ui.SetHelpLabel("Back")
 			resultIndex := 0
 			result, err := ui.Mixedform(str, list[0:]...)
-			if err != nil && err.Error() == gui.DialogExit {
-				os.Exit(1)
+			if err != nil {
+				return nil, err
 			}
 			if len(result) < index {
 				continue

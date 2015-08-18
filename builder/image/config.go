@@ -12,6 +12,7 @@
 //   	 <description>Topology for release xxxx</description>
 //  	 <partition>
 //	 	    <sequence>1</sequence>
+//			<type>83</type>
 //	 	    <size_mb>3045</size_mb>
 //   	    <label>SLASH</label>
 //   	    <mount_point>/</mount_point>
@@ -20,6 +21,7 @@
 //	 	 </partition>
 //	 	 <partition>
 //	 	    <sequence>2</sequence>
+//     		<type>82</type>
 //	 	    <size_mb>400</size_mb>
 //   	    <label>SWAP</label>
 //   	    <mount_point>SWAP</mount_point>
@@ -52,8 +54,9 @@ const (
 type BootLoaderType string
 
 const (
-	BootLoaderGrub  BootLoaderType = "grub"
-	BootLoaderGrub2 BootLoaderType = "grub2"
+	BootLoaderGrub     BootLoaderType = "grub"
+	BootLoaderGrub2    BootLoaderType = "grub2"
+	BootLoaderExtlinux BootLoaderType = "extlinux"
 )
 
 type ConfigIndex uint8
@@ -67,19 +70,20 @@ type Config struct {
 }
 
 type Disk struct {
-	Path        string
-	Type        StorageType    `xml:"storage_type"`
-	SizeMb      int            `xml:"size_mb"`
-	Bootable    bool           `xml:"bootable"`
-	BootLoader  BootLoaderType `xml:"bootloader"`
-	FdiskCmd    string         `xml:"fdisk_cmd"`
-	Description string         `xml:"description"`
-	Partitions  []*Partition   `xml:"partition"`
+	Path            string
+	Type            StorageType    `xml:"storage_type"`
+	SizeMb          int            `xml:"size_mb"`
+	Bootable        bool           `xml:"bootable"`
+	BootLoader      BootLoaderType `xml:"bootloader"`
+	ActivePartition int            `xml:"active_part"`
+	FdiskCmd        string         `xml:"fdisk_cmd"`
+	Description     string         `xml:"description"`
+	Partitions      []*Partition   `xml:"partition"`
 }
 
 type Partition struct {
 	Sequence       int    `xml:"sequence"`
-	BootFlag       bool   `xml: "boot_flag"`
+	Type           int    `xml:"type"`
 	SizeMb         int    `xml:"size_mb"`
 	SizePercents   int    `xml:"size_percents"`
 	Label          string `xml:"label"`

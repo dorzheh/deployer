@@ -20,12 +20,13 @@ var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<storage_type>qcow2</storage_type>
         <size_mb>1024</size_mb>
         <bootable>true</bootable>
+        <active_part>1</active_part>
         <bootloader>grub</bootloader>
         <fdisk_cmd></fdisk_cmd>
         <description>Test configuration</description>
         <partition>
            <sequence>1</sequence>
-           <boot_flag>true</boot_flag>
+           <type>83</type>
            <size_mb>800</size_mb>
            <size_percents>-1</size_percents>
            <label>SLASH</label>
@@ -35,6 +36,7 @@ var storage = []byte(`<?xml version="1.0" encoding="UTF-8"?>
         </partition>
         <partition>
            <sequence>2</sequence>
+           <type>82</type>
            <size_mb>-1</size_mb>
            <size_percents>-2</size_percents>
            <label>SWAP</label>

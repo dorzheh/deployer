@@ -13,11 +13,34 @@ import (
 
 func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
 	c := new(deployer.CommonConfig)
-	c.RemoteMode, _ = gui.UiRemoteMode(d.Ui)
-	if c.RemoteMode {
-		c.SshConfig, _ = gui.UiSshConfig(d.Ui)
-	}
-	c.ExportDir, _ = gui.UiImagePath(d.Ui, d.DefaultExportDir, c.RemoteMode)
+	c.Ctrl = deployer.NewUiStepsController()
+	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+		return func() error {
+			var err error
+			c.RemoteMode, err = gui.UiRemoteMode(d.Ui)
+			return err
+		}
+	}(c))
+
+	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+		return func() error {
+			var err error
+			if c.RemoteMode {
+				c.SshConfig, err = gui.UiSshConfig(d.Ui)
+				return err
+			}
+			return deployer.SkipStep
+		}
+	}(c))
+
+	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+		return func() error {
+			var err error
+			c.ExportDir, err = gui.UiImagePath(d.Ui, d.DefaultExportDir, c.RemoteMode)
+			return err
+		}
+	}(c))
+
 	return c
 }
 

@@ -39,4 +39,7 @@ type CommonConfig struct {
 
 	// SshConfig represents ssh configuration.
 	SshConfig *ssh.Config
+
+	// Ui controller allowing steps registration
+	Ctrl *uiCtrl
 }
