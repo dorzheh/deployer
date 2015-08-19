@@ -11,6 +11,7 @@ import (
 	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/metadata"
 	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt/libvirt_kvm"
+	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt/libvirt_kvm"
 	"github.com/dorzheh/infra/comm/sshfs"
@@ -38,21 +39,21 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 		return err
 	}
 
-	c.config.Ctrl.RegisterSteps(func(*FlowCreator, *deployer.CommonData) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			fmt.Println("My step 1")
 			return nil
 		}
-	}(c, d))
+	}())
 
-	c.config.Ctrl.RegisterSteps(func(*FlowCreator, *deployer.CommonData) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			fmt.Println("My step 2")
 			return nil
 		}
-	}(c, d))
+	}())
 
-	if err := c.config.Ctrl.RunSteps(); err != nil {
+	if err := controller.RunSteps(); err != nil {
 		return err
 	}
 

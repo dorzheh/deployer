@@ -10,6 +10,7 @@ import (
 	"github.com/dorzheh/deployer/config/common"
 	"github.com/dorzheh/deployer/config/common/bundle"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
+	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/utils"
@@ -61,6 +62,9 @@ type Config struct {
 	// Hostinfo driver
 	Hwdriver deployer.HostinfoDriver
 
+	// Environment driver
+	EnvDriver deployer.EnvDriver
+
 	// Storage configuration
 	StorageConfig *image.Config
 
@@ -77,29 +81,29 @@ type Config struct {
 	Bundle map[string]interface{}
 }
 
-func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deployer.EnvDriver, metaconf deployer.MetadataConfigurator) (*Config, error) {
+func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf deployer.MetadataConfigurator) error {
 	xid, err := xmlinput.ParseXMLInput(i.InputDataConfigFile)
 	if err != nil {
-		return nil, utils.FormatError(err)
+		return utils.FormatError(err)
 	}
 
-	c.Ctrl.RegisterSteps(func(*deployer.CommonData, *Config, deployer.EnvDriver) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
-			if c.Metadata.DomainName, err = gui.UiApplianceName(d.Ui, d.VaName, driver); err != nil {
+			if c.Metadata.DomainName, err = gui.UiApplianceName(d.Ui, d.VaName, c.EnvDriver); err != nil {
 				return err
 			}
 			d.VaName = c.Metadata.DomainName
-			if err := gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
+			if err = gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
 				return utils.FormatError(err)
 			}
 			return nil
 		}
-	}(d, c, driver))
+	}())
 
 	// Network configuration
 	if xid.Networks.Configure {
-		c.Ctrl.RegisterSteps(func(*deployer.CommonData, *InputData, *Config, *xmlinput.XMLInputData) func() error {
+		controller.RegisterSteps(func() func() error {
 			return func() error {
 				nics, err := host_hwfilter.GetAllowedNICs(xid, c.Hwdriver)
 				if err != nil {
@@ -116,15 +120,14 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 				return nil
 			}
 
-		}(d, i, c, xid))
+		}())
 	}
 
-	conf := new(gui.VmConfig)
-	conf.DisksMb = make([]int, 0)
-	var storageConfigIndex image.ConfigIndex = 0
-
-	c.Ctrl.RegisterSteps(func(*deployer.CommonData, *InputData, *Config, deployer.EnvDriver, *xmlinput.XMLInputData) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
+			conf := new(gui.VmConfig)
+			conf.DisksMb = make([]int, 0)
+			var storageConfigIndex image.ConfigIndex = 0
 			if i.BundleParser != nil {
 				m, err := i.BundleParser.Parse(d, c.Hwdriver, xid)
 				if err != nil {
@@ -139,7 +142,7 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 			}
 			if len(c.Bundle) == 0 {
 				if xid.CPU.Max == xmlinput.UnlimitedAlloc {
-					xid.CPU.Max = driver.MaxVCPUsPerGuest()
+					xid.CPU.Max = c.EnvDriver.MaxVCPUsPerGuest()
 				}
 				if conf, err = gui.UiVmConfig(d.Ui, c.Hwdriver, xid); err != nil {
 					return err
@@ -165,9 +168,9 @@ func CreateConfig(d *deployer.CommonData, i *InputData, c *Config, driver deploy
 			}
 			return nil
 		}
-	}(d, i, c, driver, xid))
+	}())
 
-	return c, nil
+	return nil
 }
 
 func ProcessNetworkTemplate(mode *xmlinput.Mode, defaultTemplate string, tmpltData interface{}, templatesDir string) (string, error) {

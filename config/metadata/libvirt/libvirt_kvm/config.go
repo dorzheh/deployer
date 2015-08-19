@@ -12,6 +12,7 @@ import (
 	"github.com/dorzheh/deployer/config/common"
 	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/config/metadata"
+	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
 	hwinfodriver "github.com/dorzheh/deployer/drivers/hwinfo_driver/libvirt"
@@ -23,20 +24,30 @@ import (
 type meta struct{}
 
 func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Config, error) {
-	var err error
 	d.DefaultExportDir = "/var/lib/libvirt/images"
-	c := &metadata.Config{common.CreateConfig(d), nil, nil, nil, "", nil, nil}
-	c.Hwdriver, err = hwinfodriver.NewHostinfoDriver(c.SshConfig, i.Lshw, filepath.Join(d.RootDir, ".hwinfo.json"))
-	if err != nil {
-		return nil, utils.FormatError(err)
-	}
+	c := common.RegisterSteps(d)
+	m := &metadata.Config{c, nil, nil, nil, nil, "", nil, nil}
+	controller.RegisterSteps(func() func() error {
+		return func() error {
+			var err error
+			m.Hwdriver, err = hwinfodriver.NewHostinfoDriver(m.SshConfig, i.Lshw, filepath.Join(d.RootDir, ".hwinfo.json"))
+			if err != nil {
+				return utils.FormatError(err)
+			}
 
-	c.Metadata = new(metadata.Metadata)
-	drvr := envdriver.NewDriver(c.SshConfig)
-	if c.Metadata.EmulatorPath, err = drvr.Emulator(d.Arch); err != nil {
+			m.Metadata = new(metadata.Metadata)
+			m.EnvDriver = envdriver.NewDriver(m.SshConfig)
+			if m.Metadata.EmulatorPath, err = m.EnvDriver.Emulator(d.Arch); err != nil {
+				return utils.FormatError(err)
+			}
+			return controller.SkipStep
+		}
+	}())
+
+	if err := metadata.RegisterSteps(d, i, m, &meta{}); err != nil {
 		return nil, utils.FormatError(err)
 	}
-	return metadata.CreateConfig(d, i, c, drvr, &meta{})
+	return m, nil
 }
 
 func (m meta) DefaultMetadata() []byte {

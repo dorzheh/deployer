@@ -6,41 +6,40 @@ import (
 	"fmt"
 
 	"github.com/dorzheh/deployer/builder/image"
+	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/utils"
 )
 
-func CreateConfig(d *deployer.CommonData) *deployer.CommonConfig {
+func RegisterSteps(d *deployer.CommonData) *deployer.CommonConfig {
 	c := new(deployer.CommonConfig)
-	c.Ctrl = deployer.NewUiStepsController()
-	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
 			c.RemoteMode, err = gui.UiRemoteMode(d.Ui)
 			return err
 		}
-	}(c))
+	}())
 
-	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
 			if c.RemoteMode {
 				c.SshConfig, err = gui.UiSshConfig(d.Ui)
 				return err
 			}
-			return deployer.SkipStep
+			return controller.SkipStep
 		}
-	}(c))
+	}())
 
-	c.Ctrl.RegisterSteps(func(*deployer.CommonConfig) func() error {
+	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
 			c.ExportDir, err = gui.UiImagePath(d.Ui, d.DefaultExportDir, c.RemoteMode)
 			return err
 		}
-	}(c))
-
+	}())
 	return c
 }
 

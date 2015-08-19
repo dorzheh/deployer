@@ -1,4 +1,4 @@
-package deployer
+package controller
 
 import (
 	"errors"
@@ -8,24 +8,22 @@ import (
 
 var SkipStep = errors.New("skip step")
 
-type uiCtrl struct {
-	funcs []func() error
+var steps []func() error
+
+func init() {
+	steps = make([]func() error, 0)
 }
 
-func NewUiStepsController() *uiCtrl {
-	return &uiCtrl{make([]func() error, 0)}
-}
-
-func (c *uiCtrl) RegisterSteps(fs ...func() error) {
+func RegisterSteps(fs ...func() error) {
 	for _, f := range fs {
-		c.funcs = append(c.funcs, f)
+		steps = append(steps, f)
 	}
 }
 
-func (c *uiCtrl) RunSteps() error {
+func RunSteps() error {
 	stepMoveBack := false
-	for i := 0; i < len(c.funcs); {
-		err := c.funcs[i]()
+	for i := 0; i < len(steps); {
+		err := steps[i]()
 		if err != nil {
 			if err == SkipStep {
 				if stepMoveBack {

@@ -475,6 +475,7 @@ type VmConfig struct {
 
 func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinput.XMLInputData) (*VmConfig, error) {
 	var installedRamMb int
+	var maxRAM int
 	var err error
 	conf := new(VmConfig)
 	list := make([]string, 0)
@@ -493,10 +494,12 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			return nil, utils.FormatError(err)
 		}
 		if xidata.RAM.Max > installedRamMb || xidata.RAM.Max == xmlinput.UnlimitedAlloc {
-			xidata.RAM.Max = installedRamMb
+			maxRAM = installedRamMb
+		} else {
+			maxRAM = xidata.RAM.Max
 		}
 
-		ramStr := fmt.Sprintf("  %-9s |  %d-%dG", "RAM", xidata.RAM.Min/1024, xidata.RAM.Max/1024)
+		ramStr := fmt.Sprintf("  %-9s |  %d-%dG", "RAM", xidata.RAM.Min/1024, maxRAM/1024)
 		list = append(list, []string{ramStr, strconv.Itoa(index), "1", strconv.Itoa(xidata.RAM.Default / 1024), "2", "30", "6", "0", "0"}...)
 		index++
 	} else if xidata.RAM.Default > 0 {
@@ -554,7 +557,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 				if err != nil {
 					continue
 				}
-				if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, xidata.RAM.Max) {
+				if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, maxRAM) {
 					continue
 				}
 				conf.RamMb = selectedRamGb * 1024
