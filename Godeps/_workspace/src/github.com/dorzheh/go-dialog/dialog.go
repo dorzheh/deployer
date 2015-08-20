@@ -266,13 +266,15 @@ func (d *Dialog) Checklist(listHeight int, tagItemStatus ...string) ([]string, e
 	return list, err
 }
 
-func (d *Dialog) Mixedform(title string, tagItemStatus ...string) ([]string, error) {
+func (d *Dialog) Mixedform(title string, insecure bool, tagItemStatus ...string) ([]string, error) {
 	var list []string
 	d.afterSize = append(d.afterSize, "0")
 	for _, param := range tagItemStatus {
 		d.afterSize = append(d.afterSize, param)
 	}
-
+	if insecure {
+		d.beforeDtype = append(d.beforeDtype, "--insecure")
+	}
 	d.beforeSize = append(d.beforeSize, title)
 	str, err := d.exec("mixedform", false)
 	for _, item := range strings.SplitAfter(str, "\n") {

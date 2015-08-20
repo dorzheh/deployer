@@ -534,7 +534,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			ui.HelpButton(true)
 			ui.SetHelpLabel("Back")
 			resultIndex := 0
-			result, err := ui.Mixedform(str, list[0:]...)
+			result, err := ui.Mixedform(str, false, list[0:]...)
 			if err != nil {
 				return nil, err
 			}
