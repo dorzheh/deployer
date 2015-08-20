@@ -94,7 +94,7 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				return err
 			}
 			d.VaName = c.Metadata.DomainName
-			if err = gui.UiGatherHWInfo(d.Ui, c.Hwdriver, "1s", c.RemoteMode); err != nil {
+			if err = gui.UiGatherHWInfo(d.Ui, c.Hwdriver, c.RemoteMode); err != nil {
 				return utils.FormatError(err)
 			}
 			return nil

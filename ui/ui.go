@@ -2,6 +2,7 @@ package ui
 
 import (
 	"fmt"
+	"net"
 	"os"
 	"os/exec"
 	"strconv"
@@ -100,8 +101,6 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 
 func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string, error) {
 	if remote {
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
 		return ui.GetFromInput("Select directory on remote server to install the VA image on", defaultLocation)
 	}
 
@@ -109,8 +108,6 @@ func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string,
 	var err error
 
 	for {
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
 		location, err = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation)
 		if err != nil {
 			return "", err
@@ -140,71 +137,83 @@ func UiRemoteMode(ui *gui.DialogUi) (bool, error) {
 }
 
 func UiSshConfig(ui *gui.DialogUi) (*sshconf.Config, error) {
-	var err error
-	errCh := make(chan error)
-	defer close(errCh)
 	cfg := new(sshconf.Config)
+	cfg.Port = "22"
+	cfg.User = "root"
+	origlist := []string{"IP      : ", "1", "1", "", "1", "10", "22", "0", "0",
+		"SSH Port: ", "2", "1", cfg.Port, "2", "10", "22", "0", "0",
+		"Username: ", "3", "1", cfg.User, "3", "10", "22", "0", "0"}
 
+MainLoop:
 	for {
 		ui.HelpButton(true)
 		ui.SetHelpLabel("Back")
-		cfg.Host, err = ui.GetIpFromInput("Remote server IP")
+		reslist, err := ui.Mixedform("Remote session configuration", false, origlist[0:]...)
 		if err != nil {
 			return nil, err
 		}
+		if len(reslist) < 3 {
+			continue
+		}
+		if net.ParseIP(reslist[0]) == nil {
+			continue
+		}
+		cfg.Host = reslist[0]
 
-		cfg.Port = "22"
+		portDig, err := strconv.Atoi(reslist[1])
+		if err != nil {
+			return nil, utils.FormatError(err)
+		}
+		if portDig > 65535 {
+			continue
+		}
+
+	AuthLoop:
 		for {
+			ui.SetTitle("Authentication method")
+			ui.SetSize(9, 18)
 			ui.HelpButton(true)
 			ui.SetHelpLabel("Back")
-			cfg.Port, err = ui.GetFromInput("SSH port", cfg.Port)
+			val, err := ui.Menu(2, "1", "Password", "2", "Private key")
 			if err != nil {
-				return nil, err
-			}
-			if portDig, err := strconv.Atoi(cfg.Port); err == nil {
-				if portDig < 65536 {
-					break
+				switch err.Error() {
+				case gui.DialogMoveBack:
+					continue MainLoop
+				case gui.DialogExit:
+					os.Exit(1)
 				}
 			}
-		}
 
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
-		cfg.User, err = ui.GetFromInput("Username for logging into the host "+cfg.Host, "root")
-		if err != nil {
-			return nil, err
+			switch val {
+			case "1":
+				cfg.Password, err = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
+			case "2":
+				cfg.PrvtKeyFile, err = ui.GetPathToFileFromInput("Path to ssh private key file")
+			}
+			if err != nil {
+				switch err.Error() {
+				case gui.DialogMoveBack:
+					continue AuthLoop
+				case gui.DialogExit:
+					os.Exit(1)
+				}
+			}
+			break MainLoop
 		}
-		ui.SetTitle("Authentication method")
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
-		val, err := ui.Menu(2, "1", "Password", "2", "Private key")
-		if err != nil {
-			return nil, err
-		}
+	}
 
-		switch val {
-		case "1":
-			cfg.Password, err = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
-		case "2":
-			cfg.PrvtKeyFile, err = ui.GetPathToFileFromInput("Path to ssh private key file")
+	run := utils.RunFunc(cfg)
+	errCh := make(chan error)
+	defer close(errCh)
+	go func() {
+		// verifying that user is able execute a command by using sudo
+		_, err := run("uname")
+		errCh <- err
+	}()
 
-		}
-		if err != nil && err.Error() == gui.DialogExit {
-			os.Exit(1)
-		}
-
-		go func() {
-			run := utils.RunFunc(cfg)
-			// verifying that user is able execute a command by using sudo
-			_, err := run("uname")
-			errCh <- err
-		}()
-
-		sleep, _ := time.ParseDuration("1s")
-		if err = ui.Wait("Trying to establish SSH connection to remote host.\nPlease wait...", sleep, errCh); err == nil {
-			break
-		}
+	if err := ui.Wait("Trying to establish SSH connection to remote host.\nPlease wait...", time.Second*1, time.Second*5, errCh); err != nil {
 		ui.Output(gui.Warning, "Unable to establish SSH connection.", "Press <OK> to return to menu.")
+		goto MainLoop
 	}
 	return cfg, nil
 }
@@ -447,16 +456,12 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 	return matrix[temp[resultInt]], nil
 }
 
-func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInSec string, remote bool) error {
+func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, remote bool) error {
 	errCh := make(chan error)
 	defer close(errCh)
 	go func() {
 		errCh <- hidriver.Init()
 	}()
-	sleep, err := time.ParseDuration(sleepInSec)
-	if err != nil {
-		return utils.FormatError(err)
-	}
 
 	var msg string
 	if remote {
@@ -464,7 +469,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, sleepInS
 	} else {
 		msg = "Gathering hardware information from local host.\nPlease wait..."
 	}
-	return ui.Wait(msg, sleep, errCh)
+	return ui.Wait(msg, time.Second*2, time.Second*7, errCh)
 }
 
 type VmConfig struct {

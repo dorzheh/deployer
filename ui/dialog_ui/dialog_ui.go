@@ -1,10 +1,10 @@
 package dialog_ui
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
-	"os/exec"
 	"time"
 
 	"github.com/dorzheh/deployer/utils"
@@ -89,38 +89,27 @@ func (ui *DialogUi) Output(ntype string, msgs ...string) {
 	ui.Msgbox(msg)
 }
 
-// ReturnToMenu gets dialog session , error string and height/width
-// It prints out a message and returns to menu
-// func (ui *DialogUi) ReturnToMenu(ntype string, msgs ...string) {
-// 	msg, width := getMsgAndWidth(msgs)
-// 	ui.SetSize(7, width+5)
-// 	ui.SetTitle(ntype)
-// 	ui.Msgbox(msg)
-// }
-
-//retMsg := "\nPress <OK> to return to menu."
-
 ///// Functions for the progress bar implementation /////
 
 // WaitForCmdToFinish prints a progress bar upon a command execution
 // It gets a dialog session, command to execute,
 // title for progress bar and the time duration
 // Returns error
-func (ui *DialogUi) WaitForCmdToFinish(cmd *exec.Cmd, title, msg string, step int, duration time.Duration) error {
-	// execute the command in a background
-	err := cmd.Start()
-	if err != nil {
-		return utils.FormatError(err)
-	}
-	// allocate a channel
-	done := make(chan error)
-	go func() {
-		// wait in background until the command has make it's job
-		done <- cmd.Wait()
-	}()
-	// show progress bar for a while
-	return ui.Progress(title, msg, duration, step, done)
-}
+// func (ui *DialogUi) WaitForCmdToFinish(cmd *exec.Cmd, title, msg string, step int, duration time.Duration) error {
+// 	// execute the command in a background
+// 	err := cmd.Start()
+// 	if err != nil {
+// 		return utils.FormatError(err)
+// 	}
+// 	// allocate a channel
+// 	done := make(chan error)
+// 	go func() {
+// 		// wait in background until the command has make it's job
+// 		done <- cmd.Wait()
+// 	}()
+// 	// show progress bar for a while
+// 	return ui.Progress(title, msg, duration, step, done)
+// }
 
 // Progress implements a progress bar
 // Returns error or nil
@@ -173,14 +162,18 @@ func (ui *DialogUi) Progress(title, pbMsg string, duration time.Duration, step i
 
 // Wait communicates with a progress bar while a given function is executed
 // Returns error or nil
-func (ui *DialogUi) Wait(msg string, pause time.Duration, done chan error) error {
+func (ui *DialogUi) Wait(msg string, pause, timeOut time.Duration, done chan error) error {
 	ui.SetSize(6, 55)
 	ui.Infobox(msg)
+	t := time.After(timeOut)
 	for {
 		select {
 		// wait for result
 		case result := <-done:
 			return result
+		// Timeout is reached
+		case <-t:
+			return errors.New("Timeout was reached")
 		default:
 			time.Sleep(pause)
 		}
@@ -196,6 +189,8 @@ func (ui *DialogUi) GetPathToFileFromInput(title string) (string, error) {
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		result, err = ui.Fselect("/")
 		if err != nil {
 			if err.Error() == DialogExit {
@@ -221,6 +216,8 @@ func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) (string, err
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		result, err = ui.Dselect(defaultDir)
 		if err != nil {
 			if err.Error() == DialogExit {
@@ -248,6 +245,8 @@ func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
 	for {
 		ui.SetSize(8, width)
 		ui.SetTitle(title)
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		ipAddr, err = ui.Inputbox("")
 		if err != nil {
 			if err.Error() == DialogExit {
@@ -274,6 +273,8 @@ func (ui *DialogUi) GetFromInput(title, defaultInput string) (string, error) {
 	for {
 		ui.SetSize(8, len(title)+5)
 		ui.SetTitle(title)
+		ui.HelpButton(true)
+		ui.SetHelpLabel("Back")
 		input, err = ui.Inputbox(defaultInput)
 		if err != nil {
 			if err.Error() == DialogExit {
@@ -297,6 +298,8 @@ MainLoop:
 		for {
 			ui.SetSize(8, len(msg)+5)
 			ui.SetTitle(msg)
+			ui.HelpButton(true)
+			ui.SetHelpLabel("Back")
 			passwd1, err = ui.Passwordbox(true)
 			if err != nil {
 				if err.Error() == DialogExit {
@@ -316,6 +319,8 @@ MainLoop:
 				ui.SetHelpLabel("Back")
 				ui.SetSize(8, len(msg)+5)
 				ui.SetTitle(msg)
+				ui.HelpButton(true)
+				ui.SetHelpLabel("Back")
 				passwd2, err = ui.Passwordbox(true)
 				switch err.Error() {
 				case DialogMoveBack:
