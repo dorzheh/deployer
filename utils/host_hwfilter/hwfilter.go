@@ -25,7 +25,7 @@ func GetAllowedNICs(data *xmlinput.XMLInputData, hidriver deployer.HostinfoDrive
 			continue
 		}
 		// if counfiguration exists, treat physical ports
-		if nic.Type == host.NicTypePhys {
+		if nic.Type == host.NicTypePhys || nic.Type == host.NicTypePhysVF {
 			if data.HostNics.Allowed != nil {
 				for _, anic := range data.HostNics.Allowed {
 					if (anic.Model == "" && strings.Contains(nic.Vendor, anic.Vendor)) || nic.Model == anic.Model {
@@ -78,6 +78,11 @@ func NicsByType(nics host.NICList, types []xmlinput.ConnectionMode) (host.NICLis
 
 			case xmlinput.ConTypePassthrough:
 				if nic.Type == host.NicTypePhys {
+					list.Add(nic)
+				}
+
+			case xmlinput.ConTypeSRIOV:
+				if nic.Type == host.NicTypePhysVF {
 					list.Add(nic)
 				}
 

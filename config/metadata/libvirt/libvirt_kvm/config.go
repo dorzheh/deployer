@@ -197,6 +197,15 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 						data += out
 					}
 
+				case host.NicTypePhysVF:
+					if mode.Type == xmlinput.ConTypeSRIOV {
+						out, err := treatPhysical(port, mode, templatesDir)
+						if err != nil {
+							return "", utils.FormatError(err)
+						}
+						data += out
+					}
+
 				case host.NicTypeOVS:
 					if mode.Type == xmlinput.ConTypeOVS {
 						tempData, err := metadata.ProcessNetworkTemplate(mode, TmpltBridgedOVS,
@@ -236,7 +245,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 	return data, nil
 }
 
-func ProcessTemplatePassthrough(port *guest.NIC) (string, error) {
+func ProcessTemplatePassthrough(port *guest.NIC, tmplt string) (string, error) {
 	pciSlice := strings.Split(port.HostNIC.PCIAddr, ":")
 	d := new(PassthroughData)
 	d.HostNicBus = pciSlice[1]
@@ -247,7 +256,7 @@ func ProcessTemplatePassthrough(port *guest.NIC) (string, error) {
 	d.GuestNicBus = port.PCIAddr.Bus
 	d.GuestNicSlot = port.PCIAddr.Slot
 	d.GuestNicFunction = port.PCIAddr.Function
-	data, err := utils.ProcessTemplate(TmpltPassthrough, d)
+	data, err := utils.ProcessTemplate(tmplt, d)
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
@@ -260,7 +269,11 @@ func treatPhysical(port *guest.NIC, mode *xmlinput.Mode, templatesDir string) (s
 
 	switch mode.Type {
 	case xmlinput.ConTypePassthrough:
-		if tempData, err = ProcessTemplatePassthrough(port); err != nil {
+		if tempData, err = ProcessTemplatePassthrough(port, TmpltPassthrough); err != nil {
+			return "", utils.FormatError(err)
+		}
+	case xmlinput.ConTypeSRIOV:
+		if tempData, err = ProcessTemplatePassthrough(port, TmpltSriovPassthrough); err != nil {
 			return "", utils.FormatError(err)
 		}
 	case xmlinput.ConTypeDirect:

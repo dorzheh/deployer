@@ -118,6 +118,7 @@ type NicType string
 
 const (
 	NicTypePhys           NicType = "physical"
+	NicTypePhysVF         NicType = "virtualfunc"
 	NicTypeOVS            NicType = "openvswitch"
 	NicTypeBridge         NicType = "bridge"
 	NicTypeVirtualNetwork NicType = "virtnetwork"
@@ -217,6 +218,12 @@ func (c *Collector) NICInfo() (NICList, error) {
 							nic.NUMANode = numa
 							nic.Desc = vendor + " " + prod
 							nic.Type = NicTypePhys
+
+							// find Virtual Functions for appropriate physical NIC
+							vfs, err := c.virtualFunctions(nic)
+							if err == nil {
+								list.Add(vfs[0:]...)
+							}
 						}
 					}
 				}
@@ -262,6 +269,34 @@ func (c *Collector) numa4Nic(pciAddr string) (int, error) {
 		return numaInt, utils.FormatError(err)
 	}
 	return numaInt, nil
+}
+
+func (c *Collector) virtualFunctions(nic *NIC) ([]*NIC, error) {
+	out, err := c.Run(fmt.Sprintf("path=$(find /sys/devices  -name \"%s\" );ls -d $path/virtf* 2>/dev/null", nic.PCIAddr))
+	if err != nil {
+		return nil, err
+	}
+
+	var list []*NIC
+
+	for _, line := range strings.SplitAfter(out, "\n") {
+		entry, _ := c.Run("readlink -f " + strings.TrimSpace(line))
+		if err != nil {
+			return nil, err
+		}
+		s := strings.Split(entry, "/")
+		vf := new(NIC)
+		vf.Name = "N/A"
+		vf.Vendor = nic.Vendor
+		vf.Model = "Ethernet Controller Virtual Function"
+		vf.Desc = nic.Vendor + " " + vf.Model
+		vf.Type = NicTypePhysVF
+		vf.NUMANode = nic.NUMANode
+		vf.PCIAddr = s[len(s)-1]
+		vf.Driver = nic.Driver
+		list = append(list, vf)
+	}
+	return list, nil
 }
 
 // RAMSize gathers information related to the installed amount of RAM in MB

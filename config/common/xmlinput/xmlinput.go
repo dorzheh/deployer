@@ -43,13 +43,13 @@ func verify(data *XMLInputData) error {
 					seenDirect = true
 				case ConTypePassthrough:
 					seenPassthrough = true
-				case ConTypeBridged, ConTypeOVS, ConTypeVirtualNetwork:
+				case ConTypeBridged, ConTypeOVS, ConTypeVirtualNetwork, ConTypeSRIOV:
 				default:
 					return utils.FormatError(errors.New("unexpected mode " + string(mode.Type)))
 				}
 			}
 			if seenDirect && seenPassthrough {
-				return utils.FormatError(errors.New("either \"direct\" or \"passthrough\" permitted"))
+				return utils.FormatError(errors.New("either \"direct\" or\"passthrough\" permitted"))
 			}
 		}
 	}

@@ -14,8 +14,10 @@ func NewNICList() NICList {
 	return make(NICList, 0)
 }
 
-func (list *NICList) Add(n *NIC) {
-	*list = append(*list, n)
+func (list *NICList) Add(nics ...*NIC) {
+	for _, nic := range nics {
+		*list = append(*list, nic)
+	}
 }
 
 func (list *NICList) AppendList(l NICList) {

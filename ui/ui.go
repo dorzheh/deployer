@@ -56,7 +56,10 @@ func UiDeploy(c *deployer.CommonData, envList []string, envs []deployer.FlowCrea
 
 	c.Ui.SetTitle("Select environment")
 	c.Ui.SetSize(envsNum+7, 30)
-	resStr, _ := c.Ui.Menu(envsNum, menuList[0:]...)
+	resStr, err := c.Ui.Menu(envsNum, menuList[0:]...)
+	if err != nil && err.Error() == gui.DialogExit {
+		os.Exit(0)
+	}
 	dType, err := strconv.Atoi(resStr)
 	if err != nil {
 		return utils.FormatError(err)
@@ -469,7 +472,7 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, remote b
 	} else {
 		msg = "Gathering hardware information from local host.\nPlease wait..."
 	}
-	return ui.Wait(msg, time.Second*2, time.Second*7, errCh)
+	return ui.Wait(msg, time.Second*2, 0, errCh)
 }
 
 type VmConfig struct {

@@ -50,10 +50,12 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="ovs" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
+		<mode type="sriov"/>
 		<ui_reset_counter>true</ui_reset_counter>
 		<ui_mode_selection>
 			<appearance mode_type="bridged" appear="virtio"/>
 			<appearance mode_type="passthrough" appear="pass-through"/>
+			<appearance mode_type="sriov" appear="pass-through"/>
 		</ui_mode_selection>
 	</network>
   </networks>
@@ -135,10 +137,12 @@ var bad_xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<network name="Traffic"> 
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
+		<mode type="sriov"/>
 		<mode type="direct"/>
 		<ui_mode_selection enable="true">
 			<appearance mode_type="bridged" appear="virtio"/>
 			<appearance mode_type="passthrough" appear="passthrough"/>
+			<appearance mode_type="sriov" appear="passthrough"/>
 		</ui_mode_selection>
 	</network>
 	<network name="Bkp"> 

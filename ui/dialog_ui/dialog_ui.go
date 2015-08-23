@@ -173,7 +173,9 @@ func (ui *DialogUi) Wait(msg string, pause, timeOut time.Duration, done chan err
 			return result
 		// Timeout is reached
 		case <-t:
-			return errors.New("Timeout was reached")
+			if timeOut > 0 {
+				return errors.New("Timeout was reached")
+			}
 		default:
 			time.Sleep(pause)
 		}
