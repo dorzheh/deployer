@@ -58,6 +58,18 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 			<appearance mode_type="sriov" appear="pass-through"/>
 		</ui_mode_selection>
 	</network>
+	<network name="Optional" optional="true"> 
+		<mode type="bridged" vnic_driver="virtio"/>
+		<mode type="ovs" vnic_driver="virtio"/>
+		<mode type="passthrough"/>
+		<mode type="sriov"/>
+		<ui_reset_counter>true</ui_reset_counter>
+		<ui_mode_selection>
+			<appearance mode_type="bridged" appear="virtio"/>
+			<appearance mode_type="passthrough" appear="pass-through"/>
+			<appearance mode_type="sriov" appear="pass-through"/>
+		</ui_mode_selection>
+	</network>
   </networks>
   <host_nics>
 	<!-- Allowed vendors and models -->
@@ -86,6 +98,7 @@ func TestParseXMLInput(t *testing.T) {
 
 	}
 	for _, n := range d.Networks.Configs {
+		fmt.Printf("%v\n", n)
 		for _, m := range n.Modes {
 			fmt.Printf("Network : %s mode: %v\n", n.Name, m.Type)
 		}

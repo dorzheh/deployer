@@ -13,7 +13,10 @@ import (
 )
 
 type HostinfoDriver struct {
-	c *host.Collector
+	c         *host.Collector
+	cpuinfo   *host.CPU
+	numanodes host.NUMANodes
+	nics      host.NICList
 }
 
 func NewHostinfoDriver(conf *ssh.Config, lshwpath, hwinfoFile string) (hi *HostinfoDriver, err error) {
@@ -43,17 +46,40 @@ func (hi *HostinfoDriver) CPUs() (int, error) {
 
 // Returns information related to the host's CPU
 func (hi *HostinfoDriver) CPUInfo() (*host.CPU, error) {
-	return hi.c.CPUInfo()
+	if hi.cpuinfo != nil {
+		return hi.cpuinfo, nil
+	}
+
+	var err error
+	hi.cpuinfo, err = hi.c.CPUInfo()
+	if err != nil {
+		return nil, err
+	}
+	return hi.cpuinfo, nil
 }
 
 // Returns amount of NUMA nodes and appropriate CPUs per NUMA node
 func (hi *HostinfoDriver) NUMAInfo() (host.NUMANodes, error) {
-	return hi.c.NUMAInfo()
+	if hi.numanodes != nil {
+		return hi.numanodes, nil
+	}
+
+	var err error
+	hi.numanodes, err = hi.c.NUMAInfo()
+	if err != nil {
+		return nil, err
+	}
+	return hi.numanodes, nil
 }
 
 // Returns info related to the host's NICs
 func (hi *HostinfoDriver) NICs() (host.NICList, error) {
-	nics, err := hi.c.NICInfo()
+	if hi.nics != nil {
+		return hi.nics, nil
+	}
+
+	var err error
+	hi.nics, err = hi.c.NICInfo()
 	if err != nil {
 		return nil, err
 	}
@@ -70,8 +96,8 @@ func (hi *HostinfoDriver) NICs() (host.NICList, error) {
 			n.PCIAddr = "N/A"
 			n.Type = host.NicTypeVirtualNetwork
 			n.Desc = "Virtual network"
-			nics.Add(n)
+			hi.nics.Add(n)
 		}
 	}
-	return nics, nil
+	return hi.nics, nil
 }

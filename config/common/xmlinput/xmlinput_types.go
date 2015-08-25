@@ -50,6 +50,7 @@ type Disks struct {
 
 type Network struct {
 	Name           string        `xml:"name,attr"`
+	Optional       bool          `xml:"optional,attr"`
 	UiResetCounter bool          `xml:"ui_reset_counter"`
 	Modes          []*Mode       `xml:"mode"`
 	UiModeBinding  []*Appearance `xml:"ui_mode_selection>appearance"`

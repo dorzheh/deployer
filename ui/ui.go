@@ -21,18 +21,22 @@ import (
 	infrautils "github.com/dorzheh/infra/utils"
 )
 
+// UiValidateUser intended for validate the ID
+// of the user executing deployer binary
 func UiValidateUser(ui *gui.DialogUi, userId int) {
 	if err := infrautils.ValidateUserID(userId); err != nil {
 		ui.Output(gui.Error, err.Error())
 	}
 }
 
+// UiWelcomeMsg prints out appropriate welcome message
 func UiWelcomeMsg(ui *gui.DialogUi, name string) {
 	msg := "Welcome to the " + name + " deployment procedure!"
 	ui.SetSize(6, len(msg)+5)
 	ui.Msgbox(msg)
 }
 
+// UiEulaMsg prints out appropriate EULA message
 func UiEulaMsg(ui *gui.DialogUi, pathToEula string) {
 	ui.SetOkLabel("Agree")
 	ui.SetExtraLabel("Disagree")
@@ -244,7 +248,7 @@ MainLoop:
 				}
 			} else {
 				var err error
-				modes, err = uiNetworkPolicySelector(ui, net.Name, net.UiModeBinding)
+				modes, err = uiNetworkPolicySelector(ui, net)
 				if err != nil {
 					switch err.Error() {
 					case gui.DialogMoveBack:
@@ -256,6 +260,9 @@ MainLoop:
 							return nil, err
 						}
 						i--
+						continue MainLoop
+					case gui.DialogNext:
+						i++
 						continue MainLoop
 					case gui.DialogExit:
 						os.Exit(1)
@@ -277,7 +284,7 @@ MainLoop:
 			if net.UiResetCounter {
 				portCounter = 1
 			}
-			list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net.Name, i)
+			list, err := uiNicSelectMenu(ui, data, &portCounter, &guestPciSlotCounter, retainedNics, net, i)
 			if err != nil {
 				switch err.Error() {
 				case gui.DialogMoveBack:
@@ -304,7 +311,7 @@ MainLoop:
 }
 
 func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCounter *int,
-	guestPciSlotCounter *int, hnics host.NICList, netName string, index int) (guest.NICList, error) {
+	guestPciSlotCounter *int, hnics host.NICList, net *xmlinput.Network, index int) (guest.NICList, error) {
 	list := make([]string, 0)
 	keeper := make(map[string]*host.NIC)
 	indexStrToInt := make(map[string][]int)
@@ -334,11 +341,11 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		}
 		width := uiHeaderSelectNics(ui)
 		ui.SetSize(listLength+8, width+5)
-		ui.SetTitle(fmt.Sprintf("Select interface for network \"%s\"", netName))
+		ui.SetTitle(fmt.Sprintf("Select interface for network \"%s\"", net.Name))
 		nicNumStr, err := ui.Menu(listLength+5, list[0:]...)
 		if err != nil {
 			if err.Error() == gui.DialogNext {
-				if len(gnics) == 0 {
+				if len(gnics) == 0 && net.Optional == false {
 					continue
 				}
 				break
@@ -387,7 +394,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		list[indexStrToInt[nicNumStr][0]] = fmt.Sprintf("%-22s%-15s%-68s%-9s%d", hnic.Name, hnic.PCIAddr,
 			hnic.Desc, uiNUMAIntToString(hnic.NUMANode), *guestPortCounter)
 		gnic := guest.NewNIC()
-		gnic.Network = netName
+		gnic.Network = net.Name
 		gnic.PCIAddr.Domain = data.PCI.Domain
 		gnic.PCIAddr.Bus = data.PCI.Bus
 		gnic.PCIAddr.Slot = utils.IntToHexString(*guestPciSlotCounter)
@@ -424,9 +431,9 @@ func uiHeaderSelectNics(ui *gui.DialogUi) int {
 	return width
 }
 
-func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput.Appearance) ([]xmlinput.ConnectionMode, error) {
+func uiNetworkPolicySelector(ui *gui.DialogUi, net *xmlinput.Network) ([]xmlinput.ConnectionMode, error) {
 	matrix := make(map[string][]xmlinput.ConnectionMode)
-	for _, mode := range modes {
+	for _, mode := range net.UiModeBinding {
 		if _, ok := matrix[mode.Appear]; !ok {
 			matrix[mode.Appear] = make([]xmlinput.ConnectionMode, 0)
 		}
@@ -442,9 +449,12 @@ func uiNetworkPolicySelector(ui *gui.DialogUi, network string, modes []*xmlinput
 
 	length := len(matrix)
 	ui.SetSize(length+8, 50)
-	ui.SetTitle(fmt.Sprintf("Network interface type for network \"%s\"", network))
+	ui.SetTitle(fmt.Sprintf("Network interface type for network \"%s\"", net.Name))
 	ui.HelpButton(true)
 	ui.SetHelpLabel("Back")
+	if net.Optional {
+		ui.SetExtraLabel("Skip")
+	}
 	val, err := ui.Menu(length, temp[0:]...)
 	if err != nil {
 		return nil, err
