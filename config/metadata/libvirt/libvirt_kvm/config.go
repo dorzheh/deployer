@@ -24,7 +24,9 @@ import (
 type meta struct{}
 
 func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Config, error) {
-	d.DefaultExportDir = "/var/lib/libvirt/images"
+	if d.DefaultExportDir == "" {
+		d.DefaultExportDir = "/var/lib/libvirt/images"
+	}
 	c := common.RegisterSteps(d)
 	m := &metadata.Config{c, nil, nil, nil, nil, "", nil, nil}
 	controller.RegisterSteps(func() func() error {

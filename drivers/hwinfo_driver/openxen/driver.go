@@ -1,8 +1,6 @@
-package libvirt
+package openxen
 
 import (
-	"strings"
-
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"
 	ssh "github.com/dorzheh/infra/comm/common"
@@ -78,22 +76,6 @@ func (hi *HostinfoDriver) NICs() (host.NICList, error) {
 	hi.nics, err = hi.c.NICInfo()
 	if err != nil {
 		return nil, err
-	}
-
-	out, err := hi.c.Run("virsh net-list |awk '!/-----/ && !/Name/ && !/^$/{print $1}'")
-	if err != nil {
-		return nil, err
-	}
-	for _, net := range strings.Split(out, "\n") {
-		if net != "" {
-			n := new(host.NIC)
-			n.Name = net
-			n.NUMANode = -1
-			n.PCIAddr = "N/A"
-			n.Type = host.NicTypeVirtualNetwork
-			n.Desc = "Virtual network"
-			hi.nics.Add(n)
-		}
 	}
 	return hi.nics, nil
 }

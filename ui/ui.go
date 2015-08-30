@@ -47,7 +47,7 @@ func UiEulaMsg(ui *gui.DialogUi, pathToEula string) {
 	}
 }
 
-func UiDeploy(c *deployer.CommonData, envList []string, envs []deployer.FlowCreator) error {
+func UiSelectEnv(c *deployer.CommonData, envList []string, envs []deployer.FlowCreator) error {
 	var menuList []string
 	indexInt := 1
 
