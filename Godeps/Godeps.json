@@ -1,10 +1,10 @@
 {
 	"ImportPath": "github.com/dorzheh/deployer",
-	"GoVersion": "go1.4.2",
+	"GoVersion": "go1.5",
 	"Deps": [
 		{
 			"ImportPath": "github.com/clbanning/mxj",
-			"Rev": "10f5226cb722183936a4957414547feb565e7ac8"
+			"Rev": "87ef56c6f157ac80caf824a9779dddc6f69c6580"
 		},
 		{
 			"ImportPath": "github.com/dorzheh/go-dialog",
@@ -32,11 +32,11 @@
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/curve25519",
-			"Rev": "81bf7719a6b7ce9b665598222362b50122dfc13b"
+			"Rev": "aedad9a179ec1ea11b7064c57cbc6dc30d7724ec"
 		},
 		{
 			"ImportPath": "golang.org/x/crypto/ssh",
-			"Rev": "81bf7719a6b7ce9b665598222362b50122dfc13b"
+			"Rev": "aedad9a179ec1ea11b7064c57cbc6dc30d7724ec"
 		}
 	]
 }

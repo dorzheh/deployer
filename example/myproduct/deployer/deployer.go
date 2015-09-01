@@ -7,9 +7,11 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/deployer"
-	"github.com/dorzheh/deployer/example/myproduct"
+	libvirt_kvm "github.com/dorzheh/deployer/example/myproduct/env/libvirt/kvm"
+	"github.com/dorzheh/deployer/example/myproduct/env/openxen"
 	gui "github.com/dorzheh/deployer/ui"
 	"github.com/dorzheh/deployer/ui/dialog_ui"
+	"github.com/dorzheh/infra/utils/archutils"
 )
 
 const arch = "x86_64"
@@ -52,5 +54,12 @@ func main() {
 		Arch:             arch,
 		Ui:               ui,
 	}
-	gui.UiDeploymentResult(ui, data.VaName+" installation completed successfully", myproduct.Deploy(data))
+
+	if err := archutils.Extract(filepath.Join(rootDir, "comp/env.tgz"), filepath.Join(rootDir, "comp")); err != nil {
+		ui.Output(dialog_ui.Error, err.Error())
+	}
+
+	gui.UiDeploymentResult(ui, data.VaName+" installation completed successfully",
+		gui.UiSelectEnv(data, []string{"Libvirt(KVM)", "OpenXen"},
+			[]deployer.FlowCreator{new(libvirt_kvm.FlowCreator), new(openxen.FlowCreator)}))
 }

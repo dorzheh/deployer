@@ -1,7 +1,7 @@
 //
 // Implementing "image.Rootfs" interface
 //
-package myproduct
+package common
 
 import (
 	"errors"
@@ -121,14 +121,14 @@ func extractApplImage(pathRootMp string) error {
 	return os.Chdir("/")
 }
 
-func ImageFiller(data *deployer.CommonData, mainConfig map[string]string) deployer.RootfsFiller {
+func ImageFiller(data *deployer.CommonData, configDir string) deployer.RootfsFiller {
 	return &rootfsFiller{
 		pathToKitDir:               data.RootDir,
 		pathToRootfsSquashfs:       filepath.Join(data.RootDir, "comp/rootfs.squashfs"),
 		pathToKernelArchive:        filepath.Join(data.RootDir, "comp/kernel.tgz"),
 		pathToKernelModulesArchive: filepath.Join(data.RootDir, "comp/modules.tgz"),
 		pathToApplArchive:          filepath.Join(data.RootDir, "comp/appl.tgz"),
-		pathToConfigDir:            filepath.Join(data.RootDir, "comp/env", mainConfig["config_dir"]),
+		pathToConfigDir:            filepath.Join(data.RootDir, configDir),
 		extractApplImage:           false,
 	}
 }

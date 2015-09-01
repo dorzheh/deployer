@@ -195,9 +195,6 @@ func (ui *DialogUi) GetPathToFileFromInput(title string) (string, error) {
 		ui.SetHelpLabel("Back")
 		result, err = ui.Fselect("/")
 		if err != nil {
-			if err.Error() == DialogExit {
-				os.Exit(1)
-			}
 			return result, err
 		}
 		if result != "" {
@@ -222,9 +219,6 @@ func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) (string, err
 		ui.SetHelpLabel("Back")
 		result, err = ui.Dselect(defaultDir)
 		if err != nil {
-			if err.Error() == DialogExit {
-				os.Exit(1)
-			}
 			return result, err
 		}
 		if result != "" {
@@ -251,9 +245,6 @@ func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
 		ui.SetHelpLabel("Back")
 		ipAddr, err = ui.Inputbox("")
 		if err != nil {
-			if err.Error() == DialogExit {
-				os.Exit(1)
-			}
 			return ipAddr, err
 		}
 		// validate the IP
@@ -279,9 +270,6 @@ func (ui *DialogUi) GetFromInput(title, defaultInput string) (string, error) {
 		ui.SetHelpLabel("Back")
 		input, err = ui.Inputbox(defaultInput)
 		if err != nil {
-			if err.Error() == DialogExit {
-				os.Exit(1)
-			}
 			return input, err
 		}
 		if input != "" {
@@ -304,9 +292,6 @@ MainLoop:
 			ui.SetHelpLabel("Back")
 			passwd1, err = ui.Passwordbox(true)
 			if err != nil {
-				if err.Error() == DialogExit {
-					os.Exit(1)
-				}
 				return "", err
 			}
 			if passwd1 != "" {
@@ -327,8 +312,8 @@ MainLoop:
 				switch err.Error() {
 				case DialogMoveBack:
 					continue MainLoop
-				case DialogExit:
-					os.Exit(1)
+				default:
+					return
 				}
 				if passwd2 != "" {
 					break

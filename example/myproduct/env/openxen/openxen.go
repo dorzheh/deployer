@@ -1,7 +1,4 @@
-//
-// FlowCreator interface implementation
-//
-package kvm
+package openxen
 
 import (
 	"fmt"
@@ -10,20 +7,19 @@ import (
 	"github.com/dorzheh/deployer/builder"
 	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/metadata"
-	libvirtconf "github.com/dorzheh/deployer/config/metadata/libvirt/libvirt_kvm"
+	xenconf "github.com/dorzheh/deployer/config/metadata/openxen/xen_xl"
 	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/example/myproduct/common"
-	libvirtpost "github.com/dorzheh/deployer/post_processor/libvirt/libvirt_kvm"
+	xenpost "github.com/dorzheh/deployer/post_processor/openxen/xen_xl"
 	"github.com/dorzheh/infra/comm/sshfs"
 )
 
 var mainConfig = map[string]string{
-	"config_dir":             "comp/env/libvirt/kvm/config",
-	"metadata_dir":           "comp/env/libvirt/kvm/metadata",
-	"metadata_file":          "comp/env/libvirt/kvm/metadata/domain.tmplt.xml",
+	"config_dir":             "comp/env/openxen/config",
+	"metadata_file":          "comp/env/openxen/metadata/domu.pvhvm.tmplt.cfg",
 	"storage_config_file":    "comp/env/common/config/storage_config.xml",
-	"input_data_config_file": "comp/env/libvirt/kvm/config/input_data_config.xml",
+	"input_data_config_file": "comp/env/openxen/config/input_data_config.xml",
 }
 
 type FlowCreator struct {
@@ -31,15 +27,14 @@ type FlowCreator struct {
 }
 
 func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
-	d.DefaultExportDir = "/var/lib/libvirt/images"
+	d.DefaultExportDir = "/var/lib/xen"
 	data := new(metadata.InputData)
 	data.Lshw = filepath.Join(d.RootDir, "install", d.Arch, "bin/lshw")
 	data.InputDataConfigFile = filepath.Join(d.RootDir, mainConfig["input_data_config_file"])
 	data.StorageConfigFile = filepath.Join(d.RootDir, mainConfig["storage_config_file"])
-	data.TemplatesDir = filepath.Join(d.RootDir, mainConfig["metadata_dir"])
 
 	var err error
-	if c.config, err = libvirtconf.CreateConfig(d, data); err != nil {
+	if c.config, err = xenconf.CreateConfig(d, data); err != nil {
 		return err
 	}
 
@@ -60,6 +55,9 @@ func (c *FlowCreator) CreateConfig(d *deployer.CommonData) error {
 	if err := controller.RunSteps(); err != nil {
 		return err
 	}
+
+	// Xen XL metadata requires that the RAM size will be represented in Megabytes
+	c.config.Metadata.RAM /= 1024
 
 	d.Ui.Pb.SetSleep("10s")
 	d.Ui.Pb.SetStep(10)
@@ -106,6 +104,6 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 func (c *FlowCreator) CreatePostProcessor(d *deployer.CommonData) (p deployer.PostProcessor, err error) {
 	d.Ui.Pb.SetSleep("1s")
 	d.Ui.Pb.SetStep(50)
-	p = libvirtpost.NewPostProcessor(c.config.SshConfig, false)
+	p = xenpost.NewPostProcessor(c.config.SshConfig, true)
 	return
 }
