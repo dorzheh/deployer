@@ -99,14 +99,25 @@ func NicsByType(nics host.NICList, types []xmlinput.ConnectionMode) (host.NICLis
 	return list, nil
 }
 
-// deniedNIC verifies whether a given Network port is denied by configuration or not
-func deniedNIC(hwnics *host.NIC, nics *xmlinput.HostNics) bool {
-	for _, nic := range nics.Denied {
-		if nic.Model == "" {
-			if strings.Contains(hwnics.Vendor, nic.Vendor) {
+func NicDisjunctionFound(hnic *host.NIC, anics []*xmlinput.Allow) bool {
+	for _, anic := range anics {
+		if (anic.Model == "" && strings.Contains(hnic.Vendor, anic.Vendor)) || hnic.Model == anic.Model {
+			if anic.Disjunction {
 				return true
 			}
-		} else if strings.Contains(hwnics.Model, nic.Model) {
+		}
+	}
+	return false
+}
+
+// deniedNIC verifies whether a given Network port is denied by configuration or not
+func deniedNIC(hnic *host.NIC, nics *xmlinput.HostNics) bool {
+	for _, nic := range nics.Denied {
+		if nic.Model == "" {
+			if strings.Contains(hnic.Vendor, nic.Vendor) {
+				return true
+			}
+		} else if strings.Contains(hnic.Model, nic.Model) {
 			return true
 		}
 	}

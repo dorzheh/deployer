@@ -46,11 +46,12 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 		<mode type="direct" vnic_driver="e1000"/>
         <mode type="ovs" vnic_driver="virtio"/>   
 	</network>
-	<network name="Traffic"> 
+	<network name="Traffic">
 		<mode type="bridged" vnic_driver="virtio"/>
 		<mode type="ovs" vnic_driver="virtio"/>
 		<mode type="passthrough"/>
 		<mode type="sriov"/>
+		<host_nics_disjunction>true</host_nics_disjunction>
 		<ui_reset_counter>true</ui_reset_counter>
 		<ui_mode_selection>
 			<appearance mode_type="bridged" appear="virtio"/>
@@ -74,7 +75,8 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   <host_nics>
 	<!-- Allowed vendors and models -->
 	<allow vendor="Intel" model="" priority="true"/>
-	<allow vendor="Mellanox" model=""/>
+	<allow vendor="Brocade" model="" disjunction="true"/>
+	<allow vendor="Mellanox" model="" disjunction="true"/>
 	<!-- Denied vendors and models -->
 	<deny vendor="Broadcom" model=""/>
   </host_nics>

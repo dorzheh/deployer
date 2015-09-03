@@ -52,6 +52,11 @@ func verify(data *XMLInputData) error {
 				return utils.FormatError(errors.New("either \"direct\" or\"passthrough\" permitted"))
 			}
 		}
+		for _, nic := range data.HostNics.Allowed {
+			if nic.Disjunction && nic.Priority {
+				return utils.FormatError(errors.New("either \"priority\" or\"disjunction\" permitted"))
+			}
+		}
 	}
 	return nil
 }

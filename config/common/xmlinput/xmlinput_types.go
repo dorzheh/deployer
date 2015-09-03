@@ -49,11 +49,12 @@ type Disks struct {
 }
 
 type Network struct {
-	Name           string        `xml:"name,attr"`
-	Optional       bool          `xml:"optional,attr"`
-	UiResetCounter bool          `xml:"ui_reset_counter"`
-	Modes          []*Mode       `xml:"mode"`
-	UiModeBinding  []*Appearance `xml:"ui_mode_selection>appearance"`
+	Name            string        `xml:"name,attr"`
+	Optional        bool          `xml:"optional,attr"`
+	UiResetCounter  bool          `xml:"ui_reset_counter"`
+	NicsDisjunction bool          `xml:"host_nics_disjunction"`
+	Modes           []*Mode       `xml:"mode"`
+	UiModeBinding   []*Appearance `xml:"ui_mode_selection>appearance"`
 }
 
 type Networks struct {
@@ -78,9 +79,10 @@ type Appearance struct {
 }
 
 type Allow struct {
-	Vendor   string `xml:"vendor,attr"`
-	Model    string `xml:"model,attr"`
-	Priority bool   `xml:"priority,attr"`
+	Vendor      string `xml:"vendor,attr"`
+	Model       string `xml:"model,attr"`
+	Priority    bool   `xml:"priority,attr"`
+	Disjunction bool   `xml:"disjunction,attr"`
 }
 
 type Deny struct {

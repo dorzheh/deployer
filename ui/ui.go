@@ -333,6 +333,8 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 
 	listLength := len(list)
 	gnics := guest.NewNICList()
+	var disjuncNicVendor string
+	var disjuncNicModel string
 
 	for {
 		if index > 0 {
@@ -356,10 +358,29 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		}
 
 		hnic := keeper[nicNumStr]
+		// verify that we need to proceed with "disjunction"
+		if net.NicsDisjunction && (hnic.Type == host.NicTypePhys || hnic.Type == host.NicTypePhysVF) &&
+			(hnic.Vendor != disjuncNicVendor && hnic.Model != disjuncNicModel) {
+			// back to menu in case "disjunction" entries already exist
+			if host_hwfilter.NicDisjunctionFound(hnic, data.HostNics.Allowed) && disjuncNicVendor != "" {
+				msg := fmt.Sprintf("'%s' cannot be selected alongside '%s %s'", hnic.Desc, disjuncNicVendor, disjuncNicModel)
+				ui.Output(gui.Warning, msg, "Press <OK> to return to menu.")
+				continue
+			}
+			// set the new entries
+			disjuncNicVendor = hnic.Vendor
+			disjuncNicModel = hnic.Model
+		}
+
 		delNicCounter := indexStrToInt[nicNumStr][1]
-		// counter for the NIC found, treat entire data structure
+		// counter for the NIC found,we should remove the NIC object and its references
 		if delNicCounter > 0 {
+			// find the guest NIC object in the guest NICs list
 			if _, index, err := gnics.SearchGuestNicByHostNicObj(hnic); err == nil {
+				// if found :
+				// - remove the object
+				// - decrement guestPortCounter
+				// - decriment guestPciSlotCounter
 				gnics.Remove(index)
 				if *guestPortCounter > 0 {
 					*guestPortCounter--
@@ -367,11 +388,14 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 				if *guestPciSlotCounter > data.GuestNic.PCI.FirstSlot {
 					*guestPciSlotCounter--
 				}
-
+				// update the list with the new entry containing deselected NIC
 				list[indexStrToInt[nicNumStr][0]] = fmt.Sprintf("%-22s%-15s%-68s%-10s", hnic.Name, hnic.PCIAddr, hnic.Desc, uiNUMAIntToString(hnic.NUMANode))
+				// - reset element counter
+				// - reset PCI slot number
 				indexStrToInt[nicNumStr][1] = 0
 				indexStrToInt[nicNumStr][2] = 0
 			}
+			// iterate over the map and update entries
 			for nicIndex, data := range indexStrToInt {
 				nicCounter := data[1]
 				if nicCounter > delNicCounter {
@@ -385,6 +409,11 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 						gnic.PCIAddr.Slot = utils.IntToHexString(indexStrToInt[nicIndex][2])
 					}
 				}
+			}
+			// clear "disjunction" entries in case gnics slice is empty
+			if gnics.Length() == 0 {
+				disjuncNicVendor = ""
+				disjuncNicModel = ""
 			}
 			continue
 		}
