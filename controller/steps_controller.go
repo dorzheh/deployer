@@ -39,6 +39,8 @@ func RunSteps() error {
 			switch err.Error() {
 			case dialog_ui.DialogExit:
 				os.Exit(1)
+			case dialog_ui.DialogNext:
+				break
 			case dialog_ui.DialogMoveBack:
 				if i > 0 {
 					i--
