@@ -70,6 +70,11 @@ func (b *ImageBuilder) Run() (deployer.Artifact, error) {
 			return nil, utils.FormatError(err)
 		}
 	}
+	if b.Filler != nil {
+		if err := b.Filler.RunHooks(b.RootfsMp); err != nil {
+			return nil, utils.FormatError(err)
+		}
+	}
 	if err := img.Cleanup(); err != nil {
 		return nil, utils.FormatError(err)
 	}

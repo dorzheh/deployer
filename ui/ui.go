@@ -108,14 +108,14 @@ func UiApplianceName(ui *gui.DialogUi, defaultName string, driver deployer.EnvDr
 
 func UiImagePath(ui *gui.DialogUi, defaultLocation string, remote bool) (string, error) {
 	if remote {
-		return ui.GetFromInput("Select directory on remote server to install the VA image on", defaultLocation)
+		return ui.GetFromInput("Select directory on remote server to install the VA image on", defaultLocation, "Back", "")
 	}
 
 	var location string
 	var err error
 
 	for {
-		location, err = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation)
+		location, err = ui.GetPathToDirFromInput("Select directory to install the VA image on", defaultLocation, "Back", "")
 		if err != nil {
 			return "", err
 		}
@@ -193,9 +193,9 @@ MainLoop:
 
 			switch val {
 			case "1":
-				cfg.Password, err = ui.GetPasswordFromInput(cfg.Host, cfg.User, false)
+				cfg.Password, err = ui.GetPasswordFromInput(cfg.Host, cfg.User, "Back", "", false)
 			case "2":
-				cfg.PrvtKeyFile, err = ui.GetPathToFileFromInput("Path to ssh private key file")
+				cfg.PrvtKeyFile, err = ui.GetPathToFileFromInput("Path to ssh private key file", "Back", "")
 			}
 			if err != nil {
 				switch err.Error() {

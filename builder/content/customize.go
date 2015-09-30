@@ -547,7 +547,6 @@ func ProcessHooks(pathToHooksDir string, hookArgs ...string) error {
 	}
 
 	var scriptsSlice []string
-	//find mapped loop device partition , create appropriate mount point for each partition
 	err = filepath.Walk(pathToHooksDir, func(scriptName string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			if found, _ := regexp.MatchString("[0-9]+_", scriptName); found {

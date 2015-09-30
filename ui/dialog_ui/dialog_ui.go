@@ -184,15 +184,20 @@ func (ui *DialogUi) Wait(msg string, pause, timeOut time.Duration, done chan err
 }
 
 // GetPathToFileFromInput uses a dialog session for getting path to a file
-func (ui *DialogUi) GetPathToFileFromInput(title string) (string, error) {
+func (ui *DialogUi) GetPathToFileFromInput(title, helpButtonLabel, extraButtonLabel string) (string, error) {
 	var result string
 	var err error
 
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
+		if helpButtonLabel != "" {
+			ui.HelpButton(true)
+			ui.SetHelpLabel(helpButtonLabel)
+		}
+		if extraButtonLabel != "" {
+			ui.SetExtraLabel(extraButtonLabel)
+		}
 		result, err = ui.Fselect("/")
 		if err != nil {
 			return result, err
@@ -208,15 +213,20 @@ func (ui *DialogUi) GetPathToFileFromInput(title string) (string, error) {
 }
 
 // GetPathToDirFromInput uses a dialog session for getting path to a directory to upload
-func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) (string, error) {
+func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir, helpButtonLabel, extraButtonLabel string) (string, error) {
 	var result string
 	var err error
 
 	for {
 		ui.SetTitle(title)
 		ui.SetSize(10, 50)
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
+		if helpButtonLabel != "" {
+			ui.HelpButton(true)
+			ui.SetHelpLabel(helpButtonLabel)
+		}
+		if extraButtonLabel != "" {
+			ui.SetExtraLabel(extraButtonLabel)
+		}
 		result, err = ui.Dselect(defaultDir)
 		if err != nil {
 			return result, err
@@ -233,7 +243,7 @@ func (ui *DialogUi) GetPathToDirFromInput(title, defaultDir string) (string, err
 
 // GetIpFromInput uses a dialog session for reading IP from user input
 // Returns host IP (remote or local)
-func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
+func (ui *DialogUi) GetIpFromInput(title, helpButtonLabel, extraButtonLabel string) (string, error) {
 	var ipAddr string
 	var err error
 
@@ -241,8 +251,13 @@ func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
 	for {
 		ui.SetSize(8, width)
 		ui.SetTitle(title)
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
+		if helpButtonLabel != "" {
+			ui.HelpButton(true)
+			ui.SetHelpLabel(helpButtonLabel)
+		}
+		if extraButtonLabel != "" {
+			ui.SetExtraLabel(extraButtonLabel)
+		}
 		ipAddr, err = ui.Inputbox("")
 		if err != nil {
 			return ipAddr, err
@@ -259,15 +274,20 @@ func (ui *DialogUi) GetIpFromInput(title string) (string, error) {
 
 // GetFromInput uses a dialog session for reading from stdin
 // Returns user input
-func (ui *DialogUi) GetFromInput(title, defaultInput string) (string, error) {
+func (ui *DialogUi) GetFromInput(title, defaultInput, helpButtonLabel, extraButtonLabel string) (string, error) {
 	var input string
 	var err error
 
 	for {
 		ui.SetSize(8, len(title)+5)
 		ui.SetTitle(title)
-		ui.HelpButton(true)
-		ui.SetHelpLabel("Back")
+		if helpButtonLabel != "" {
+			ui.HelpButton(true)
+			ui.SetHelpLabel(helpButtonLabel)
+		}
+		if extraButtonLabel != "" {
+			ui.SetExtraLabel(extraButtonLabel)
+		}
 		input, err = ui.Inputbox(defaultInput)
 		if err != nil {
 			return input, err
@@ -281,15 +301,20 @@ func (ui *DialogUi) GetFromInput(title, defaultInput string) (string, error) {
 
 //GetPasswordFromInput uses a dialog session for reading user password from user input
 //Returns password string
-func (ui *DialogUi) GetPasswordFromInput(host, user string, confirm bool) (passwd1 string, err error) {
+func (ui *DialogUi) GetPasswordFromInput(host, user, helpButtonLabel, extraButtonLabel string, confirm bool) (passwd1 string, err error) {
 MainLoop:
 	for {
 		msg := fmt.Sprintf("\"%s\" password on the host %s", user, host)
 		for {
 			ui.SetSize(8, len(msg)+5)
 			ui.SetTitle(msg)
-			ui.HelpButton(true)
-			ui.SetHelpLabel("Back")
+			if helpButtonLabel != "" {
+				ui.HelpButton(true)
+				ui.SetHelpLabel(helpButtonLabel)
+			}
+			if extraButtonLabel != "" {
+				ui.SetExtraLabel(extraButtonLabel)
+			}
 			passwd1, err = ui.Passwordbox(true)
 			if err != nil {
 				return "", err
@@ -302,6 +327,9 @@ MainLoop:
 			var passwd2 string
 			msg = "Password confirmation for user \"" + user + "\""
 			for {
+				if extraButtonLabel != "" {
+					ui.SetExtraLabel(extraButtonLabel)
+				}
 				ui.HelpButton(true)
 				ui.SetHelpLabel("Back")
 				ui.SetSize(8, len(msg)+5)

@@ -110,6 +110,11 @@ func (f *rootfsFiller) InstallApp(pathToRootfsMp string) error {
 	return nil
 }
 
+// RunHooks is responsible for executing hooks before the image is being cleaned up
+func (f *rootfsFiller) RunHooks(pathToRootfsMp string) error {
+	return nil
+}
+
 // extractAppImage is responsible for extracting application image in a chroot environment
 func extractApplImage(pathRootMp string) error {
 	if err := os.Chdir(filepath.Join(pathRootMp, "mnt/cf")); err != nil {

@@ -10,4 +10,9 @@ type RootfsFiller interface {
 	// Responsible for application installation.
 	// Receives rootfs mount point.
 	InstallApp(string) error
+
+	// Responsible for executing hooks
+	// The method might be usefull for cases
+	// when rootfs postprocessing is required
+	RunHooks(string) error
 }

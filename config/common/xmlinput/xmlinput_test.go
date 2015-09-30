@@ -13,6 +13,10 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<max>16</max>
 	<default_value>1</default_value>
   </cpu>
+  <cpu_pinning>
+    <configure>true</configure>
+    <ui_advanced_config>false</ui_advanced_config>
+  </cpu_pinning>
   <ram>
   	<configure>true</configure>
   	<min_mb>2500</min_mb>
