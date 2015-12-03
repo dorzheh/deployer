@@ -4,7 +4,7 @@ import (
 	"errors"
 	"strings"
 
-	"github.com/dorzheh/deployer/config/common/xmlinput"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"

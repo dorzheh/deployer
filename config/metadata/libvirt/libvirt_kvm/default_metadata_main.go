@@ -4,10 +4,10 @@ var defaultMetdata = []byte(`<domain type='kvm'>
   <name>{{.DomainName}}</name>
   <uuid></uuid>
   <memory>{{.RAM}}</memory>
-   <cpu mode='custom' match='exact'>
-    <model fallback='allow'>Westmere</model>
-  </cpu>
+   {{.CPUConfig}}
   <vcpu>{{.CPUs}}</vcpu>
+   {{.CPUTune}}
+  {{.NUMATune}}
   <os>
     <type arch='x86_64'>hvm</type>
     <boot dev='hd'/>

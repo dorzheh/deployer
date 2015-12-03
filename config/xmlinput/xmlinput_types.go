@@ -16,7 +16,7 @@ const UnlimitedAlloc = -1
 
 type XMLInputData struct {
 	CPU
-	CPUPinning
+	NUMA
 	RAM
 	Disks
 	Networks
@@ -31,9 +31,8 @@ type CPU struct {
 	Default   int  `xml:"cpu>default_value"`
 }
 
-type CPUPinning struct {
-	Configure        bool `xml:"cpu_pinning>configure"`
-	UiAdvancedConfig bool `xml:"ui_advanced_config"`
+type NUMA struct {
+	AdvancedAutoConfig bool `xml:"numa>advanced_auto_config"`
 }
 
 type RAM struct {

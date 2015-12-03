@@ -3,15 +3,16 @@
 package libvirt_kvm
 
 import (
+	"errors"
 	"io/ioutil"
 	"path/filepath"
+	"sort"
 	"strconv"
 	"strings"
 
 	"github.com/dorzheh/deployer/builder/image"
-	"github.com/dorzheh/deployer/config/common"
-	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/config/metadata"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	envdriver "github.com/dorzheh/deployer/drivers/env_driver/libvirt/libvirt_kvm"
@@ -27,8 +28,12 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 	if d.DefaultExportDir == "" {
 		d.DefaultExportDir = "/var/lib/libvirt/images"
 	}
-	c := common.RegisterSteps(d)
-	m := &metadata.Config{c, nil, nil, nil, nil, "", nil, nil}
+
+	m, err := metadata.NewMetdataConfig(d, i.StorageConfigFile)
+	if err != nil {
+		return nil, utils.FormatError(err)
+	}
+
 	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
@@ -56,43 +61,119 @@ func (m meta) DefaultMetadata() []byte {
 	return defaultMetdata
 }
 
-// --- metadata configuration: cpu tuning --- //
+// --- metadata configuration: cpu configuration --- //
 const (
-	TmpltFileCpuTune = "template_cpu_tuning.xml"
+	TmpltFileCpuConfig = "template_cpu_config.xml"
 )
 
-type CpuTuneData struct {
-	CpuTuneData string
+type CpuConfigData struct {
+	NUMAConfig string
 }
 
-func (m meta) SetCpuTuneData(cpus map[int][]string, templatesDir string) (string, error) {
-	// assume <cputune> </cputune> exists in metadata
-	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuTune))
+func (m meta) SetCpuConfigData(c *guest.Config, templatesDir string) (string, error) {
+	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuConfig))
 	if err == nil {
-		TmpltCpuTune = string(buf)
+		TmpltCpuConfig = string(buf)
 	}
 
-	tempData, err := utils.ProcessTemplate(TmpltCpuTune, &CpuTuneData{SetCpuTuneData(cpus)})
+	tempData, err := utils.ProcessTemplate(TmpltCpuConfig, &CpuConfigData{setCpuConfigData(c)})
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
 	return string(tempData) + "\n", nil
 }
 
-func SetCpuTuneData(cpus map[int][]string) string {
-	var cpuTuneData string
-	for vcpu, pcpus := range cpus {
-		var cpuset string
-		for i, pcpu := range pcpus {
-			if i == 0 {
-				cpuset = pcpu
-			} else {
-				cpuset += "," + pcpu
+func setCpuConfigData(c *guest.Config) string {
+	var cpuConfigData string
+
+	if c.ConfigNUMAs {
+		cpuConfigData = `<numa>`
+		for _, n := range c.NUMAs {
+			var vcpusStr []string
+			for _, vcpu := range n.VCPUs {
+				vcpusStr = append(vcpusStr, strconv.Itoa(vcpu))
 			}
+			memory := n.MemoryMb * 1024
+			cpuConfigData += "\n" + `<cell id='` + strconv.Itoa(n.CellID) + `' cpus='` + strings.Join(vcpusStr, ",") + `' memory='` + strconv.Itoa(memory) + `'/>`
 		}
-		cpuTuneData += "\n" + `<vcpupin vcpu='` + strconv.Itoa(vcpu) + `' cpuset='` + cpuset + `'/>`
+		cpuConfigData += "\n" + `</numa>`
+	}
+	return cpuConfigData
+}
+
+// --- metadata configuration: cpu tuning --- //
+
+const (
+	TmpltFileCpuTune = "template_cpu_tune.xml"
+)
+
+type CpuTuneData struct {
+	CpuTuneData string
+}
+
+func (m meta) SetCpuTuneData(c *guest.Config, templatesDir string) (string, error) {
+	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuTune))
+	if err == nil {
+		TmpltCpuTune = string(buf)
+	}
+
+	tempData, err := utils.ProcessTemplate(TmpltCpuTune, &CpuTuneData{setCpuTuneData(c.NUMAs)})
+	if err != nil {
+		return "", utils.FormatError(err)
+	}
+	return string(tempData) + "\n", nil
+}
+
+func setCpuTuneData(numas []*guest.NUMA) string {
+	var cpuTuneData string
+
+	for _, n := range numas {
+		var keys []int
+		for vcpu, _ := range n.CPUPin {
+			keys = append(keys, vcpu)
+		}
+
+		sort.Ints(keys)
+		for _, k := range keys {
+			var pcpusStrSlice []string
+			for _, pcpu := range n.CPUPin[k] {
+				pcpusStrSlice = append(pcpusStrSlice, strconv.Itoa(pcpu))
+			}
+			cpuTuneData += "\n" + `<vcpupin vcpu='` + strconv.Itoa(k) + `' cpuset='` + strings.Join(pcpusStrSlice, ",") + `'/>`
+		}
 	}
 	return cpuTuneData
+}
+
+// --- metadata configuration: NUMA tuning --- //
+
+const (
+	TmpltFileNUMATune = "template_numa_tune.xml"
+)
+
+type NUMATuneData struct {
+	NUMACells string
+}
+
+func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string) (string, error) {
+	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileNUMATune))
+	if err == nil {
+		TmpltNUMATune = string(buf)
+	}
+
+	tempData, err := utils.ProcessTemplate(TmpltNUMATune, &NUMATuneData{setNUMATuneData(c.NUMAs)})
+	if err != nil {
+		return "", utils.FormatError(err)
+	}
+	return string(tempData) + "\n", nil
+}
+
+func setNUMATuneData(numas []*guest.NUMA) string {
+	var cells []string
+	for _, n := range numas {
+		cells = append(cells, strconv.Itoa(n.CellID))
+	}
+	return strings.Join(cells, ",")
 }
 
 // --- metadata configuration: storage --- //
@@ -110,7 +191,7 @@ var blockDevicesSuffix = []string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // SetStorageData is responsible for adding to the metadata appropriate entries
 // related to the storage configuration
-func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, error) {
+func (m meta) SetStorageData(conf *guest.Config, templatesDir string) (string, error) {
 	var data string
 
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileStorage))
@@ -118,7 +199,7 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 		TmpltStorage = string(buf)
 	}
 
-	for i, disk := range conf.Disks {
+	for i, disk := range conf.Storage.Disks {
 		d := new(DiskData)
 		d.ImagePath = disk.Path
 		d.StorageType = disk.Type
@@ -183,7 +264,7 @@ type VirtNetwork struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string) (string, error) {
 	var data string
 	for i, network := range mapping.Networks {
 		list := mapping.NICLists[i]
@@ -247,7 +328,7 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 	return data, nil
 }
 
-func ProcessTemplatePassthrough(port *guest.NIC, tmplt string) (string, error) {
+func processTemplatePassthrough(port *guest.NIC, tmplt string) (string, error) {
 	pciSlice := strings.Split(port.HostNIC.PCIAddr, ":")
 	d := new(PassthroughData)
 	d.HostNicBus = pciSlice[1]
@@ -271,11 +352,11 @@ func treatPhysical(port *guest.NIC, mode *xmlinput.Mode, templatesDir string) (s
 
 	switch mode.Type {
 	case xmlinput.ConTypePassthrough:
-		if tempData, err = ProcessTemplatePassthrough(port, TmpltPassthrough); err != nil {
+		if tempData, err = processTemplatePassthrough(port, TmpltPassthrough); err != nil {
 			return "", utils.FormatError(err)
 		}
 	case xmlinput.ConTypeSRIOV:
-		if tempData, err = ProcessTemplatePassthrough(port, TmpltSriovPassthrough); err != nil {
+		if tempData, err = processTemplatePassthrough(port, TmpltSriovPassthrough); err != nil {
 			return "", utils.FormatError(err)
 		}
 	case xmlinput.ConTypeDirect:
@@ -286,4 +367,8 @@ func treatPhysical(port *guest.NIC, mode *xmlinput.Mode, templatesDir string) (s
 		}
 	}
 	return tempData, nil
+}
+
+func (m meta) SetCustomData(c *guest.Config, templatesDir string) (string, error) {
+	return "", errors.New("SetCustomData is not implemented")
 }

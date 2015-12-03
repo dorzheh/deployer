@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 	"text/template"
 	"time"
@@ -100,4 +101,38 @@ func IntToHexString(number int) string {
 		return "0" + str
 	}
 	return str
+}
+
+func FloatStringsSliceToInt(strSlice []string) (int, error) {
+	resInt := 0
+
+	firstInt, err := strconv.Atoi(strSlice[0])
+	if err != nil {
+		return resInt, err
+	}
+	secondInt, err := strconv.Atoi(strSlice[1])
+	if err != nil {
+		return resInt, err
+	}
+	if secondInt > 5 {
+		resInt = firstInt + 1
+	} else {
+		resInt = firstInt
+	}
+	return resInt, nil
+}
+
+func FloatStringToInt(floatStr string, multiply int) (int, error) {
+	floatResult, err := strconv.ParseFloat(floatStr, 32)
+	if err != nil {
+		return -1, err
+	}
+	if multiply != 0 {
+		floatResult *= float64(multiply)
+	}
+	intResult, err := FloatStringsSliceToInt(strings.Split(fmt.Sprintf("%0.1f", floatResult), "."))
+	if err != nil {
+		return -1, err
+	}
+	return intResult, nil
 }

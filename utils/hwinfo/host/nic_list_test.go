@@ -85,12 +85,12 @@ func TestSortByName(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	l := createTestList()
-	i, err := l.SearchIndexByPCI("0000:00:16.2")
+	i, err := l.IndexByPCI("0000:00:16.2")
 	if err != nil {
 		t.Fatal(err)
 	}
 	l.Remove(i)
-	i, err = l.SearchIndexByPCI("0000:00:16.2")
+	i, err = l.IndexByPCI("0000:00:16.2")
 	if err == nil {
 		t.Fatal("NIC with PCIAddr 0000:00:16.2 still exists")
 	}

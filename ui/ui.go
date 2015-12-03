@@ -1,16 +1,20 @@
 package ui
 
 import (
+	"errors"
 	"fmt"
 	"net"
 	"os"
 	"os/exec"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
 
 	main "github.com/dorzheh/deployer"
-	"github.com/dorzheh/deployer/config/common/xmlinput"
+	"github.com/dorzheh/deployer/builder/image"
+	"github.com/dorzheh/deployer/config"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
@@ -225,10 +229,10 @@ MainLoop:
 	return cfg, nil
 }
 
-func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.NICList) (*deployer.OutputNetworkData, error) {
-	netMetaData := new(deployer.OutputNetworkData)
-	netMetaData.Networks = make([]*xmlinput.Network, 0)
-	netMetaData.NICLists = make([]guest.NICList, 0)
+func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.NICList, gconf *guest.Config) error {
+	// netMetaData := new(deployer.OutputNetworkData)
+	// netMetaData.Networks = make([]*xmlinput.Network, 0)
+	// netMetaData.NICLists = make([]guest.NICList, 0)
 	guestPciSlotCounter := data.GuestNic.PCI.FirstSlot
 	lastGuestPciSlotCounter := guestPciSlotCounter
 	portCounter := 1
@@ -252,12 +256,12 @@ MainLoop:
 				if err != nil {
 					switch err.Error() {
 					case gui.DialogMoveBack:
-						netMetaData.Networks = netMetaData.Networks[:i]
-						netMetaData.NICLists = netMetaData.NICLists[:i]
+						gconf.Networks = gconf.Networks[:i]
+						gconf.NICLists = gconf.NICLists[:i]
 						portCounter = lastPortCounter - 1
 						guestPciSlotCounter = lastGuestPciSlotCounter - 1
 						if i == 0 {
-							return nil, err
+							return err
 						}
 						i--
 						continue MainLoop
@@ -267,7 +271,7 @@ MainLoop:
 					case gui.DialogExit:
 						os.Exit(1)
 					default:
-						return nil, err
+						return err
 					}
 
 				}
@@ -275,7 +279,7 @@ MainLoop:
 
 			retainedNics, err := host_hwfilter.NicsByType(allowedNics, modes)
 			if err != nil {
-				return nil, utils.FormatError(err)
+				return utils.FormatError(err)
 			}
 			if len(retainedNics) == 0 {
 				ui.Output(gui.Warning, "No interfaces have been found.", "Press <OK> to return to menu.")
@@ -289,25 +293,25 @@ MainLoop:
 				switch err.Error() {
 				case gui.DialogMoveBack:
 					if i == 0 {
-						return nil, err
+						return err
 					}
-					netMetaData.Networks = netMetaData.Networks[:i]
-					netMetaData.NICLists = netMetaData.NICLists[:i]
+					gconf.Networks = gconf.Networks[:i]
+					gconf.NICLists = gconf.NICLists[:i]
 					continue PolicyLoop
 				case gui.DialogExit:
 					os.Exit(1)
 				}
 			}
 
-			netMetaData.Networks = append(netMetaData.Networks, net)
-			netMetaData.NICLists = append(netMetaData.NICLists, list)
+			gconf.Networks = append(gconf.Networks, net)
+			gconf.NICLists = append(gconf.NICLists, list)
 			lastPortCounter = portCounter
 			lastGuestPciSlotCounter = guestPciSlotCounter
 			i++
 			break
 		}
 	}
-	return netMetaData, nil
+	return nil
 }
 
 func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCounter *int,
@@ -376,7 +380,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 		// counter for the NIC found,we should remove the NIC object and its references
 		if delNicCounter > 0 {
 			// find the guest NIC object in the guest NICs list
-			if _, index, err := gnics.SearchGuestNicByHostNicObj(hnic); err == nil {
+			if _, index, err := gnics.NicByHostNicObj(hnic); err == nil {
 				// if found :
 				// - remove the object
 				// - decrement guestPortCounter
@@ -405,7 +409,7 @@ func uiNicSelectMenu(ui *gui.DialogUi, data *xmlinput.XMLInputData, guestPortCou
 						tmpNic.Desc, uiNUMAIntToString(tmpNic.NUMANode), nicCounter)
 					indexStrToInt[nicIndex][1] = nicCounter
 					indexStrToInt[nicIndex][2]--
-					if gnic, _, err := gnics.SearchGuestNicByHostNicObj(tmpNic); err == nil {
+					if gnic, _, err := gnics.NicByHostNicObj(tmpNic); err == nil {
 						gnic.PCIAddr.Slot = utils.IntToHexString(indexStrToInt[nicIndex][2])
 					}
 				}
@@ -514,17 +518,12 @@ func UiGatherHWInfo(ui *gui.DialogUi, hidriver deployer.HostinfoDriver, remote b
 	return ui.Wait(msg, time.Second*2, 0, errCh)
 }
 
-type VmConfig struct {
-	CPUs    int
-	RamMb   int
-	DisksMb []int
-}
-
-func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinput.XMLInputData) (*VmConfig, error) {
+func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinput.XMLInputData,
+	pathToMainImage string, sconf *image.Storage, conf *guest.Config) error {
 	var installedRamMb int
 	var maxRAM int
 	var err error
-	conf := new(VmConfig)
+
 	list := make([]string, 0)
 	index := 1
 
@@ -538,7 +537,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 	if xidata.RAM.Configure {
 		installedRamMb, err = driver.RAMSize()
 		if err != nil {
-			return nil, utils.FormatError(err)
+			return utils.FormatError(err)
 		}
 		if xidata.RAM.Max > installedRamMb || xidata.RAM.Max == xmlinput.UnlimitedAlloc {
 			maxRAM = installedRamMb
@@ -567,7 +566,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 	str := " ________________________________________\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
 	installedCpus, err := driver.CPUs()
 	if err != nil {
-		return nil, utils.FormatError(err)
+		return utils.FormatError(err)
 	}
 
 	index--
@@ -583,7 +582,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			resultIndex := 0
 			result, err := ui.Mixedform(str, false, list[0:]...)
 			if err != nil {
-				return nil, err
+				return err
 			}
 			if len(result) < index {
 				continue
@@ -611,6 +610,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 				resultIndex++
 			}
 			if xidata.Disks.Configure {
+				disks := make([]int, 0)
 				for _, disk := range xidata.Disks.Configs {
 					selectedDiskSizeGb, err := strconv.Atoi(result[resultIndex])
 					if err != nil {
@@ -619,13 +619,17 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 					if uiDiskNotOK(ui, selectedDiskSizeGb*1024, disk.Min, disk.Max) {
 						continue MainLoop
 					}
-					conf.DisksMb = append(conf.DisksMb, selectedDiskSizeGb*1024)
+					disks = append(disks, selectedDiskSizeGb*1024)
+					resultIndex++
+				}
+				if conf.Storage, err = config.StorageConfig(pathToMainImage, 0, sconf, disks); err != nil {
+					return err
 				}
 			}
 			break
 		}
 	}
-	return conf, nil
+	return nil
 }
 
 func UiVCPUsOvercommit(ui *gui.DialogUi, installedCpus int) bool {
@@ -678,4 +682,178 @@ func uiDiskNotOK(ui *gui.DialogUi, selectedDiskInMb, minDiskInMb, maxDiskInMb in
 		return true
 	}
 	return false
+}
+
+func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled bool) string {
+	ui.HelpButton(true)
+	ui.SetHelpLabel("Back")
+	ui.SetTitle("VA NUMA Configuration")
+	if helpButtonEnabled {
+		ui.SetExtraLabel("Help")
+	} else {
+		ui.SetExtraLabel("Edit")
+	}
+	var hdr string
+	for _, n := range c.NUMAs {
+		for i, nic := range n.NICs {
+			if nic.HostNIC.Type == host.NicTypePhys || nic.HostNIC.Type == host.NicTypePhysVF {
+				if i%2 == 0 {
+					hdr += fmt.Sprintf("\nNUMA %d: %s", n.CellID, nic.HostNIC.PCIAddr)
+				} else {
+					hdr += fmt.Sprintf(",%s", nic.HostNIC.PCIAddr)
+				}
+			}
+		}
+	}
+
+	hdr += "\n"
+	if hdr != "\n" {
+		hdr = " \n---------------- PCI Devices Topology ---------------" + hdr
+		hdr += "-----------------------------------------------------\n\n"
+	}
+
+	hdr += " __________________ CPU/NUMA Topology ________________\n"
+	hdr += "|____________ VA ___________|_________ Host __________|\n"
+	hdr += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|"
+	return hdr
+}
+
+func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, totalCpusOnHost int) error {
+	editableTag := "2"
+	helpButtonEnabled := false
+
+MainLoop:
+	for {
+		index := 1
+		list := make([]string, 0)
+		keys := make([]int, 0)
+		for _, n := range c.NUMAs {
+			for vcpu, _ := range n.CPUPin {
+				keys = append(keys, vcpu)
+			}
+
+			sort.Ints(keys)
+			var entry string
+			var hostCpu string
+			for _, k := range keys {
+				if len(n.CPUPin[k]) > 1 && len(n.CPUPin[k]) == totalCpusOnHost {
+					hostCpu = "0-" + strconv.Itoa(totalCpusOnHost-1)
+				} else {
+					hostCpu = strconv.Itoa(n.CPUPin[k][0])
+				}
+				if k < 10 {
+					entry = fmt.Sprintf("       %d             %d", k, n.CellID)
+				} else {
+					entry = fmt.Sprintf("       %d            %d", k, n.CellID)
+				}
+
+				indexStr := strconv.Itoa(index)
+				var cpuField string
+				if helpButtonEnabled {
+					cpuField = "24"
+				} else {
+					cpuField = "3"
+				}
+				list = append(list, entry, indexStr, "1", hostCpu, indexStr, "30", cpuField, "0", editableTag)
+				index++
+			}
+		}
+
+		result, err := ui.Mixedform(uiNUMATopologyHeader(ui, c, helpButtonEnabled), true, list[0:]...)
+		if err != nil {
+			if err.Error() == gui.DialogNext {
+				editableTag = "0"
+				helpButtonEnabled = true
+				continue MainLoop
+			}
+			return err
+		}
+
+		if helpButtonEnabled {
+			for _, n := range c.NUMAs {
+				for vcpu, _ := range n.CPUPin {
+					keys = append(keys, vcpu)
+					sort.Ints(keys)
+					for _, k := range keys {
+						cpus := make([]int, 0)
+						if strings.Contains(result[k], ",") {
+							for _, e := range strings.Split(result[k], ",") {
+								if strings.Contains(e, "-") {
+									cpus, err = splitByHypen(e, totalCpusOnHost)
+									if err != nil {
+										ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+										continue MainLoop
+									}
+								} else {
+									cpu, err := strconv.Atoi(e)
+									if err != nil {
+										continue MainLoop
+									}
+									if err := verifyRange(cpu, totalCpusOnHost); err != nil {
+										ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+										continue MainLoop
+									}
+									cpus = append(cpus, cpu)
+								}
+							}
+						} else if strings.Contains(result[k], "-") {
+							cpus, err = splitByHypen(result[k], totalCpusOnHost)
+							if err != nil {
+								ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+								continue MainLoop
+							}
+						} else {
+							cpu, err := strconv.Atoi(result[k])
+							if err != nil {
+								continue MainLoop
+							}
+							fmt.Println(cpu)
+							if err := verifyRange(cpu, totalCpusOnHost); err != nil {
+								ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+								continue MainLoop
+							}
+							cpus = append(cpus, cpu)
+						}
+
+						sort.Ints(cpus)
+						n.CPUPin[k] = cpus
+					}
+				}
+			}
+		}
+		break
+	}
+	return nil
+}
+
+func splitByHypen(e string, totalCpusOnHost int) ([]int, error) {
+	cpus := make([]int, 0)
+
+	firstlast := strings.Split(e, "-")
+	firstInt, err := strconv.Atoi(firstlast[0])
+	if err != nil {
+		return cpus, errors.New("Illegal CPU number.")
+	}
+	if err := verifyRange(firstInt, totalCpusOnHost); err != nil {
+		return cpus, err
+	}
+
+	lastInt, err := strconv.Atoi(firstlast[1])
+	if err != nil {
+		return cpus, errors.New("Illegal CPU number.")
+	}
+	if err := verifyRange(lastInt, totalCpusOnHost); err != nil {
+		return cpus, err
+	}
+	for i := firstInt; i < lastInt+1; i++ {
+		cpus = append(cpus, i)
+	}
+	return cpus, nil
+}
+
+func verifyRange(cpu, totalCpus int) error {
+	if cpu < 0 || cpu > totalCpus-1 {
+		return fmt.Errorf("Selected CPU (%d) is out of range", cpu)
+	}
+	return nil
 }

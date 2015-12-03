@@ -10,14 +10,14 @@ import (
 	"strings"
 
 	"github.com/dorzheh/deployer/builder/image"
-	"github.com/dorzheh/deployer/config/common"
-	"github.com/dorzheh/deployer/config/common/xmlinput"
 	"github.com/dorzheh/deployer/config/metadata"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	envdriver "github.com/dorzheh/deployer/drivers/env_driver/openxen/xen_xl"
 	hwinfodriver "github.com/dorzheh/deployer/drivers/hwinfo_driver/openxen"
 	"github.com/dorzheh/deployer/utils"
+	"github.com/dorzheh/deployer/utils/hwinfo/guest"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"
 )
 
@@ -27,8 +27,12 @@ func CreateConfig(d *deployer.CommonData, i *metadata.InputData) (*metadata.Conf
 	if d.DefaultExportDir == "" {
 		d.DefaultExportDir = "/var/lib/xen"
 	}
-	c := common.RegisterSteps(d)
-	m := &metadata.Config{c, nil, nil, nil, nil, "", nil, nil}
+
+	m, err := metadata.NewMetdataConfig(d, i.StorageConfigFile)
+	if err != nil {
+		return nil, utils.FormatError(err)
+	}
+
 	controller.RegisterSteps(func() func() error {
 		return func() error {
 			var err error
@@ -53,7 +57,7 @@ func (m meta) DefaultMetadata() []byte {
 	return defaultMetdataPVHVM
 }
 
-func (m meta) SetCpuTuneData(cpus map[int][]string, templatesDir string) (string, error) {
+func (m meta) SetCpuTuneData(*guest.Config, string) (string, error) {
 	return "", nil
 }
 
@@ -63,9 +67,9 @@ var blockDevicesSuffix = []string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // SetStorageData is responsible for adding to the metadata appropriate entries
 // related to the storage configuration
-func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, error) {
+func (m meta) SetStorageData(conf *guest.Config, templatesDir string) (string, error) {
 	var e []string
-	for i, disk := range conf.Disks {
+	for i, disk := range conf.Storage.Disks {
 		switch disk.Type {
 		case image.StorageTypeQCOW2:
 			e = append(e, "'tap:qcow2:"+disk.Path+",xvd"+blockDevicesSuffix[i]+",w'")
@@ -86,7 +90,7 @@ func (m meta) SetStorageData(conf *image.Config, templatesDir string) (string, e
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string) (string, error) {
 	var e []string
 	for i, network := range mapping.Networks {
 		list := mapping.NICLists[i]
@@ -122,4 +126,16 @@ func (m meta) SetNetworkData(mapping *deployer.OutputNetworkData, templatesDir s
 		data += strings.Join(e, ",") + "]"
 	}
 	return data, nil
+}
+
+func (m meta) SetCpuConfigData(*guest.Config, string) (string, error) {
+	return "", nil
+}
+
+func (m meta) SetNUMATuneData(*guest.Config, string) (string, error) {
+	return "", nil
+}
+
+func (m meta) SetCustomData(*guest.Config, string) (string, error) {
+	return "", nil
 }

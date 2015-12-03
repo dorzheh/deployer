@@ -84,7 +84,7 @@ func (c *FlowCreator) CreateBuilders(d *deployer.CommonData) (b []deployer.Build
 	util := &image.Utils{
 		Kpartx: filepath.Join(d.RootDir, "install", d.Arch, "bin/kpartx"),
 	}
-	for _, disk := range c.config.StorageConfig.Disks {
+	for _, disk := range c.config.StorageConfig.Configs[0].Disks {
 		imageData := &deployer.ImageBuilderData{
 			ImageConfig: disk,
 			RootfsMp:    d.RootfsMp,

@@ -1,6 +1,7 @@
 package deployer
 
 import (
+	"github.com/dorzheh/deployer/builder/image"
 	ui "github.com/dorzheh/deployer/ui/dialog_ui"
 	ssh "github.com/dorzheh/infra/comm/common"
 )
@@ -39,4 +40,7 @@ type CommonConfig struct {
 
 	// SshConfig represents ssh configuration.
 	SshConfig *ssh.Config
+
+	// Parsed storage configuration file
+	StorageConfig *image.Storage
 }

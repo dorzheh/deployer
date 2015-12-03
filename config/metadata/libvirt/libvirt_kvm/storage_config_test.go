@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/dorzheh/deployer/builder/image"
+	"github.com/dorzheh/deployer/utils/hwinfo/guest"
 )
 
 var data = []byte(`<?xml version="1.0" encoding="UTF-8"?>
@@ -62,11 +63,12 @@ func TestSetStorageData(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	config := c.Configs[0]
-	config.Disks[0].Path = "/var/lib/libvirt/images/maindisk"
+	g := guest.NewConfig()
+	g.Storage = c.Configs[0]
+	g.Storage.Disks[0].Path = "/var/lib/libvirt/images/maindisk"
 
 	d := new(meta)
-	str, err := d.SetStorageData(config, "")
+	str, err := d.SetStorageData(g, "")
 	if err != nil {
 		t.Fatal(err)
 	}

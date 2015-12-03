@@ -1,3 +1,3 @@
 package libvirt_kvm
 
-var TmpltCpuTune = `{{.CpuTuneData}}`
+var TmpltCpuTune = `<cputune>{{.CpuTuneData}}</cputune>`

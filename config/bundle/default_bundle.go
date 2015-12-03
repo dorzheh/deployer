@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/dorzheh/deployer/builder/image"
-	"github.com/dorzheh/deployer/config/common/xmlinput"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 	"github.com/dorzheh/deployer/ui"
 	gui "github.com/dorzheh/deployer/ui/dialog_ui"

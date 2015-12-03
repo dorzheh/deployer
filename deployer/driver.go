@@ -40,7 +40,7 @@ type EnvDriver interface {
 // HostinfoDriver is the interface that has to be implemented in order to
 // gather appropriate HW information from either local or remote host
 type HostinfoDriver interface {
-	// Initialize the driver (mostly needed for UiGatherHWInfo).
+	// Initialize the driver
 	Init() error
 
 	// Returns amount of installed RAM.

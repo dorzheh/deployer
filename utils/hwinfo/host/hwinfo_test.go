@@ -152,7 +152,7 @@ func TestNUMANodesLocal(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer os.Remove(tmpFile)
-	n, err := c.NUMAInfo()
+	n, err := c.NUMANodes()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestNUMANodesRemote(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	n, err := c.NUMAInfo()
+	n, err := c.NUMANodes()
 	if err != nil {
 		t.Fatal(err)
 	}

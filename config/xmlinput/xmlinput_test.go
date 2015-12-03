@@ -13,10 +13,9 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<max>16</max>
 	<default_value>1</default_value>
   </cpu>
-  <cpu_pinning>
-    <configure>true</configure>
-    <ui_advanced_config>false</ui_advanced_config>
-  </cpu_pinning>
+  <numa>
+    <advanced_auto_config>true</advanced_auto_config>
+  </numa>
   <ram>
   	<configure>true</configure>
   	<min_mb>2500</min_mb>
@@ -110,8 +109,9 @@ func TestParseXMLInput(t *testing.T) {
 		}
 	}
 
-	fmt.Printf("%v\n", d.GuestNic.PCI)
-	fmt.Printf("%v\n", d.Networks.Configs[1].UiResetCounter)
+	fmt.Printf("AdvancedAutoConfig %v\n", d.AdvancedAutoConfig)
+	fmt.Printf("uestNic.PCI %v\n", d.GuestNic.PCI)
+	fmt.Printf("Networks.Configs[1].UiResetCounter %v\n", d.Networks.Configs[1].UiResetCounter)
 
 	for _, nic := range d.Allowed {
 		fmt.Printf("\nAllowed : NIC Vendor =>%s|NIC Model => %s\n",

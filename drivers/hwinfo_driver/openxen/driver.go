@@ -59,7 +59,7 @@ func (hi *HostinfoDriver) NUMAInfo() (host.NUMANodes, error) {
 	}
 
 	var err error
-	hi.numanodes, err = hi.c.NUMAInfo()
+	hi.numanodes, err = hi.c.NUMANodes()
 	if err != nil {
 		return nil, err
 	}

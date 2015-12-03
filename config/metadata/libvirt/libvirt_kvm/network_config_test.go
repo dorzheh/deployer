@@ -4,8 +4,7 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dorzheh/deployer/config/common/xmlinput"
-	"github.com/dorzheh/deployer/deployer"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/utils/hwinfo/guest"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"
 )
@@ -145,9 +144,11 @@ func TestSetNetworkDataDirect(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -216,9 +217,11 @@ func TestSetNetworkDataPassthrough(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,9 +290,11 @@ func TestSetNetworkDataSRIOV(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -361,9 +366,11 @@ func TestSetNetworkDataBridged(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -433,9 +440,11 @@ func TestSetNetworkDataOVS(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -507,9 +516,11 @@ func TestSetNetworkDataVirtualNet(t *testing.T) {
 	lists := []guest.NICList{list1, list2}
 	nets := []*xmlinput.Network{net1, net2}
 
-	mapping := &deployer.OutputNetworkData{lists, nets}
+	c := guest.NewConfig()
+	c.NICLists = lists
+	c.Networks = nets
 	d := new(meta)
-	str, err := d.SetNetworkData(mapping, "")
+	str, err := d.SetNetworkData(c, "")
 	if err != nil {
 		t.Fatal(err)
 	}

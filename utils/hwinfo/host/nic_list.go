@@ -30,7 +30,7 @@ func (list *NICList) Remove(index int) {
 	*list = temp
 }
 
-func (list NICList) SearchIndexByPCI(pciaddr string) (int, error) {
+func (list NICList) IndexByPCI(pciaddr string) (int, error) {
 	list.SortByPCI()
 	f := func(i int) bool {
 		return list[i].PCIAddr >= pciaddr
@@ -41,7 +41,7 @@ func (list NICList) SearchIndexByPCI(pciaddr string) (int, error) {
 	return -1, utils.FormatError(fmt.Errorf("index for PCIAddr %s not found", pciaddr))
 }
 
-func (list NICList) SearchIndexByName(name string) (int, error) {
+func (list NICList) IndexByName(name string) (int, error) {
 	list.SortByName()
 	f := func(i int) bool {
 		return list[i].Name >= name
@@ -52,7 +52,7 @@ func (list NICList) SearchIndexByName(name string) (int, error) {
 	return -1, utils.FormatError(fmt.Errorf("index for Name %s not found", name))
 }
 
-func (list NICList) SearchIndexByObj(n *NIC) (int, error) {
+func (list NICList) IndexByObj(n *NIC) (int, error) {
 	for i, nic := range list {
 		if nic == n {
 			return i, nil

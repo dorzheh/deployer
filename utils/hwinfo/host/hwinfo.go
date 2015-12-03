@@ -124,6 +124,8 @@ const (
 	NicTypeVirtualNetwork NicType = "virtnetwork"
 )
 
+const NoNUMA = -1
+
 // NIC information
 type NIC struct {
 	// port name (eth0,br0...)
@@ -182,7 +184,7 @@ func (c *Collector) NICInfo() (NICList, error) {
 				nic := new(NIC)
 				nic.Name = name
 				nic.PCIAddr = "N/A"
-				nic.NUMANode = -1
+				nic.NUMANode = NoNUMA
 
 				conf, err := m.ValueForPath("configuration")
 				if err != nil {
@@ -243,7 +245,7 @@ func (c *Collector) NICInfo() (NICList, error) {
 				Name:     n,
 				Driver:   "bridge",
 				Desc:     "Bridge interface",
-				NUMANode: -1,
+				NUMANode: NoNUMA,
 				PCIAddr:  "N/A",
 				Type:     NicTypeBridge,
 			}
@@ -263,10 +265,11 @@ func (c *Collector) numa4Nic(pciAddr string) (int, error) {
 	}
 	if numaStr == "-1" {
 		numaInt = 0
-	}
-	numaInt, err = strconv.Atoi(numaStr)
-	if err != nil {
-		return numaInt, utils.FormatError(err)
+	} else {
+		numaInt, err = strconv.Atoi(numaStr)
+		if err != nil {
+			return numaInt, utils.FormatError(err)
+		}
 	}
 	return numaInt, nil
 }
@@ -310,28 +313,58 @@ func (c *Collector) RAMSize() (int, error) {
 	return ramsize / 1024, nil
 }
 
-type NUMANodes map[int][]string
+type NUMA struct {
+	CellID   int
+	TotalRAM int
+	FreeRAM  int
+	CPUs     []int
+}
 
-func (c *Collector) NUMAInfo() (NUMANodes, error) {
+type NUMANodes []*NUMA
+
+func (c *Collector) NUMANodes() (NUMANodes, error) {
 	out, err := c.Run("ls -d  /sys/devices/system/node/node[0-9]*")
 	if err != nil {
 		return nil, utils.FormatError(err)
 	}
 
-	numaMap := make(map[int][]string)
+	numas := make([]*NUMA, 0)
 	for i, _ := range strings.SplitAfter(out, "\n") {
+		content, err := ioutil.ReadFile(fmt.Sprintf("/sys/devices/system/node/node%d/meminfo", i))
+		if err != nil {
+			return nil, utils.FormatError(err)
+		}
+
+		n := new(NUMA)
+		n.CellID = i
+		var numaNum int
+		var memStatus string
+		var memAmount int
+		for _, line := range strings.Split(string(content), "\n") {
+			fmt.Sscanf(line, "Node%d%s%dkB", &numaNum, &memStatus, &memAmount)
+			if memStatus == "MemTotal:" {
+				n.TotalRAM = memAmount
+			} else if memStatus == "MemFree:" {
+				n.FreeRAM = memAmount
+			}
+		}
 		out, err := c.Run(fmt.Sprintf("ls -d  /sys/devices/system/node/node%d/cpu[0-9]*", i))
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
-		cpus := make([]string, 0)
+
+		n.CPUs = make([]int, 0)
 		for _, line := range strings.SplitAfter(out, "\n") {
-			cpu := strings.SplitAfter(line, "cpu")[1]
-			cpus = append(cpus, strings.TrimSpace(cpu))
+			cpu := strings.TrimSpace(strings.SplitAfter(line, "cpu")[1])
+			cpuInt, err := strconv.Atoi(cpu)
+			if err != nil {
+				return nil, utils.FormatError(err)
+			}
+			n.CPUs = append(n.CPUs, cpuInt)
 		}
-		numaMap[int(i)] = cpus
+		numas = append(numas, n)
 	}
-	return numaMap, nil
+	return numas, nil
 }
 
 // TotalNUMAs returns amount of NUMA nodes installed on the host
@@ -339,21 +372,32 @@ func (n NUMANodes) TotalNUMAs() int {
 	return len(n)
 }
 
-// TotalCpus returns amount of CPUs bound to the NUMA
-func (n NUMANodes) TotalCpus() int {
-	amount := 0
-	for _, v := range n {
-		amount += len(v)
+// TotalCPUs returns amount of CPUs on all NUMAs
+func (n NUMANodes) TotalCPUs() int {
+	var cpus int
+	for _, node := range n {
+		cpus += len(node.CPUs)
 	}
-	return amount
+	return cpus
 }
 
 // CpusOnNUMA returns a slice of CPUs bound to the given NUMA node
-func (n NUMANodes) CpusOnNUMA(numa int) ([]string, error) {
-	if cpus, ok := n[numa]; ok {
-		return cpus, nil
+func (n NUMANodes) CpusOnNUMA(cellID int) ([]int, error) {
+	for _, node := range n {
+		if node.CellID == cellID {
+			return node.CPUs, nil
+		}
 	}
-	return nil, fmt.Errorf("NUMA %d not found", numa)
+	return nil, fmt.Errorf("NUMA %d not found", cellID)
+}
+
+func (n NUMANodes) NUMAByCellID(cellID int) *NUMA {
+	for _, node := range n {
+		if node.CellID == cellID {
+			return node
+		}
+	}
+	return nil
 }
 
 func prepareFunc(c *Collector, sshconf *ssh.Config, lshwpath string) func() (string, error) {

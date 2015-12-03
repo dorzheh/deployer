@@ -10,5 +10,5 @@ var numas = map[int][]string{
 }
 
 func SetCpuTuneDataTest(t *testing.T) {
-	fmt.Printf(SetCpuTuneData(numas))
+	fmt.Printf(setCpuTuneData(numas))
 }

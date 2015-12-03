@@ -19,13 +19,17 @@ func (list *NICList) Add(n *NIC) {
 	*list = append(*list, n)
 }
 
+func (list *NICList) AppendList(l NICList) {
+	*list = append(*list, l[:]...)
+}
+
 func (list *NICList) Remove(index int) {
 	temp := *list
 	temp = append(temp[:index], temp[index+1:]...)
 	*list = temp
 }
 
-func (list NICList) SearchIndexByPCISlot(pcislot string) (int, error) {
+func (list NICList) IndexByPCISlot(pcislot string) (int, error) {
 	list.SortByPCISlot()
 	f := func(i int) bool {
 		return list[i].PCIAddr.Slot >= pcislot
@@ -36,7 +40,7 @@ func (list NICList) SearchIndexByPCISlot(pcislot string) (int, error) {
 	return -1, utils.FormatError(fmt.Errorf("index for PCI slot %s not found", pcislot))
 }
 
-func (list NICList) SearchGuestNicByHostNicObj(n *host.NIC) (*NIC, int, error) {
+func (list NICList) NicByHostNicObj(n *host.NIC) (*NIC, int, error) {
 	for i, nic := range list {
 		if nic.HostNIC == n {
 			return nic, i, nil
@@ -53,11 +57,25 @@ func (list NICList) SortByPCISlot() {
 	sort.Sort(SortByPCISlot(list))
 }
 
-func (list NICList) SearchGuestNicsByHostNicVendor(vendor string) NICList {
+func (list NICList) NicsByHostNicVendor(vendor string) NICList {
 	var newList NICList
 
 	for _, nic := range list {
 		if nic.HostNIC.Vendor == vendor {
+			if newList == nil {
+				newList = NewNICList()
+			}
+			newList.Add(nic)
+		}
+	}
+	return newList
+}
+
+func (list NICList) NicsByNUMAId(cellID int) NICList {
+	var newList NICList
+
+	for _, nic := range list {
+		if nic.HostNIC.NUMANode == cellID {
 			if newList == nil {
 				newList = NewNICList()
 			}
