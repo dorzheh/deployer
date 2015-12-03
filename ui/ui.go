@@ -599,27 +599,27 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 				resultIndex++
 			}
 			if xidata.RAM.Configure {
-				selectedRamGb, err := strconv.Atoi(result[resultIndex])
+				selectedRamMb, err := utils.FloatStringToInt(result[resultIndex], 1024)
 				if err != nil {
+					continue MainLoop
+				}
+				if uiRamNotOK(ui, selectedRamMb, installedRamMb, xidata.RAM.Min, maxRAM) {
 					continue
 				}
-				if uiRamNotOK(ui, selectedRamGb*1024, installedRamMb, xidata.RAM.Min, maxRAM) {
-					continue
-				}
-				conf.RamMb = selectedRamGb * 1024
+				conf.RamMb = selectedRamMb
 				resultIndex++
 			}
 			if xidata.Disks.Configure {
 				disks := make([]int, 0)
 				for _, disk := range xidata.Disks.Configs {
-					selectedDiskSizeGb, err := strconv.Atoi(result[resultIndex])
+					selectedDiskSizeMb, err := utils.FloatStringToInt(result[resultIndex], 1024)
 					if err != nil {
 						continue MainLoop
 					}
-					if uiDiskNotOK(ui, selectedDiskSizeGb*1024, disk.Min, disk.Max) {
+					if uiDiskNotOK(ui, selectedDiskSizeMb, disk.Min, disk.Max) {
 						continue MainLoop
 					}
-					disks = append(disks, selectedDiskSizeGb*1024)
+					disks = append(disks, selectedDiskSizeMb*1024)
 					resultIndex++
 				}
 				if conf.Storage, err = config.StorageConfig(pathToMainImage, 0, sconf, disks); err != nil {
