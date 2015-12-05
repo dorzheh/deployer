@@ -187,12 +187,11 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 			if err != nil {
 				return utils.FormatError(err)
 			}
-
 			if xid.NUMA.AutoConfig {
 				if xid.WarnOnUnpinnedCPUs {
 					pinned, err := c.EnvDriver.AllCPUsPinned()
 					if err != nil {
-						return err
+						return utils.FormatError(err)
 					}
 					if !pinned {
 						gui.UiWarningOnUnpinnedCPUs(d.Ui)

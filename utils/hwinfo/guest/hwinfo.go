@@ -63,14 +63,8 @@ func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, pinning bool
 			if ok {
 				gn.NICs.AppendList(l)
 			}
-			if pinning {
-				switch {
-				case c.CPUs <= len(n.CPUs):
-					gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs[i])
-					break
-				default:
-					break
-				}
+			if pinning && c.CPUs <= len(n.CPUs) {
+				gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs[i])
 			} else {
 				gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs...)
 			}

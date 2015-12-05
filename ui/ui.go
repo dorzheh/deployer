@@ -693,6 +693,7 @@ func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled b
 	} else {
 		ui.SetExtraLabel("Edit")
 	}
+
 	var hdr string
 	for _, n := range c.NUMAs {
 		for i, nic := range n.NICs {
@@ -721,12 +722,14 @@ func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled b
 func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, totalCpusOnHost int) error {
 	editableTag := "2"
 	helpButtonEnabled := false
+	var list []string
 
 MainLoop:
 	for {
 		index := 1
-		list := make([]string, 0)
 		keys := make([]int, 0)
+		list = make([]string, 0)
+
 		for _, n := range c.NUMAs {
 			for vcpu, _ := range n.CPUPin {
 				keys = append(keys, vcpu)
@@ -771,7 +774,6 @@ MainLoop:
 			}
 			return err
 		}
-
 		if helpButtonEnabled {
 			for _, n := range c.NUMAs {
 				for vcpu, _ := range n.CPUPin {
