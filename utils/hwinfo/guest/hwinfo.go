@@ -71,8 +71,9 @@ func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, pinning bool
 				default:
 					break
 				}
+			} else {
+				gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs...)
 			}
-			gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs...)
 		}
 	}
 

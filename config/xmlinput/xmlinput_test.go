@@ -14,7 +14,8 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
 	<default_value>1</default_value>
   </cpu>
   <numa>
-    <advanced_auto_config>true</advanced_auto_config>
+    <auto_config>true</auto_config>
+    <warn_on_unpinned_cpus>true</warn_on_unpinned_cpus>
   </numa>
   <ram>
   	<configure>true</configure>
@@ -109,8 +110,8 @@ func TestParseXMLInput(t *testing.T) {
 		}
 	}
 
-	fmt.Printf("AdvancedAutoConfig %v\n", d.AdvancedAutoConfig)
-	fmt.Printf("uestNic.PCI %v\n", d.GuestNic.PCI)
+	fmt.Printf("AutoConfig %v\n", d.AutoConfig)
+	fmt.Printf("Guest NIC PCI %v\n", d.GuestNic.PCI)
 	fmt.Printf("Networks.Configs[1].UiResetCounter %v\n", d.Networks.Configs[1].UiResetCounter)
 
 	for _, nic := range d.Allowed {

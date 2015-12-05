@@ -763,6 +763,9 @@ MainLoop:
 		if err != nil {
 			if err.Error() == gui.DialogNext {
 				editableTag = "0"
+				if helpButtonEnabled {
+					uiShowNumaTopologyHelpMsg(ui)
+				}
 				helpButtonEnabled = true
 				continue MainLoop
 			}
@@ -824,6 +827,34 @@ MainLoop:
 		break
 	}
 	return nil
+}
+
+func uiShowNumaTopologyHelpMsg(ui *gui.DialogUi) {
+	msg := "CPU Pinning Help\n"
+	msg += "----------------\n\n"
+	msg += "Example 1 : one to one pinning\n\n"
+	msg += " __________________ CPU/NUMA Topology ________________\n"
+	msg += "|____________ VA ___________|_________ Host __________|\n"
+	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
+	msg += "|______ 0 ____|_____ 0 _____|__________ 0 ____________|\n\n"
+	msg += "VA CPU 0 will be pinned to the host CPU 0\n\n\n"
+	msg += "Example 2 : pinning to a range of the host CPUs\n\n"
+	msg += " __________________ CPU/NUMA Topology ________________\n"
+	msg += "|____________ VA ___________|_________ Host __________|\n"
+	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
+	msg += "|______ 0 ____|_____ 0 _____|__________ 0-3 __________|\n\n"
+	msg += "VA CPUs will be pinned to the host CPUs 0,1,2 and 3\n\n\n"
+	msg += "Example 3 : pinning to a list of the host CPUs\n\n"
+	msg += " __________________ CPU/NUMA Topology ________________\n"
+	msg += "|____________ VA ___________|_________ Host __________|\n"
+	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
+	msg += "|______ 0 ____|_____ 0 _____|_______ 0,1,2,3,8 _______|\n\n"
+	msg += "VA CPUs will be pinned to the host CPUs 0,1,2,3 and 8\n\n"
+	ui.Msgbox(msg)
+}
+
+func UiWarningOnUnpinnedCPUs(ui *gui.DialogUi) {
+	ui.Output(gui.Warning, "Found VMs configured with more than one CPU affinity.", "Press <OK> to proceed.")
 }
 
 func splitByHypen(e string, totalCpusOnHost int) ([]int, error) {

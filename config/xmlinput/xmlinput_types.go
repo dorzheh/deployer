@@ -32,7 +32,8 @@ type CPU struct {
 }
 
 type NUMA struct {
-	AdvancedAutoConfig bool `xml:"numa>advanced_auto_config"`
+	AutoConfig         bool `xml:"numa>auto_config"`
+	WarnOnUnpinnedCPUs bool `xml:"numa>warn_on_unpinned_cpus"`
 }
 
 type RAM struct {

@@ -94,7 +94,7 @@ func setCpuConfigData(c *guest.Config) string {
 				vcpusStr = append(vcpusStr, strconv.Itoa(vcpu))
 			}
 			memory := n.MemoryMb * 1024
-			cpuConfigData += "\n" + `<cell id='` + strconv.Itoa(n.CellID) + `' cpus='` + strings.Join(vcpusStr, ",") + `' memory='` + strconv.Itoa(memory) + `'/>`
+			cpuConfigData += "\n" + `<cell id='` + strconv.Itoa(n.CellID) + `' cpus='` + strings.Join(vcpusStr, ",") + `' memory='` + strconv.Itoa(memory) + `' unit='KiB'/>`
 		}
 		cpuConfigData += "\n" + `</numa>`
 	}

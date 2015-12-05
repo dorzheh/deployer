@@ -87,3 +87,8 @@ func (d *Driver) Version() (string, error) {
 func (d *Driver) MaxVCPUsPerGuest() int {
 	return 64
 }
+
+// Returns true if all domains configured for CPU affinity
+func (d *Driver) AllCPUsPinned() (bool, error) {
+	return true, nil
+}

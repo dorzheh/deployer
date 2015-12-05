@@ -35,6 +35,9 @@ type EnvDriver interface {
 
 	// Returns maximal Virtual CPUs per guest
 	MaxVCPUsPerGuest() int
+
+	// Returns true if all Virtual Appliances in the farm configured for one-to-one CPU pinning
+	AllCPUsPinned() (bool, error)
 }
 
 // HostinfoDriver is the interface that has to be implemented in order to

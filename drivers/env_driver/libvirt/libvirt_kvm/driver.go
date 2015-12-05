@@ -118,3 +118,31 @@ func (d *Driver) Version() (string, error) {
 func (d *Driver) MaxVCPUsPerGuest() int {
 	return 64
 }
+
+// Returns true if all domains configured for CPU affinity
+func (d *Driver) AllCPUsPinned() (bool, error) {
+	out, err := d.Run("virsh list --name --all")
+	if err != nil {
+		return false, err
+	}
+
+	amountOfdomains := 0
+	amountOfPinnedDomains := 0
+	for _, s := range strings.Split(out, "\n") {
+		if s != "" {
+			out, err := d.Run("virsh vcpuinfo " + s)
+			if err != nil {
+				return false, err
+			}
+
+			amountOfdomains++
+			if strings.Contains(out, "-") {
+				amountOfPinnedDomains++
+			}
+		}
+	}
+	if amountOfPinnedDomains == amountOfdomains {
+		return true, nil
+	}
+	return false, nil
+}

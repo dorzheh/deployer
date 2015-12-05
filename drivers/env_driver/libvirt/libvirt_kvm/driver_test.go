@@ -28,3 +28,12 @@ func TestVersion(t *testing.T) {
 	}
 	fmt.Printf("DEBUG: driver version => %s\n", v)
 }
+
+func TestAllCPUsPinned(t *testing.T) {
+	d := NewDriver(nil)
+	pinned, err := d.AllCPUsPinned()
+	if err != nil {
+		t.Fatal(err)
+	}
+	fmt.Printf("AllCPUsPinned result : %v\n", pinned)
+}

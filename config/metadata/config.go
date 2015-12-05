@@ -187,7 +187,17 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 			if err != nil {
 				return utils.FormatError(err)
 			}
-			if xid.NUMA.AdvancedAutoConfig {
+
+			if xid.NUMA.AutoConfig {
+				if xid.WarnOnUnpinnedCPUs {
+					pinned, err := c.EnvDriver.AllCPUsPinned()
+					if err != nil {
+						return err
+					}
+					if !pinned {
+						gui.UiWarningOnUnpinnedCPUs(d.Ui)
+					}
+				}
 				if numas.TotalNUMAs() == 1 {
 					if err := c.GuestConfig.SetTopologySingleVirtualNUMA(numas, true); err != nil {
 						return utils.FormatError(err)
