@@ -128,7 +128,7 @@ func setCpuTuneData(numas []*guest.NUMA) string {
 	var cpuTuneData string
 
 	for _, n := range numas {
-		var keys []int
+		keys := make([]int, 0)
 		for vcpu, _ := range n.CPUPin {
 			keys = append(keys, vcpu)
 		}

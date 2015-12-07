@@ -230,9 +230,6 @@ MainLoop:
 }
 
 func UiNetworks(ui *gui.DialogUi, data *xmlinput.XMLInputData, allowedNics host.NICList, gconf *guest.Config) error {
-	// netMetaData := new(deployer.OutputNetworkData)
-	// netMetaData.Networks = make([]*xmlinput.Network, 0)
-	// netMetaData.NICLists = make([]guest.NICList, 0)
 	guestPciSlotCounter := data.GuestNic.PCI.FirstSlot
 	lastGuestPciSlotCounter := guestPciSlotCounter
 	portCounter := 1
@@ -696,20 +693,16 @@ func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled b
 
 	var hdr string
 	for _, n := range c.NUMAs {
-		for i, nic := range n.NICs {
+		for _, nic := range n.NICs {
 			if nic.HostNIC.Type == host.NicTypePhys || nic.HostNIC.Type == host.NicTypePhysVF {
-				if i%2 == 0 {
-					hdr += fmt.Sprintf("\nNUMA %d: %s", n.CellID, nic.HostNIC.PCIAddr)
-				} else {
-					hdr += fmt.Sprintf(",%s", nic.HostNIC.PCIAddr)
-				}
+				hdr += fmt.Sprintf("NUMA %d: %s\n", nic.HostNIC.NUMANode, nic.HostNIC.PCIAddr)
 			}
 		}
 	}
 
 	hdr += "\n"
 	if hdr != "\n" {
-		hdr = " \n---------------- PCI Devices Topology ---------------" + hdr
+		hdr = " \n---------------- PCI Devices Topology ---------------\n" + hdr
 		hdr += "-----------------------------------------------------\n\n"
 	}
 
@@ -727,10 +720,10 @@ func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, totalCpusOnHost int) erro
 MainLoop:
 	for {
 		index := 1
-		keys := make([]int, 0)
 		list = make([]string, 0)
 
 		for _, n := range c.NUMAs {
+			keys := make([]int, 0)
 			for vcpu, _ := range n.CPUPin {
 				keys = append(keys, vcpu)
 			}
@@ -775,6 +768,7 @@ MainLoop:
 			return err
 		}
 		if helpButtonEnabled {
+			keys := make([]int, 0)
 			for _, n := range c.NUMAs {
 				for vcpu, _ := range n.CPUPin {
 					keys = append(keys, vcpu)
@@ -812,7 +806,6 @@ MainLoop:
 							if err != nil {
 								continue MainLoop
 							}
-							fmt.Println(cpu)
 							if err := verifyRange(cpu, totalCpusOnHost); err != nil {
 								ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
 								continue MainLoop

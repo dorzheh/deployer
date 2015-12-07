@@ -56,13 +56,15 @@ func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, pinning bool
 	gn.CPUPin = make(map[int][]int, 0)
 	nicNumaMapping, _ := numaNicsMapping(c, numas)
 
+	for _, n := range numas {
+		l, ok := nicNumaMapping[n.CellID]
+		if ok {
+			gn.NICs.AppendList(l)
+		}
+	}
 	for i := 0; i < c.CPUs; i++ {
 		gn.VCPUs = append(gn.VCPUs, i)
 		for _, n := range numas {
-			l, ok := nicNumaMapping[n.CellID]
-			if ok {
-				gn.NICs.AppendList(l)
-			}
 			if pinning && c.CPUs <= len(n.CPUs) {
 				gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs[i])
 			} else {
@@ -87,6 +89,9 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 	}
 
 	nicNumaMapping, totalAmountOfPorts := numaNicsMapping(c, numas)
+	if totalAmountOfPorts == 0 {
+		return c.SetTopologySingleVirtualNUMA(numas, true)
+	}
 
 	cellID := 0
 	vcpuID := 0
@@ -108,7 +113,7 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 			}
 
 			// fmt.Printf("total amount of ports = %d\n", totalAmountOfPorts)
-			// fmt.Printf("amount of ports on NUMA = %d\n", len(portsList))
+			// fmt.Printf("amount of ports on NUMA %d = %d\n", n.CellID, len(portsList))
 			// fmt.Printf("percentage = %d\n", percentage)
 			// fmt.Printf("amount of MemoryMb = %d\n", amountOfMemoryMb)
 			// fmt.Printf("amount of CPUS = %d\n", amountOfCpus)
@@ -153,18 +158,12 @@ func numaNicsMapping(c *Config, numas host.NUMANodes) (map[int][]*NIC, int) {
 
 	for _, l := range c.NICLists {
 		for _, n := range numas {
-			cellID := 0
-			if n.CellID != host.NoNUMA {
-				cellID = n.CellID
-			}
-
-			pList := l.NicsByNUMAId(cellID)
+			pList := l.NicsByNUMAId(n.CellID)
 			if pList.Length() > 0 {
 				totalAmountOfPorts += pList.Length()
-				nicNumaMapping[cellID] = append(nicNumaMapping[cellID], pList...)
+				nicNumaMapping[n.CellID] = append(nicNumaMapping[n.CellID], pList...)
 			}
 		}
 	}
-
 	return nicNumaMapping, totalAmountOfPorts
 }
