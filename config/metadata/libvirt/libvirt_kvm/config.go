@@ -67,6 +67,7 @@ const (
 )
 
 type CpuConfigData struct {
+	CPUPolicy  string
 	NUMAConfig string
 }
 
@@ -76,29 +77,43 @@ func (m meta) SetCpuConfigData(c *guest.Config, templatesDir string) (string, er
 		TmpltCpuConfig = string(buf)
 	}
 
-	tempData, err := utils.ProcessTemplate(TmpltCpuConfig, &CpuConfigData{setCpuConfigData(c)})
+	cfg := new(CpuConfigData)
+	cfg.CPUPolicy, cfg.NUMAConfig = setCpuConfigData(c)
+	tempData, err := utils.ProcessTemplate(TmpltCpuConfig, cfg)
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
 	return string(tempData) + "\n", nil
 }
 
-func setCpuConfigData(c *guest.Config) string {
+func setCpuConfigData(c *guest.Config) (string, string) {
+	var cpuPolicy string
+	if c.LargeHugePagesSupported {
+		cpuPolicy = `<feature policy='require' name='pdpe1gb'/>`
+	}
+
 	var cpuConfigData string
 
-	if c.ConfigNUMAs {
+	if c.OptimizationFailureMemory == false {
 		cpuConfigData = `<numa>`
 		for _, n := range c.NUMAs {
-			var vcpusStr []string
-			for _, vcpu := range n.VCPUs {
-				vcpusStr = append(vcpusStr, strconv.Itoa(vcpu))
+			keys := make([]int, 0)
+			for vcpu, _ := range n.CPUPin {
+				keys = append(keys, vcpu)
 			}
+
+			var vcpusStr []string
+			sort.Ints(keys)
+			for _, k := range keys {
+				vcpusStr = append(vcpusStr, strconv.Itoa(k))
+			}
+
 			memory := n.MemoryMb * 1024
 			cpuConfigData += "\n" + `<cell id='` + strconv.Itoa(n.CellID) + `' cpus='` + strings.Join(vcpusStr, ",") + `' memory='` + strconv.Itoa(memory) + `' unit='KiB'/>`
 		}
 		cpuConfigData += "\n" + `</numa>`
 	}
-	return cpuConfigData
+	return cpuPolicy, cpuConfigData
 }
 
 // --- metadata configuration: cpu tuning --- //
@@ -126,21 +141,29 @@ func (m meta) SetCpuTuneData(c *guest.Config, templatesDir string) (string, erro
 
 func setCpuTuneData(numas []*guest.NUMA) string {
 	var cpuTuneData string
+	tempData := make(map[int]map[int][]int)
 
 	for _, n := range numas {
-		keys := make([]int, 0)
-		for vcpu, _ := range n.CPUPin {
-			keys = append(keys, vcpu)
+		for vcpu, cpus := range n.CPUPin {
+			tempData[vcpu] = make(map[int][]int)
+			tempData[vcpu][n.CellID] = cpus
 		}
+	}
 
-		sort.Ints(keys)
-		for _, k := range keys {
-			var pcpusStrSlice []string
-			for _, pcpu := range n.CPUPin[k] {
+	keys := make([]int, 0)
+	for k, _ := range tempData {
+		keys = append(keys, k)
+	}
+
+	sort.Ints(keys)
+	for _, key := range keys {
+		var pcpusStrSlice []string
+		for _, v := range tempData[key] {
+			for _, pcpu := range v {
 				pcpusStrSlice = append(pcpusStrSlice, strconv.Itoa(pcpu))
 			}
-			cpuTuneData += "\n" + `<vcpupin vcpu='` + strconv.Itoa(k) + `' cpuset='` + strings.Join(pcpusStrSlice, ",") + `'/>`
 		}
+		cpuTuneData += "\n" + `<vcpupin vcpu='` + strconv.Itoa(key) + `' cpuset='` + strings.Join(pcpusStrSlice, ",") + `'/>`
 	}
 	return cpuTuneData
 }
@@ -161,17 +184,18 @@ func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string) (string, err
 		TmpltNUMATune = string(buf)
 	}
 
-	tempData, err := utils.ProcessTemplate(TmpltNUMATune, &NUMATuneData{setNUMATuneData(c.NUMAs)})
+	tempData, err := utils.ProcessTemplate(TmpltNUMATune, &NUMATuneData{setNUMATuneData(c.HostNUMAIds)})
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
 	return string(tempData) + "\n", nil
 }
 
-func setNUMATuneData(numas []*guest.NUMA) string {
+func setNUMATuneData(numas []int) string {
 	var cells []string
+	sort.Ints(numas)
 	for _, n := range numas {
-		cells = append(cells, strconv.Itoa(n.CellID))
+		cells = append(cells, strconv.Itoa(n))
 	}
 	return strings.Join(cells, ",")
 }

@@ -233,7 +233,7 @@ func TestSetTopologySingleNUMA(t *testing.T) {
 		fmt.Println("\n===== Guest NUMA info =====")
 		fmt.Printf("CellID: %v\n", gn.CellID)
 		fmt.Printf("MemoryMb: %v\n", gn.MemoryMb)
-		fmt.Printf("vCPUs: %v\n", gn.VCPUs)
+		fmt.Printf("vCPUs: %v\n", gn.CPUPin)
 	}
 }
 
@@ -254,7 +254,7 @@ func TestSetTopologySingleVirtualNUMA(t *testing.T) {
 		fmt.Println("\n===== Guest NUMA info =====")
 		fmt.Printf("CellID: %v\n", gn.CellID)
 		fmt.Printf("MemoryMb: %v\n", gn.MemoryMb)
-		fmt.Printf("vCPUs: %v\n", gn.VCPUs)
+		fmt.Printf("vCPUs: %v\n", gn.CPUPin)
 	}
 }
 
@@ -299,7 +299,6 @@ func TestSetTopologyOneToOnePinningMultipleNUMA(t *testing.T) {
 		fmt.Println("\n===== Guest NUMA info =====")
 		fmt.Printf("CellID: %v\n", gn.CellID)
 		fmt.Printf("MemoryMb: %v\n", gn.MemoryMb)
-		fmt.Printf("vCPUs: %v\n", gn.VCPUs)
 		fmt.Printf("CPU pinning %v\n", gn.CPUPin)
 	}
 }

@@ -21,6 +21,10 @@ func NewDriver(config *ssh.Config) *Driver {
 	return d
 }
 
+func (d *Driver) Id() string {
+	return "QEMU-Libvirt"
+}
+
 func (d *Driver) DefineDomain(domainConfig string) error {
 	d.Lock()
 	defer d.Unlock()

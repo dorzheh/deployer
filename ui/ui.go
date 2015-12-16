@@ -560,7 +560,7 @@ func UiVmConfig(ui *gui.DialogUi, driver deployer.HostinfoDriver, xidata *xmlinp
 			index++
 		}
 	}
-	str := " ________________________________________\n|	 Resource	 |	 Supported	 |	 Allocated	 |"
+	str := " ______________________________________\n|	 Resource	 |		Maximum		|		Allocated		|"
 	installedCpus, err := driver.CPUs()
 	if err != nil {
 		return utils.FormatError(err)
@@ -681,28 +681,24 @@ func uiDiskNotOK(ui *gui.DialogUi, selectedDiskInMb, minDiskInMb, maxDiskInMb in
 	return false
 }
 
-func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled bool) string {
+func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config) string {
 	ui.HelpButton(true)
 	ui.SetHelpLabel("Back")
 	ui.SetTitle("VA NUMA Configuration")
-	if helpButtonEnabled {
-		ui.SetExtraLabel("Help")
-	} else {
-		ui.SetExtraLabel("Edit")
-	}
+	ui.SetExtraLabel("Edit")
 
 	var hdr string
 	for _, n := range c.NUMAs {
 		for _, nic := range n.NICs {
 			if nic.HostNIC.Type == host.NicTypePhys || nic.HostNIC.Type == host.NicTypePhysVF {
-				hdr += fmt.Sprintf("NUMA %d: %s\n", nic.HostNIC.NUMANode, nic.HostNIC.PCIAddr)
+				hdr += fmt.Sprintf("\nNUMA %d: %s", nic.HostNIC.NUMANode, nic.HostNIC.PCIAddr)
 			}
 		}
 	}
 
 	hdr += "\n"
 	if hdr != "\n" {
-		hdr = " \n---------------- PCI Devices Topology ---------------\n" + hdr
+		hdr = " \n---------------- PCI Devices Topology ---------------" + hdr
 		hdr += "-----------------------------------------------------\n\n"
 	}
 
@@ -712,134 +708,34 @@ func uiNUMATopologyHeader(ui *gui.DialogUi, c *guest.Config, helpButtonEnabled b
 	return hdr
 }
 
-func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, totalCpusOnHost int) error {
-	editableTag := "2"
-	helpButtonEnabled := false
-	var list []string
-
-MainLoop:
-	for {
-		index := 1
-		list = make([]string, 0)
-
-		for _, n := range c.NUMAs {
-			keys := make([]int, 0)
-			for vcpu, _ := range n.CPUPin {
-				keys = append(keys, vcpu)
-			}
-
-			sort.Ints(keys)
-			var entry string
-			var hostCpu string
-			for _, k := range keys {
-				if len(n.CPUPin[k]) > 1 && len(n.CPUPin[k]) == totalCpusOnHost {
-					hostCpu = "0-" + strconv.Itoa(totalCpusOnHost-1)
-				} else {
-					hostCpu = strconv.Itoa(n.CPUPin[k][0])
-				}
-				if k < 10 {
-					entry = fmt.Sprintf("       %d             %d", k, n.CellID)
-				} else {
-					entry = fmt.Sprintf("       %d            %d", k, n.CellID)
-				}
-
-				indexStr := strconv.Itoa(index)
-				var cpuField string
-				if helpButtonEnabled {
-					cpuField = "24"
-				} else {
-					cpuField = "3"
-				}
-				list = append(list, entry, indexStr, "1", hostCpu, indexStr, "30", cpuField, "0", editableTag)
-				index++
-			}
-		}
-
-		result, err := ui.Mixedform(uiNUMATopologyHeader(ui, c, helpButtonEnabled), true, list[0:]...)
-		if err != nil {
-			if err.Error() == gui.DialogNext {
-				editableTag = "0"
-				if helpButtonEnabled {
-					uiShowNumaTopologyHelpMsg(ui)
-				}
-				helpButtonEnabled = true
-				continue MainLoop
-			}
-			return err
-		}
-		if helpButtonEnabled {
-			keys := make([]int, 0)
-			for _, n := range c.NUMAs {
-				for vcpu, _ := range n.CPUPin {
-					keys = append(keys, vcpu)
-					sort.Ints(keys)
-					for _, k := range keys {
-						cpus := make([]int, 0)
-						if strings.Contains(result[k], ",") {
-							for _, e := range strings.Split(result[k], ",") {
-								if strings.Contains(e, "-") {
-									cpus, err = splitByHypen(e, totalCpusOnHost)
-									if err != nil {
-										ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
-										continue MainLoop
-									}
-								} else {
-									cpu, err := strconv.Atoi(e)
-									if err != nil {
-										continue MainLoop
-									}
-									if err := verifyRange(cpu, totalCpusOnHost); err != nil {
-										ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
-										continue MainLoop
-									}
-									cpus = append(cpus, cpu)
-								}
-							}
-						} else if strings.Contains(result[k], "-") {
-							cpus, err = splitByHypen(result[k], totalCpusOnHost)
-							if err != nil {
-								ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
-								continue MainLoop
-							}
-						} else {
-							cpu, err := strconv.Atoi(result[k])
-							if err != nil {
-								continue MainLoop
-							}
-							if err := verifyRange(cpu, totalCpusOnHost); err != nil {
-								ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
-								continue MainLoop
-							}
-							cpus = append(cpus, cpu)
-						}
-
-						sort.Ints(cpus)
-						n.CPUPin[k] = cpus
-					}
-				}
-			}
-		}
-		break
-	}
-	return nil
-}
-
 func uiShowNumaTopologyHelpMsg(ui *gui.DialogUi) {
 	msg := "CPU Pinning Help\n"
 	msg += "----------------\n\n"
 	msg += "Example 1 : one to one pinning\n\n"
+	msg += " _____________________________________\n"
+	msg += "| VA vNUMA ID : 0_____________________|\n"
+	msg += "| Host CPU(s) : 0_____________________|\n"
+	msg += "|_____________________________________|\n\n"
 	msg += " __________________ CPU/NUMA Topology ________________\n"
 	msg += "|____________ VA ___________|_________ Host __________|\n"
 	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
 	msg += "|______ 0 ____|_____ 0 _____|__________ 0 ____________|\n\n"
 	msg += "VA CPU 0 will be pinned to the host CPU 0\n\n\n"
 	msg += "Example 2 : pinning to a range of the host CPUs\n\n"
+	msg += " _____________________________________\n"
+	msg += "| VA vNUMA ID : 0_____________________|\n"
+	msg += "| Host CPU(s) : 0-3___________________|\n"
+	msg += "|_____________________________________|\n\n"
 	msg += " __________________ CPU/NUMA Topology ________________\n"
 	msg += "|____________ VA ___________|_________ Host __________|\n"
 	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
-	msg += "|______ 0 ____|_____ 0 _____|__________ 0-3 __________|\n\n"
+	msg += "|______ 0 ____|_____ 0 _____|__________ 0,1,2,3_______|\n\n"
 	msg += "VA CPUs will be pinned to the host CPUs 0,1,2 and 3\n\n\n"
 	msg += "Example 3 : pinning to a list of the host CPUs\n\n"
+	msg += " _____________________________________\n"
+	msg += "| VA vNUMA ID : 0_____________________|\n"
+	msg += "| Host CPU(s) : 0,1,2,3,8_____________|\n"
+	msg += "|_____________________________________|\n\n"
 	msg += " __________________ CPU/NUMA Topology ________________\n"
 	msg += "|____________ VA ___________|_________ Host __________|\n"
 	msg += "|____ vCPU ___|___ vNUMA ___|_________CPU(s) _________|\n"
@@ -848,8 +744,194 @@ func uiShowNumaTopologyHelpMsg(ui *gui.DialogUi) {
 	ui.Msgbox(msg)
 }
 
-func UiWarningOnUnpinnedCPUs(ui *gui.DialogUi) {
-	ui.Output(gui.Warning, "Found VMs configured with more than one CPU affinity.", "Press <OK> to proceed.")
+func UiWarningOnOptimizationFailure(ui *gui.DialogUi, warningStr string) bool {
+	ui.SetTitle(gui.Warning)
+	ui.SetSize(10, 80)
+	ui.SetLabel("Virtual machine configuration can not be optimized.\n" + warningStr + "\n\nDo you want to continue?")
+	return ui.Yesno()
+}
+
+func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, d deployer.EnvDriver, totalCpusOnHost int) error {
+	var list []string
+
+MainLoop:
+	for {
+		list = make([]string, 0)
+		tempData := make(map[int]map[int]string)
+
+		for _, n := range c.NUMAs {
+			keys := make([]int, 0)
+			for vcpu, _ := range n.CPUPin {
+				keys = append(keys, vcpu)
+			}
+
+			sort.Ints(keys)
+			var hostCpu string
+			for _, k := range keys {
+				if len(n.CPUPin[k]) > 1 {
+					if len(n.CPUPin[k]) == totalCpusOnHost {
+						hostCpu = "0-" + strconv.Itoa(totalCpusOnHost-1)
+					} else {
+						var tmpStrSlice []string
+						for _, c := range n.CPUPin[k] {
+							tmpStrSlice = append(tmpStrSlice, strconv.Itoa(c))
+						}
+						hostCpu = strings.Join(tmpStrSlice, ",")
+					}
+				} else {
+					hostCpu = strconv.Itoa(n.CPUPin[k][0])
+				}
+
+				//keyStr := strconv.Itoa(k)
+				tempData[k] = make(map[int]string)
+				tempData[k][n.CellID] = hostCpu
+			}
+		}
+
+		// we need to represent sorted vCPU IDs and not vNUMA IDs
+		keys := make([]int, 0)
+		for k, _ := range tempData {
+			keys = append(keys, k)
+		}
+
+		sort.Ints(keys)
+		for _, key := range keys {
+			for k, v := range tempData[key] {
+				list = append(list, strconv.Itoa(key), fmt.Sprintf("%-10s%-18d%-7s", " ", k, v))
+			}
+		}
+
+		ui.SetLabel(uiNUMATopologyHeader(ui, c))
+		result, err := ui.Menu(len(list), list[0:]...)
+		if err == nil {
+			break
+		}
+		if err.Error() != gui.DialogNext {
+			return err
+		}
+
+	InternalLoop:
+		for {
+			ui.SetTitle("VA vCPU Configuration")
+			ui.SetExtraLabel("Help")
+
+			resultInt, err := strconv.Atoi(result)
+			if err != nil {
+				return err
+			}
+
+			var vnumaStr string
+			var cpusStr string
+			for k, v := range tempData[resultInt] {
+				vnumaStr = strconv.Itoa(k)
+				cpusStr = v
+			}
+
+			resultInt--
+
+			var vnumaPredecStr string
+			for k, _ := range tempData[resultInt] {
+				vnumaPredecStr = strconv.Itoa(k)
+			}
+
+			var lst []string
+			label := "Set affinity for vCPU " + result
+			if vnumaStr == vnumaPredecStr && d.Id() == "QEMU-Libvirt" {
+				lst = []string{"VA vNUMA ID : ", "1", "1", vnumaStr, "1", "15", "2", "0", "2"}
+				label += "\n\nIMPORTANT! Some QEMU versions do not support\n" +
+					"disjoint NUMA CPU ranges therefore vNUMA configuration\n" +
+					"is disabled for this vCPU.\n"
+			} else {
+				lst = []string{"VA vNUMA ID : ", "1", "1", vnumaStr, "1", "15", "2", "0", "0"}
+			}
+
+			lst = append(lst, "Host CPU(s) : ", "2", "1", cpusStr, "2", "15", "30", "0", "0")
+			r, err := ui.Mixedform(label, false, lst[0:]...)
+			if err != nil {
+				if err.Error() == gui.DialogNext {
+					uiShowNumaTopologyHelpMsg(ui)
+					continue
+				}
+				return err
+			}
+			if len(r) < 2 {
+				continue
+			}
+
+			vcpuInt, err := strconv.Atoi(result)
+			if err != nil {
+				continue
+			}
+
+			vnumaInt, err := strconv.Atoi(r[0])
+			if err != nil {
+				ui.Output(gui.Warning, "Illegal input \""+r[0]+"\"", "Press <OK> to return to menu.")
+				continue
+			}
+			if err := verifyRange(vnumaInt, len(c.NUMAs)); err != nil {
+				ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+				continue
+			}
+
+			hostCpus := r[1]
+			cpus := make([]int, 0)
+			if strings.Contains(hostCpus, ",") {
+				for _, e := range strings.Split(hostCpus, ",") {
+					if strings.Contains(e, "-") {
+						cpus, err = splitByHypen(e, totalCpusOnHost)
+						if err != nil {
+							ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+							continue InternalLoop
+						}
+					} else {
+						cpu, err := strconv.Atoi(e)
+						if err != nil {
+							ui.Output(gui.Warning, "Illegal input \""+e+"\"", "Press <OK> to return to menu.")
+							continue InternalLoop
+						}
+						if err := verifyRange(cpu, totalCpusOnHost); err != nil {
+							ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+							continue InternalLoop
+						}
+						cpus = append(cpus, cpu)
+					}
+				}
+			} else if strings.Contains(hostCpus, "-") {
+				cpus, err = splitByHypen(hostCpus, totalCpusOnHost)
+				if err != nil {
+					ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+					continue
+				}
+			} else {
+				cpu, err := strconv.Atoi(hostCpus)
+				if err != nil {
+					ui.Output(gui.Warning, "Illegal input \""+hostCpus+"\"", "Press <OK> to return to menu.")
+					continue
+				}
+				if err := verifyRange(cpu, totalCpusOnHost); err != nil {
+					ui.Output(gui.Warning, err.Error(), "Press <OK> to return to menu.")
+					continue
+				}
+				cpus = append(cpus, cpu)
+			}
+
+			// delete the old entry
+			for _, n := range c.NUMAs {
+				for vcpu, _ := range n.CPUPin {
+					if vcpu == vcpuInt {
+						delete(n.CPUPin, vcpu)
+					}
+				}
+			}
+
+			sort.Ints(cpus)
+			// set the new entry
+			c.NUMAs[vnumaInt].CPUPin[vcpuInt] = cpus
+			continue MainLoop
+		}
+		break
+	}
+	return nil
 }
 
 func splitByHypen(e string, totalCpusOnHost int) ([]int, error) {
@@ -871,15 +953,17 @@ func splitByHypen(e string, totalCpusOnHost int) ([]int, error) {
 	if err := verifyRange(lastInt, totalCpusOnHost); err != nil {
 		return cpus, err
 	}
-	for i := firstInt; i < lastInt+1; i++ {
+
+	lastInt++
+	for i := firstInt; i < lastInt; i++ {
 		cpus = append(cpus, i)
 	}
 	return cpus, nil
 }
 
-func verifyRange(cpu, totalCpus int) error {
-	if cpu < 0 || cpu > totalCpus-1 {
-		return fmt.Errorf("Selected CPU (%d) is out of range", cpu)
+func verifyRange(number, maxNumber int) error {
+	if number < 0 || number > maxNumber-1 {
+		return fmt.Errorf("The value (%d) is out of range", number)
 	}
 	return nil
 }

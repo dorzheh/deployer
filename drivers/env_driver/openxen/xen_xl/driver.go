@@ -21,6 +21,10 @@ func NewDriver(config *ssh.Config) *Driver {
 	return d
 }
 
+func (d *Driver) Id() string {
+	return "OpenXen-xl"
+}
+
 func (d *Driver) DefineDomain(domainConfig string) error {
 	return nil
 }

@@ -131,7 +131,6 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				}
 				return nil
 			}
-
 		}())
 	}
 
@@ -194,7 +193,9 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 						return utils.FormatError(err)
 					}
 					if !pinned {
-						gui.UiWarningOnUnpinnedCPUs(d.Ui)
+						if !gui.UiWarningOnOptimizationFailure(d.Ui, "Not all the virtual machines on the host are configured with CPU pinning.") {
+							os.Exit(0)
+						}
 					}
 				}
 				if numas.TotalNUMAs() == 1 {
@@ -205,6 +206,11 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 					if err := c.GuestConfig.SetTopologyMultipleVirtualNUMAs(numas); err != nil {
 						return utils.FormatError(err)
 					}
+					if c.GuestConfig.OptimizationFailureMsg != "" {
+						if !gui.UiWarningOnOptimizationFailure(d.Ui, c.GuestConfig.OptimizationFailureMsg) {
+							os.Exit(0)
+						}
+					}
 				}
 			} else {
 				if err := c.GuestConfig.SetTopologySingleVirtualNUMA(numas, false); err != nil {
@@ -214,10 +220,18 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 
 			cpus, err := c.Hwdriver.CPUs()
 			if err != nil {
+				return utils.FormatError(err)
+			}
+			if err := gui.UiNUMATopology(d.Ui, c.GuestConfig, c.EnvDriver, cpus); err != nil {
 				return err
 			}
-			if err := gui.UiNUMATopology(d.Ui, c.GuestConfig, cpus); err != nil {
-				return err
+
+			hcpu, err := c.Hwdriver.CPUInfo()
+			if err != nil {
+				return utils.FormatError(err)
+			}
+			if _, ok := hcpu.Cap["pdpe1gb"]; ok {
+				c.GuestConfig.LargeHugePagesSupported = true
 			}
 
 			c.Metadata.CPUTune, err = metaconf.SetCpuTuneData(c.GuestConfig, i.TemplatesDir)

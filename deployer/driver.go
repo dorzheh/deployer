@@ -7,6 +7,9 @@ import (
 // EnvDriver is the interface that has to be implemented in order
 // to communicate with VM over API belonging to appropriate environment
 type EnvDriver interface {
+	// Returns the driver identificator
+	Id() string
+
 	// Creates appropriate domain.
 	DefineDomain(string) error
 
