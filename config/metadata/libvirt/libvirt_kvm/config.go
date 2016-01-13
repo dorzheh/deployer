@@ -206,7 +206,7 @@ func setNUMATuneData(numas []int, version string) (string, string) {
 	for _, n := range numas {
 		cellIdStr := strconv.Itoa(n)
 		cells = append(cells, cellIdStr)
-		if version > "1.2.6" {
+		if version > "1.2.6" && len(numas) > 1 {
 			memNodes += `<memnode cellid='` + cellIdStr + `' mode='strict' nodeset='` + cellIdStr + `'/>` + "\n"
 		}
 	}
