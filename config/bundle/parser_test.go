@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"testing"
 
-	"github.com/dorzheh/deployer/builder/common/image"
-	"github.com/dorzheh/deployer/config/common/xmlinput"
+	"github.com/dorzheh/deployer/builder/image"
+	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/deployer"
 )
 
@@ -30,17 +30,19 @@ var xmlstream = []byte(`<?xml version="1.0" encoding="UTF-8"?>
      		<ram>16384</ram>
      		<storage_config_index>2</storage_config_index>
   	</config>
+  	<advanced_config>true</advanced_config>
 </bundle>`)
 
 type ConfigTest struct {
-	Name               string            `xml:"name"`
-	CPUs               uint              `xml:"cpus"`
-	RAM                uint              `xml:"ram"`
-	StorageConfigIndex image.ConfigIndex `xml:"storage_config_index"`
+	Name               string            `xml:"config>name"`
+	CPUs               int               `xml:"config>cpus"`
+	RAM                int               `xml:"config>ram"`
+	StorageConfigIndex image.ConfigIndex `xml:"config>storage_config_index"`
 }
 
 type DefaultBundleTest struct {
-	Configs []*Config `xml:"config"`
+	Configs        []*Config `xml:"config"`
+	AdvancedConfig bool      `xml:"advanced_config"`
 }
 
 func TestParseConfig(t *testing.T) {

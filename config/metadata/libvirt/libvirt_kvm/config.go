@@ -71,7 +71,7 @@ type CpuConfigData struct {
 	NUMAConfig string
 }
 
-func (m meta) SetCpuConfigData(c *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetCpuConfigData(c *guest.Config, templatesDir string, i interface{}) (string, error) {
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuConfig))
 	if err == nil {
 		TmpltCpuConfig = string(buf)
@@ -126,7 +126,7 @@ type CpuTuneData struct {
 	CpuTuneData string
 }
 
-func (m meta) SetCpuTuneData(c *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetCpuTuneData(c *guest.Config, templatesDir string, i interface{}) (string, error) {
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileCpuTune))
 	if err == nil {
 		TmpltCpuTune = string(buf)
@@ -176,28 +176,41 @@ const (
 
 type NUMATuneData struct {
 	NUMACells string
+	MemNodes  string
 }
 
-func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string, i interface{}) (string, error) {
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileNUMATune))
 	if err == nil {
 		TmpltNUMATune = string(buf)
 	}
 
-	tempData, err := utils.ProcessTemplate(TmpltNUMATune, &NUMATuneData{setNUMATuneData(c.HostNUMAIds)})
+	libvirtVersion, err := i.(deployer.EnvDriver).Version()
+	if err != nil {
+		return "", err
+	}
+	n := new(NUMATuneData)
+	n.NUMACells, n.MemNodes = setNUMATuneData(c.HostNUMAIds, libvirtVersion)
+	tempData, err := utils.ProcessTemplate(TmpltNUMATune, n)
 	if err != nil {
 		return "", utils.FormatError(err)
 	}
 	return string(tempData) + "\n", nil
 }
 
-func setNUMATuneData(numas []int) string {
+func setNUMATuneData(numas []int, version string) (string, string) {
 	var cells []string
+	var memNodes string
 	sort.Ints(numas)
+
 	for _, n := range numas {
-		cells = append(cells, strconv.Itoa(n))
+		cellIdStr := strconv.Itoa(n)
+		cells = append(cells, cellIdStr)
+		if version > "1.2.6" {
+			memNodes += `<memnode cellid='` + cellIdStr + `' mode='strict' nodeset='` + cellIdStr + `'/>` + "\n"
+		}
 	}
-	return strings.Join(cells, ",")
+	return strings.Join(cells, ","), memNodes
 }
 
 // --- metadata configuration: storage --- //
@@ -215,7 +228,7 @@ var blockDevicesSuffix = []string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // SetStorageData is responsible for adding to the metadata appropriate entries
 // related to the storage configuration
-func (m meta) SetStorageData(conf *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetStorageData(conf *guest.Config, templatesDir string, i interface{}) (string, error) {
 	var data string
 
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileStorage))
@@ -288,7 +301,7 @@ type VirtNetwork struct {
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string, i interface{}) (string, error) {
 	var data string
 	for i, network := range mapping.Networks {
 		list := mapping.NICLists[i]
@@ -393,6 +406,6 @@ func treatPhysical(port *guest.NIC, mode *xmlinput.Mode, templatesDir string) (s
 	return tempData, nil
 }
 
-func (m meta) SetCustomData(c *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetCustomData(c *guest.Config, templatesDir string, i interface{}) (string, error) {
 	return "", errors.New("SetCustomData is not implemented")
 }

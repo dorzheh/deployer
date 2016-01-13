@@ -125,7 +125,7 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				if err = gui.UiNetworks(d.Ui, xid, nics, c.GuestConfig); err != nil {
 					return err
 				}
-				c.Metadata.Networks, err = metaconf.SetNetworkData(c.GuestConfig, i.TemplatesDir)
+				c.Metadata.Networks, err = metaconf.SetNetworkData(c.GuestConfig, i.TemplatesDir, nil)
 				if err != nil {
 					return utils.FormatError(err)
 				}
@@ -169,7 +169,7 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 					return err
 				}
 			}
-			c.Metadata.Storage, err = metaconf.SetStorageData(c.GuestConfig, i.TemplatesDir)
+			c.Metadata.Storage, err = metaconf.SetStorageData(c.GuestConfig, i.TemplatesDir, nil)
 			if err != nil {
 				return utils.FormatError(err)
 			}
@@ -218,12 +218,14 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				}
 			}
 
-			cpus, err := c.Hwdriver.CPUs()
-			if err != nil {
-				return utils.FormatError(err)
-			}
-			if err := gui.UiNUMATopology(d.Ui, c.GuestConfig, c.EnvDriver, cpus); err != nil {
-				return err
+			if xid.UiEditNUMAConfig {
+				cpus, err := c.Hwdriver.CPUs()
+				if err != nil {
+					return utils.FormatError(err)
+				}
+				if err := gui.UiNUMATopology(d.Ui, c.GuestConfig, c.EnvDriver, cpus); err != nil {
+					return err
+				}
 			}
 
 			hcpu, err := c.Hwdriver.CPUInfo()
@@ -234,15 +236,17 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				c.GuestConfig.LargeHugePagesSupported = true
 			}
 
-			c.Metadata.CPUTune, err = metaconf.SetCpuTuneData(c.GuestConfig, i.TemplatesDir)
+			c.Metadata.CPUTune, err = metaconf.SetCpuTuneData(c.GuestConfig, i.TemplatesDir, nil)
 			if err != nil {
 				return utils.FormatError(err)
 			}
-			c.Metadata.CPUConfig, err = metaconf.SetCpuConfigData(c.GuestConfig, i.TemplatesDir)
+
+			c.Metadata.CPUConfig, err = metaconf.SetCpuConfigData(c.GuestConfig, i.TemplatesDir, nil)
 			if err != nil {
 				return utils.FormatError(err)
 			}
-			c.Metadata.NUMATune, err = metaconf.SetNUMATuneData(c.GuestConfig, i.TemplatesDir)
+
+			c.Metadata.NUMATune, err = metaconf.SetNUMATuneData(c.GuestConfig, i.TemplatesDir, c.EnvDriver)
 			if err != nil {
 				return utils.FormatError(err)
 			}

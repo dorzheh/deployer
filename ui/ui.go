@@ -61,18 +61,20 @@ func UiSelectEnv(c *deployer.CommonData, envList []string, envs []deployer.FlowC
 	}
 
 	envsNum := len(envs)
-
-	c.Ui.SetTitle("Select environment")
-	c.Ui.SetSize(envsNum+7, 30)
-	resStr, err := c.Ui.Menu(envsNum, menuList[0:]...)
-	if err != nil && err.Error() == gui.DialogExit {
-		os.Exit(0)
+	dType := 0
+	if envsNum > 1 {
+		c.Ui.SetTitle("Select environment")
+		c.Ui.SetSize(envsNum+7, 30)
+		resStr, err := c.Ui.Menu(envsNum, menuList[0:]...)
+		if err != nil && err.Error() == gui.DialogExit {
+			os.Exit(0)
+		}
+		dType, err := strconv.Atoi(resStr)
+		if err != nil {
+			return utils.FormatError(err)
+		}
+		dType--
 	}
-	dType, err := strconv.Atoi(resStr)
-	if err != nil {
-		return utils.FormatError(err)
-	}
-	dType--
 	return main.Deploy(c, envs[dType])
 }
 

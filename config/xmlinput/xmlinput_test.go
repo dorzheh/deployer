@@ -16,6 +16,7 @@ var xmldata = []byte(`<?xml version="1.0" encoding="UTF-8"?>
   <numa>
     <auto_config>true</auto_config>
     <warn_on_unpinned_cpus>true</warn_on_unpinned_cpus>
+    <ui_edit_config>true</ui_edit_config>
   </numa>
   <ram>
   	<configure>true</configure>

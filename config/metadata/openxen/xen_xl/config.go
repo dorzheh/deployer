@@ -57,7 +57,7 @@ func (m meta) DefaultMetadata() []byte {
 	return defaultMetdataPVHVM
 }
 
-func (m meta) SetCpuTuneData(*guest.Config, string) (string, error) {
+func (m meta) SetCpuTuneData(*guest.Config, string, interface{}) (string, error) {
 	return "", nil
 }
 
@@ -67,7 +67,7 @@ var blockDevicesSuffix = []string{"a", "b", "c", "d", "e", "f", "g", "h"}
 
 // SetStorageData is responsible for adding to the metadata appropriate entries
 // related to the storage configuration
-func (m meta) SetStorageData(conf *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetStorageData(conf *guest.Config, templatesDir string, i interface{}) (string, error) {
 	var e []string
 	for i, disk := range conf.Storage.Disks {
 		switch disk.Type {
@@ -90,7 +90,7 @@ func (m meta) SetStorageData(conf *guest.Config, templatesDir string) (string, e
 
 // SetNetworkData is responsible for adding to the metadata appropriate entries
 // related to the network configuration
-func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string) (string, error) {
+func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string, i interface{}) (string, error) {
 	var e []string
 	for i, network := range mapping.Networks {
 		list := mapping.NICLists[i]
@@ -128,14 +128,14 @@ func (m meta) SetNetworkData(mapping *guest.Config, templatesDir string) (string
 	return data, nil
 }
 
-func (m meta) SetCpuConfigData(*guest.Config, string) (string, error) {
+func (m meta) SetCpuConfigData(*guest.Config, string, interface{}) (string, error) {
 	return "", nil
 }
 
-func (m meta) SetNUMATuneData(*guest.Config, string) (string, error) {
+func (m meta) SetNUMATuneData(*guest.Config, string, interface{}) (string, error) {
 	return "", nil
 }
 
-func (m meta) SetCustomData(*guest.Config, string) (string, error) {
+func (m meta) SetCustomData(*guest.Config, string, interface{}) (string, error) {
 	return "", nil
 }

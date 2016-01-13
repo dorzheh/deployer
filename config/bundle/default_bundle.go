@@ -36,6 +36,7 @@ import (
 //        <ram>16384</ram>
 //        <storage_config_index>2</storage_config_index>
 //   </config>
+//   <advanced_config>true</advanced_config>
 // </bundle>
 //
 
@@ -47,7 +48,8 @@ type Config struct {
 }
 
 type DefaultBundle struct {
-	Configs []*Config `xml:"config"`
+	Configs        []*Config `xml:"config"`
+	AdvancedConfig bool      `xml:"advanced_config"`
 }
 
 func (b *DefaultBundle) Parse(d *deployer.CommonData, hidriver deployer.HostinfoDriver, xid *xmlinput.XMLInputData) (map[string]interface{}, error) {
@@ -67,7 +69,7 @@ func (b *DefaultBundle) Parse(d *deployer.CommonData, hidriver deployer.Hostinfo
 		return nil, utils.FormatError(err)
 	}
 	for {
-		c, err := uiBundleConfig(d.Ui, configs)
+		c, err := uiBundleConfig(d.Ui, configs, b.AdvancedConfig)
 		if err != nil {
 			return nil, utils.FormatError(err)
 		}
@@ -99,7 +101,7 @@ func (b *DefaultBundle) getConfigs(ramsizeMb int) []*Config {
 	return configs
 }
 
-func uiBundleConfig(ui *gui.DialogUi, configs []*Config) (*Config, error) {
+func uiBundleConfig(ui *gui.DialogUi, configs []*Config, advancedConfig bool) (*Config, error) {
 	var temp []string
 	index := 0
 	for _, c := range configs {
@@ -107,6 +109,7 @@ func uiBundleConfig(ui *gui.DialogUi, configs []*Config) (*Config, error) {
 		temp = append(temp, strconv.Itoa(index),
 			fmt.Sprintf("%-15s [ vCPU %-2d | RAM %-3dMB]", c.Name, c.CPUs, c.RAM))
 	}
+
 	advIndex := index + 1
 	temp = append(temp, strconv.Itoa(advIndex), "Custom configuration")
 
