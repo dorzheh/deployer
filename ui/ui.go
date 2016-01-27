@@ -69,7 +69,7 @@ func UiSelectEnv(c *deployer.CommonData, envList []string, envs []deployer.FlowC
 		if err != nil && err.Error() == gui.DialogExit {
 			os.Exit(0)
 		}
-		dType, err := strconv.Atoi(resStr)
+		dType, err = strconv.Atoi(resStr)
 		if err != nil {
 			return utils.FormatError(err)
 		}

@@ -125,7 +125,7 @@ func (d *Driver) MaxVCPUsPerGuest() int {
 
 // Returns true if all domains configured for CPU affinity
 func (d *Driver) AllCPUsPinned() (bool, error) {
-	out, err := d.Run("virsh list --name --all")
+	out, err := d.Run("virsh list  --all|awk 'NR > 2{print $2}'")
 	if err != nil {
 		return false, err
 	}
