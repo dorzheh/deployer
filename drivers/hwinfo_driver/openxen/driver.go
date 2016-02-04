@@ -4,6 +4,7 @@ import (
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"
 	ssh "github.com/dorzheh/infra/comm/common"
+    "strconv"
 )
 
 type HostinfoDriver struct {
@@ -30,6 +31,15 @@ func (hi *HostinfoDriver) Init() error {
 
 // Returns RAM size
 func (hi *HostinfoDriver) RAMSize() (int, error) {
+    out, err := hi.c.Run("xl info|grep total_memory|tr -d ' '|cut -d ':' -f2 ")
+    if err != nil {
+          return 0, utils.FormatError(err)
+    }
+    var ramsize int
+    ramsize, _ = strconv.Atoi(out)
+    if ramsize > 0 {
+         return ramsize, nil
+    }
 	return hi.c.RAMSize()
 }
 
