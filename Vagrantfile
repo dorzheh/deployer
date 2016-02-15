@@ -40,9 +40,13 @@ EOF
 sudo mv /tmp/gopath.sh /etc/profile.d/gopath.sh
 sudo chmod 0755 /etc/profile.d/gopath.sh
 source /etc/profile.d/gopath.sh
+echo "source /etc/profile.d/gopath.sh" | sudo tee -a /root/.bashrc
 
 # Install godep
 go get github.com/tools/godep
+cd /opt/gopath/src/github.com/dorzheh/deployer
+godep restore
+
 SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
