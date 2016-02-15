@@ -46,7 +46,11 @@ echo "source /etc/profile.d/gopath.sh" | sudo tee -a /root/.bashrc
 go get github.com/tools/godep
 cd /opt/gopath/src/github.com/dorzheh/deployer
 godep restore
-
+ln -s  /opt/gopath/src/github.com/dorzheh/deployer/example/myproduct/ /home/vagrant/example
+cd /home/vagrant/
+[ -f  /home/vagrant/deployer ] && rm -f /home/vagrant/deployer
+go build  /home/vagrant/example/deployer/deployer.go
+echo "example" > .product
 SCRIPT
 
 Vagrant.configure(VAGRANTFILE_API_VERSION) do |config|
