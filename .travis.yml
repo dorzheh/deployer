@@ -1,0 +1,24 @@
+language: go
+
+go:
+  - 1.3
+  - tip
+install:
+  - go get github.com/dorzheh/deployer
+  - go get github.com/dorzheh/infra
+#env:
+#  #matrix:
+#  - OS_TYPE=opensuse OS_VERSION=13.2 ANSIBLE_VERSION=1.9.2
+
+branches:
+  only:
+  - master
+#  - stable
+
+#services:
+#  - docker
+
+notifications:
+  email: false
+#  hipchat:
+#    rooms:
