@@ -17,6 +17,7 @@ branches:
 
 #services:
 #  - docker
+script: go test ./...
 
 notifications:
   email: false
