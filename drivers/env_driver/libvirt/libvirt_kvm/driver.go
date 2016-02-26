@@ -105,7 +105,12 @@ func (d *Driver) Emulator(arch string) (string, error) {
 	}
 
 	v, _ := m.ValuesForPath("capabilities.guest.arch", "-name:"+arch)
+	// fixing https://github.com/dorzheh/deployer/issues/2
+	if len(v) == 0 {
+	 	return "", utils.FormatError(fmt.Errorf("Can't gather a KVM guest information for architecture %s.", arch))
+	}
 	return v[0].(map[string]interface{})["emulator"].(string), nil
+
 }
 
 // Version returns libvirt API version

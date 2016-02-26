@@ -661,14 +661,77 @@ func uiRamNotOK(ui *gui.DialogUi, selectedRamInMb, installedRamMb, minRamInMb, m
 		return true
 	}
 	if selectedRamInMb < minRamInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %dGB.", minRamInMb/1024), "Press <OK> to return to menu.")
+		ui.Output(gui.Warning, fmt.Sprintf("Minimum RAM requirement is %0.1fGB.", float64(minRamInMb)/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	if selectedRamInMb > maxRamInMb {
-		ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %dGB.", maxRamInMb/1024), "Press <OK> to return to menu.")
+		ui.Output(gui.Warning, fmt.Sprintf("Maximum RAM requirement is %0.1fGB.", float64(maxRamInMb)/1024), "Press <OK> to return to menu.")
 		return true
 	}
 	return false
+}
+
+func UiNumaRamNotOK(ui *gui.DialogUi, driver deployer.HostinfoDriver, c *guest.Config, selectedRamInMb int) (bool, error) {
+	// file, err := os.Create("/tmp/_setNUMATuneData.txt")
+	// defer file.Close()
+
+	numas, err := driver.NUMAInfo()
+	if err != nil {
+		return true, utils.FormatError(err)
+	}
+	NumaForCheck := make([]int, 0)
+	// file.WriteString("uiNumaRamNotOK\n")
+	for _, n := range c.NUMAs {
+		// file.WriteString("c.NUMAs\n")
+		for _, nic := range n.NICs {
+			if nic.HostNIC.Type == host.NicTypePhys || nic.HostNIC.Type == host.NicTypePhysVF {
+				isAdd := true
+				for _, v := range NumaForCheck {
+					if v == nic.HostNIC.NUMANode {
+						isAdd = false
+					}
+				}
+				if isAdd {
+					NumaForCheck = append(NumaForCheck, nic.HostNIC.NUMANode)
+					// file.WriteString("NumaForCheck: [" + strconv.Itoa(nic.HostNIC.NUMANode) + "]\n")
+				}
+			}
+		}
+	}
+	// selectedRamInMb = 1
+	var requiredMemory float64
+	var freeRam float64
+	numberOfNumas := len(NumaForCheck)
+	if numberOfNumas < 1 {
+		numberOfNumas = 1
+	}
+	requiredMemoryMB := selectedRamInMb / numberOfNumas
+	requiredMemory = float64(selectedRamInMb / numberOfNumas)
+	requiredMemoryStr := strconv.FormatFloat((requiredMemory / 1024), 'f', 1, 64)
+	// file.WriteString("requiredMemoryStr: " + requiredMemoryStr + " selectedRamInMb:" + strconv.Itoa(selectedRamInMb) + " \n")
+	for _, node := range numas {
+		for _, CellID := range NumaForCheck {
+			// file.WriteString("CellID: " + strconv.Itoa(CellID) + " node.CellID: " + strconv.Itoa(node.CellID) + "\n")
+			if node.CellID != CellID {
+				continue
+			}
+			numafreeRamMb := node.FreeRAM / 1024
+
+			// file.WriteString("requiredMemoryMB: " + strconv.Itoa(requiredMemoryMB) + " node.FreeRAM:" + strconv.Itoa(numafreeRamMb) + " \n")
+			// numafreeRamMb = 0
+			if numafreeRamMb < requiredMemoryMB {
+				freeRam = float64(node.FreeRAM / (1024 * 1024))
+				freeRamStr := strconv.FormatFloat(freeRam, 'f', 1, 64)
+				ui.SetTitle(gui.Warning)
+				ui.SetSize(10, 80)
+				ui.SetLabel("Virtual machine configuration can not be optimized.\n" + requiredMemoryStr + " GB RAM are required on NUMA " + strconv.Itoa(node.CellID) + " but just " + freeRamStr + "Gb are available\n\nDo you want to continue?")
+				return ui.Yesno(), nil
+			}
+		}
+	}
+
+	return true, nil
+
 }
 
 func uiDiskNotOK(ui *gui.DialogUi, selectedDiskInMb, minDiskInMb, maxDiskInMb int) bool {
@@ -753,18 +816,32 @@ func UiWarningOnOptimizationFailure(ui *gui.DialogUi, warningStr string) bool {
 	return ui.Yesno()
 }
 
-func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, d deployer.EnvDriver, totalCpusOnHost int) error {
+func UiNUMATopology(ui *gui.DialogUi, c *guest.Config, d deployer.EnvDriver, totalCpusOnHost int) (bool, error) {
 	var list []string
+
+	// file, err := os.Create("/tmp/UiNUMATopology.txt")
+	// if err != nil {
+	// 	return false, nil
+	// }
+	// defer file.Close()
+
+	isChanged := false
+	hCPUnotOnce := ""
+	CheckIfCPUdoubleUsed := true
 
 MainLoop:
 	for {
+		// file.WriteString("[UiNUMATopology] MainLoop: \n")
 		list = make([]string, 0)
 		tempData := make(map[int]map[int]string)
-
+		// file.WriteString("[UiNUMATopology] totalCpusOnHost: " + strconv.Itoa(totalCpusOnHost) + " \n")
 		for _, n := range c.NUMAs {
+			// file.WriteString("[UiNUMATopology] c.NUMAs\n")
+			// file.WriteString("[UiNUMATopology] len(n.CPUPin): " + strconv.Itoa(len(n.CPUPin)) + "\n")
 			keys := make([]int, 0)
 			for vcpu, _ := range n.CPUPin {
 				keys = append(keys, vcpu)
+				// file.WriteString("[UiNUMATopology] vcpu: " + strconv.Itoa(vcpu) + "\n")
 			}
 
 			sort.Ints(keys)
@@ -772,6 +849,7 @@ MainLoop:
 			for _, k := range keys {
 				if len(n.CPUPin[k]) > 1 {
 					if len(n.CPUPin[k]) == totalCpusOnHost {
+						CheckIfCPUdoubleUsed = false
 						hostCpu = "0-" + strconv.Itoa(totalCpusOnHost-1)
 					} else {
 						var tmpStrSlice []string
@@ -783,10 +861,11 @@ MainLoop:
 				} else {
 					hostCpu = strconv.Itoa(n.CPUPin[k][0])
 				}
-
-				//keyStr := strconv.Itoa(k)
+				// file.WriteString("[UiNUMATopology] hostCpu: " + hostCpu + "\n")
 				tempData[k] = make(map[int]string)
 				tempData[k][n.CellID] = hostCpu
+
+				// file.WriteString("tempData[" + strconv.Itoa(k) + "][" + strconv.Itoa(n.CellID) + "] = " + hostCpu + "  \n")
 			}
 		}
 
@@ -796,49 +875,149 @@ MainLoop:
 			keys = append(keys, k)
 		}
 
+		duplicate_frequency := make(map[string]int)
 		sort.Ints(keys)
 		for _, key := range keys {
 			for k, v := range tempData[key] {
 				list = append(list, strconv.Itoa(key), fmt.Sprintf("%-10s%-18d%-7s", " ", k, v))
+				temphCPU := v
+				_, exist := duplicate_frequency[temphCPU]
+				if exist {
+					duplicate_frequency[temphCPU] += 1 // increase counter by 1 if already in the map
+				} else {
+					duplicate_frequency[temphCPU] = 1 // else start counting from 1
+				}
+				// file.WriteString("k: " + strconv.Itoa(k) + " v: " + v + "  \n")
+			}
+		}
+
+		hCPUnotOnce = ""
+		for k_dup, v_dup := range duplicate_frequency {
+			if v_dup > 1 {
+				hCPUnotOnce = k_dup
+				break
 			}
 		}
 
 		ui.SetLabel(uiNUMATopologyHeader(ui, c))
 		result, err := ui.Menu(len(list), list[0:]...)
+		// file.WriteString("[UiNUMATopology] result: " + result + " err: " + err.Error() + " len(list): " + strconv.Itoa(len(list)) + " \n")
+
 		if err == nil {
+			if hCPUnotOnce != "" && isChanged && CheckIfCPUdoubleUsed {
+				ui.Output(gui.Warning, "CPU "+hCPUnotOnce+" is assigned to more than one vCPU")
+				continue
+			}
 			break
 		}
 		if err.Error() != gui.DialogNext {
-			return err
+			// file.WriteString("[UiNUMATopology] err.Error() != gui.DialogNext " + err.Error() + " \n")
+			return isChanged, err
 		}
 
 	InternalLoop:
 		for {
+			// file.WriteString("[UiNUMATopology] InternalLoop: \n")
+
 			ui.SetTitle("VA vCPU Configuration")
 			ui.SetExtraLabel("Help")
-
+			// file.WriteString("result: (" + result + ") \n")
 			resultInt, err := strconv.Atoi(result)
 			if err != nil {
-				return err
+				// file.WriteString("[UiNUMATopology] strconv.Atoi(result) " + err.Error() + "\n")
+				return isChanged, err
 			}
 
 			var vnumaStr string
 			var cpusStr string
+			tempDataLen := len(tempData)
 			for k, v := range tempData[resultInt] {
 				vnumaStr = strconv.Itoa(k)
 				cpusStr = v
+				// tempDataLen++
 			}
-
+			// file.WriteString("resultInt: (" + result + ") \n")
+			// DE11527
+			index := resultInt
 			resultInt--
 
-			var vnumaPredecStr string
-			for k, _ := range tempData[resultInt] {
-				vnumaPredecStr = strconv.Itoa(k)
-			}
+			// var vnumaPredecStr string
+			// for k, _ := range tempData[resultInt] {
+			// 	vnumaPredecStr = strconv.Itoa(k)
+			// 	// file.WriteString("vnumaPredecStr: (" + vnumaPredecStr + ") ")
+			// }
 
 			var lst []string
 			label := "Set affinity for vCPU " + result
-			if vnumaStr == vnumaPredecStr && d.Id() == "QEMU-Libvirt" {
+
+			var vnumaMinus1 string
+			var vnumaPlus1 string
+			var vnumaIndex string
+			var vnumaTemp string
+			if tempDataLen > 3 {
+				if index > (tempDataLen - 1) {
+					index = index - tempDataLen
+				}
+
+				indexMinus1 := index - 1
+
+				if indexMinus1 < 0 {
+					indexMinus1 = tempDataLen + indexMinus1
+				}
+				indexPlus1 := index + 1
+
+				if indexPlus1 > tempDataLen {
+					indexPlus1 = indexPlus1 - tempDataLen
+				}
+
+				for k, _ := range tempData[indexMinus1] {
+					vnumaMinus1 = strconv.Itoa(k)
+				}
+
+				for k, _ := range tempData[indexPlus1] {
+					vnumaPlus1 = strconv.Itoa(k)
+				}
+				for k, _ := range tempData[index] {
+					vnumaIndex = strconv.Itoa(k)
+				}
+
+				if index == (tempDataLen - 1) {
+					// vnumaPlus1 = vnumaIndex
+
+					for k, _ := range tempData[0] {
+						vnumaTemp = strconv.Itoa(k)
+					}
+					if vnumaTemp != vnumaIndex {
+						vnumaPlus1 = vnumaIndex
+					} else {
+						vnumaPlus1 = "vnumaPlus1"
+					}
+
+				}
+				if index == 0 {
+					// vnumaMinus1 = vnumaIndex
+					for k, _ := range tempData[tempDataLen-1] {
+						vnumaTemp = strconv.Itoa(k)
+					}
+					if vnumaTemp != vnumaIndex {
+						vnumaMinus1 = vnumaIndex
+					} else {
+						vnumaMinus1 = "vnumaIndex"
+					}
+				}
+			} else {
+				vnumaMinus1 = "-1"
+				vnumaPlus1 = "+1"
+			}
+
+			// xxxxxx := d.Id()
+			// file.WriteString("d.Id(): (" + xxxxxx + ") ")
+			// file.WriteString("vnumaStr: (" + vnumaStr + ") vnumaPredecStr: (" + vnumaPredecStr + ") \n")
+			// file.WriteString("indexMinus1: (" + strconv.Itoa(indexMinus1) + ") index: (" + strconv.Itoa(index) + ")  indexPlus1: (" + strconv.Itoa(indexPlus1) + ")\n")
+			// file.WriteString("vnumaMinus1: (" + vnumaMinus1 + ") vnumaPlus1: (" + vnumaPlus1 + ") \n")
+			// file.WriteString("tempDataLen: (" + strconv.Itoa(tempDataLen) + ")  \n")
+			// if vnumaStr == vnumaPredecStr && d.Id() == "QEMU-Libvirt" {
+			if vnumaMinus1 == vnumaPlus1 && d.Id() == "QEMU-Libvirt" {
 				lst = []string{"VA vNUMA ID : ", "1", "1", vnumaStr, "1", "15", "2", "0", "2"}
 				label += "\n\nIMPORTANT! Some QEMU versions do not support\n" +
 					"disjoint NUMA CPU ranges therefore vNUMA configuration\n" +
@@ -854,7 +1033,7 @@ MainLoop:
 					uiShowNumaTopologyHelpMsg(ui)
 					continue
 				}
-				return err
+				return isChanged, err
 			}
 			if len(r) < 2 {
 				continue
@@ -918,6 +1097,7 @@ MainLoop:
 			}
 
 			// delete the old entry
+			isChanged = true
 			for _, n := range c.NUMAs {
 				for vcpu, _ := range n.CPUPin {
 					if vcpu == vcpuInt {
@@ -933,7 +1113,20 @@ MainLoop:
 		}
 		break
 	}
-	return nil
+
+	// ui.Output(gui.Warning, "CPU "+hCPUnotOnce+" is assigned to more than one vCPU")
+
+	// if isChanged {
+	// 	file.WriteString("isChanged\n")
+	// } else {
+	// 	file.WriteString("NotChanged\n")
+	// }
+	// if isChanged {
+	// 	ui.Output(gui.Warning, "CPU j is assigned to more than one vCPU")
+	// 	continue MainLoop
+	// }
+	// file.WriteString("return: \n")
+	return isChanged, nil
 }
 
 func splitByHypen(e string, totalCpusOnHost int) ([]int, error) {

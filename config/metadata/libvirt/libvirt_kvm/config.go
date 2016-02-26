@@ -5,6 +5,7 @@ package libvirt_kvm
 import (
 	"errors"
 	"io/ioutil"
+	// "os"
 	"path/filepath"
 	"sort"
 	"strconv"
@@ -95,6 +96,8 @@ func setCpuConfigData(c *guest.Config) (string, string) {
 	var cpuConfigData string
 
 	if c.OptimizationFailureMemory == false {
+		// --- numa fail
+		// var numaCurrentCounter int
 		cpuConfigData = `<numa>`
 		for _, n := range c.NUMAs {
 			keys := make([]int, 0)
@@ -177,9 +180,16 @@ const (
 type NUMATuneData struct {
 	NUMACells string
 	MemNodes  string
+	MemMode   string
 }
 
 func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string, i interface{}) (string, error) {
+	// file, err := os.Create("/tmp/SetNUMATuneData.txt")
+	// if err != nil {
+	// 	return "", nil
+	// }
+	// defer file.Close()
+
 	buf, err := ioutil.ReadFile(filepath.Join(templatesDir, TmpltFileNUMATune))
 	if err == nil {
 		TmpltNUMATune = string(buf)
@@ -189,8 +199,32 @@ func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string, i interface{
 	if err != nil {
 		return "", err
 	}
+	var HostNUMAIds []int
+	var vNUMAIds []int
+
+	// checking if all Host numa if used
+	for _, n := range c.NUMAs {
+		for _, nic := range n.NICs {
+			if nic.HostNIC.Type == host.NicTypePhys || nic.HostNIC.Type == host.NicTypePhysVF {
+				// hdr += fmt.Sprintf("\nNUMA %d: %s", nic.HostNIC.NUMANode, nic.HostNIC.PCIAddr)
+				HostNUMAIds = append(HostNUMAIds, nic.HostNIC.NUMANode)
+				vNUMAIds = append(vNUMAIds, n.CellID)
+			}
+		}
+	}
+
 	n := new(NUMATuneData)
-	n.NUMACells, n.MemNodes = setNUMATuneData(c.HostNUMAIds, libvirtVersion)
+
+	if c.OptimizationFailureCPU == true {
+		// n.NUMACells, n.MemNodes = setNUMATuneData(HostNUMAIds, libvirtVersion)
+		n.MemMode, n.NUMACells, n.MemNodes = setNUMATuneDataInderect(HostNUMAIds, vNUMAIds, libvirtVersion)
+	} else {
+		n.MemMode, n.NUMACells, n.MemNodes = setNUMATuneData(c.HostNUMAIds, libvirtVersion)
+	}
+
+	// file.WriteString("n.NUMACells: (" + n.NUMACells + ") \n")
+	// file.WriteString("n.MemNodes: (" + n.MemNodes + ") \n")
+
 	tempData, err := utils.ProcessTemplate(TmpltNUMATune, n)
 	if err != nil {
 		return "", utils.FormatError(err)
@@ -198,19 +232,77 @@ func (m meta) SetNUMATuneData(c *guest.Config, templatesDir string, i interface{
 	return string(tempData) + "\n", nil
 }
 
-func setNUMATuneData(numas []int, version string) (string, string) {
+func setNUMATuneDataInderect(numas []int, vNUMAIds []int, version string) (string, string, string) {
 	var cells []string
 	var memNodes string
+	MemMode := "strict"
 	sort.Ints(numas)
+	sort.Ints(vNUMAIds)
 
+	// file, err := os.Create("/tmp/_setNUMATuneData.txt")
+	// if err != nil {
+	// 	return "", ""
+	// }
+	// defer file.Close()
+
+	for k, n := range numas {
+		// file.WriteString("k: (" + strconv.Itoa(k) + ") n: (" + strconv.Itoa(n) + ") \n")
+		isAdd := false
+		cellIdStr := strconv.Itoa(vNUMAIds[k])
+		nodesetStr := strconv.Itoa(n)
+		for _, cells_vaL := range cells {
+			if cells_vaL == nodesetStr {
+				isAdd = true
+			}
+		}
+		if isAdd {
+			continue
+		}
+		cells = append(cells, nodesetStr)
+		if version > "1.2.6" && len(numas) > 1 {
+			memNodes += `<memnode cellid='` + cellIdStr + `' mode='strict' nodeset='` + nodesetStr + `'/>` + "\n"
+		}
+
+	}
+	
+	// Please disable this feature till we will understand it better
+	// (use interleave in such cases as we do when there is no support for memnode)
+	memNodes = ""
+	if len(cells) > 1 {
+		MemMode = "interleave"
+	}
+	return MemMode, strings.Join(cells, ","), memNodes
+}
+
+func setNUMATuneData(numas []int, version string) (string, string, string) {
+	var cells []string
+	var memNodes string
+	MemMode := "strict"
+	sort.Ints(numas)
 	for _, n := range numas {
+		isAdd := false
 		cellIdStr := strconv.Itoa(n)
+		for _, cells_vaL := range cells {
+			if cells_vaL == cellIdStr {
+				isAdd = true
+			}
+		}
+		if isAdd {
+			continue
+		}
 		cells = append(cells, cellIdStr)
 		if version > "1.2.6" && len(numas) > 1 {
 			memNodes += `<memnode cellid='` + cellIdStr + `' mode='strict' nodeset='` + cellIdStr + `'/>` + "\n"
 		}
 	}
-	return strings.Join(cells, ","), memNodes
+	// Nissim Nisimov <NissimN@Radware.com>
+	// Please disable this feature till we will understand it better
+	// (use interleave in such cases as we do when there is no support for memnode)
+	memNodes = ""
+	if len(cells) > 1 {
+		MemMode = "interleave"
+	}
+	return MemMode, strings.Join(cells, ","), memNodes
 }
 
 // --- metadata configuration: storage --- //

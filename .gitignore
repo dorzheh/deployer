@@ -3,6 +3,9 @@
 *.a
 *.so
 
+# Vagrant 
+.vagrant/
+
 # Folders
 _obj
 _test
@@ -23,3 +26,5 @@ _testmain.go
 *.test
 *.sublime-project
 *.sublime-workspace
+*.idea
+

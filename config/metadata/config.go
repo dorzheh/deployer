@@ -1,11 +1,9 @@
 package metadata
 
 import (
+	// "errors"
+	"errors"
 	"fmt"
-	"io/ioutil"
-	"os"
-	"path/filepath"
-
 	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config"
 	"github.com/dorzheh/deployer/config/bundle"
@@ -14,9 +12,14 @@ import (
 	"github.com/dorzheh/deployer/controller"
 	"github.com/dorzheh/deployer/deployer"
 	gui "github.com/dorzheh/deployer/ui"
+	"github.com/dorzheh/deployer/ui/dialog_ui"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/host_hwfilter"
 	"github.com/dorzheh/deployer/utils/hwinfo/guest"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	// "strconv"
 )
 
 // InputData provides a static data
@@ -181,6 +184,9 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 	// NUMA configuration
 	controller.RegisterSteps(func() func() error {
 		return func() error {
+			// file, err := os.Create("/tmp/x.txt")
+			// defer file.Close()
+
 			c.GuestConfig.NUMAs = nil
 			numas, err := c.Hwdriver.NUMAInfo()
 			if err != nil {
@@ -199,14 +205,18 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 					}
 				}
 				if numas.TotalNUMAs() == 1 {
+					// file.WriteString("RegisterSteps() numas.TotalNUMAs() == 1\n")
 					if err := c.GuestConfig.SetTopologySingleVirtualNUMA(numas, true); err != nil {
 						return utils.FormatError(err)
 					}
 				} else {
+					// file.WriteString("RegisterSteps() numas.TotalNUMAs() else \n")
 					if err := c.GuestConfig.SetTopologyMultipleVirtualNUMAs(numas); err != nil {
+						// file.WriteString("RegisterSteps() c.GuestConfig.SetTopologyMultipleVirtualNUMAs(numas) err != nil " + err.Error() + "\n")
 						return utils.FormatError(err)
 					}
 					if c.GuestConfig.OptimizationFailureMsg != "" {
+						// file.WriteString("RegisterSteps() c.GuestConfig.OptimizationFailureMsg  " + c.GuestConfig.OptimizationFailureMsg + "\n")
 						if !gui.UiWarningOnOptimizationFailure(d.Ui, c.GuestConfig.OptimizationFailureMsg) {
 							os.Exit(0)
 						}
@@ -218,16 +228,40 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 				}
 			}
 
+			processNext, err := gui.UiNumaRamNotOK(d.Ui, c.Hwdriver, c.GuestConfig, c.GuestConfig.RamMb)
+
+			if processNext != true {
+
+				return errors.New(dialog_ui.DialogMoveBack)
+			}
+			if err != nil {
+				// file.WriteString("RegisterSteps() err != nil 1 \n")
+				return utils.FormatError(err)
+			}
+			// file.WriteString("RegisterSteps() xid.UiEditNUMAConfig  \n")
 			if xid.UiEditNUMAConfig {
 				cpus, err := c.Hwdriver.CPUs()
+				// file.WriteString("RegisterSteps() c.Hwdriver.CPUs() \n")
 				if err != nil {
+					// file.WriteString("RegisterSteps() err  " + err.Error() + " \n")
 					return utils.FormatError(err)
 				}
-				if err := gui.UiNUMATopology(d.Ui, c.GuestConfig, c.EnvDriver, cpus); err != nil {
+				// inject return code if need reconfigure
+				isChanged, err := gui.UiNUMATopology(d.Ui, c.GuestConfig, c.EnvDriver, cpus)
+				if err != nil {
+					// file.WriteString("RegisterSteps() err !=nil gui.UiNUMATopology " + err.Error() + " \n")
 					return err
 				}
+				if isChanged {
+					// err := errors.New("CPU j is assigned to more than one vCPU")
+					// return utils.FormatError(err)
+					if err := c.GuestConfig.ReconfigureMultipleVirtualNUMAs(numas); err != nil {
+						// file.WriteString("RegisterSteps() err !=nil c.GuestConfig.ReconfigureMultipleVirtualNUMAs  \n")
+						return utils.FormatError(err)
+					}
+				}
 			}
-
+			// file.WriteString("RegisterSteps() c.Hwdriver.CPUInfo()  \n")
 			hcpu, err := c.Hwdriver.CPUInfo()
 			if err != nil {
 				return utils.FormatError(err)
@@ -235,22 +269,24 @@ func RegisterSteps(d *deployer.CommonData, i *InputData, c *Config, metaconf dep
 			if _, ok := hcpu.Cap["pdpe1gb"]; ok {
 				c.GuestConfig.LargeHugePagesSupported = true
 			}
-
+			// file.WriteString("RegisterSteps() metaconf.SetCpuTuneData(  \n")
 			c.Metadata.CPUTune, err = metaconf.SetCpuTuneData(c.GuestConfig, i.TemplatesDir, nil)
 			if err != nil {
 				return utils.FormatError(err)
 			}
-
+			// file.WriteString("RegisterSteps() metaconf.SetCpuConfigData(  \n")
 			c.Metadata.CPUConfig, err = metaconf.SetCpuConfigData(c.GuestConfig, i.TemplatesDir, nil)
 			if err != nil {
 				return utils.FormatError(err)
 			}
-
+			// file.WriteString("RegisterSteps() metaconf.SetNUMATuneData(  \n")
 			c.Metadata.NUMATune, err = metaconf.SetNUMATuneData(c.GuestConfig, i.TemplatesDir, c.EnvDriver)
 			if err != nil {
 				return utils.FormatError(err)
 			}
+			// file.WriteString("RegisterSteps() END \n")
 			return nil
+
 		}
 	}())
 

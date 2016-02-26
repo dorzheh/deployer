@@ -3,13 +3,15 @@ package guest
 import (
 	"errors"
 	"fmt"
+	// "os"
 	"sort"
-	"strings"
+	// "strconv"
 
 	"github.com/dorzheh/deployer/builder/image"
 	"github.com/dorzheh/deployer/config/xmlinput"
 	"github.com/dorzheh/deployer/utils"
 	"github.com/dorzheh/deployer/utils/hwinfo/host"
+	"strings"
 )
 
 type NUMA struct {
@@ -49,6 +51,10 @@ func NewConfig() *Config {
 }
 
 func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, singleNuma bool) error {
+	// file, _ := os.Create("/tmp/1SetTopologyMultipleVirtualNUMAs.txt")
+	// defer file.Close()
+	// file.WriteString("SetTopologySingleVirtualNUMA\n")
+
 	if c.CPUs == 0 {
 		return errors.New("A data memeber (CPUs) is not initialized")
 	}
@@ -72,18 +78,32 @@ func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, singleNuma b
 	}
 
 	if singleNuma {
+		// file.WriteString("SetTopologySingleVirtualNUMA singleNuma\n")
 		cpusNuma0, err := numas.CpusOnNUMA(0)
 		if err != nil {
+			// file.WriteString("SetTopologySingleVirtualNUMA  cpusNuma0 err: " + err.Error() + "\n")
 			return err
 		}
+		// file.WriteString("SetTopologySingleVirtualNUMA len(cpusNuma0): " + strconv.Itoa(len(cpusNuma0)) + "\n")
+		// file.WriteString("SetTopologySingleVirtualNUMA c.CPUs: " + strconv.Itoa(c.CPUs) + "\n")
 		if c.CPUs <= len(cpusNuma0) {
+			// file.WriteString("c.CPUs <= len(cpusNuma0) \n")
 			for i := 0; i < c.CPUs; i++ {
 				gn.CPUPin[i] = append(gn.CPUPin[i], i)
 			}
-			c.HostNUMAIds = []int{0}
+
+		} else {
+			// file.WriteString("c.CPUs > len(cpusNuma0) \n")
+			for i := 0; i < c.CPUs; i++ {
+				gn.CPUPin[i] = append(gn.CPUPin[i], i)
+			}
 		}
+		c.HostNUMAIds = []int{0}
 	} else {
+		// file.WriteString("SetTopologySingleVirtualNUMA not singleNuma\n")
+		// file.WriteString("SetTopologySingleVirtualNUMA c.CPUs " + strconv.Itoa(c.CPUs) + "\n")
 		for i := 0; i < c.CPUs; i++ {
+			// file.WriteString("SetTopologySingleVirtualNUMA i: " + strconv.Itoa(i) + "\n")
 			for _, n := range numas {
 				gn.CPUPin[i] = append(gn.CPUPin[i], n.CPUs...)
 				c.HostNUMAIds = append(c.HostNUMAIds, n.CellID)
@@ -96,6 +116,8 @@ func (c *Config) SetTopologySingleVirtualNUMA(numas host.NUMANodes, singleNuma b
 }
 
 func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
+	// file, _ := os.Create("/tmp/1SetTopologyMultipleVirtualNUMAs.txt")
+	// defer file.Close()
 	if c.CPUs == 0 {
 		return errors.New("A data memeber (CPUs) is not initialized")
 	}
@@ -105,8 +127,10 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 	if len(c.NICLists) == 0 {
 		return errors.New("A data memeber (NICLists) is not initialized")
 	}
+	// file.WriteString("SetTopologyMultipleVirtualNUMAs(): \n")
 
 	if c.CPUs > numas.TotalCPUs() {
+		// file.WriteString("c.CPUs > numas.TotalCPUs() \n")
 		c.OptimizationFailureCPU = true
 		c.OptimizationFailureMemory = true
 		c.OptimizationFailureMsg = fmt.Sprintf("Amount of requested CPUs (%d) is greater than installed(%d).", c.CPUs, numas.TotalCPUs())
@@ -115,6 +139,7 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 
 	nicNumaMapping, totalAmountOfPorts := numaNicsMapping(c, numas)
 	if totalAmountOfPorts == 0 {
+		// file.WriteString("totalAmountOfPorts == 0 \n")
 		return c.SetTopologySingleVirtualNUMA(numas, true)
 	}
 
@@ -122,19 +147,23 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 	vcpuID := 0
 	allocatedCpus := 0
 	for _, n := range numas {
+		// file.WriteString("n.CellID: (" + strconv.Itoa(n.CellID) + ") \n")
 		if portsList, ok := nicNumaMapping[n.CellID]; ok {
 			percentage, err := utils.FloatStringsSliceToInt(strings.Split(fmt.Sprintf("%0.1f", float32(len(portsList))*float32(100)/float32(totalAmountOfPorts)), "."))
 			if err != nil {
+				// file.WriteString("percentage, err " + err.Error() + " \n")
 				return nil
 			}
 
 			amountOfMemoryMb, err := utils.FloatStringsSliceToInt(strings.Split(fmt.Sprintf("%0.1f", float32(c.RamMb)/float32(100)*float32(percentage)), "."))
 			if err != nil {
+				// file.WriteString("amountOfMemoryMb, err " + err.Error() + " \n")
 				return err
 			}
 
 			amountOfCpus, err := utils.FloatStringsSliceToInt(strings.Split(fmt.Sprintf("%0.1f", float32(c.CPUs)/float32(100)*float32(percentage)), "."))
 			if err != nil {
+				// file.WriteString("amountOfCpus, err " + err.Error() + " \n")
 				return err
 			}
 			// fmt.Printf("total amount of ports = %d\n", totalAmountOfPorts)
@@ -153,7 +182,7 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 				return c.SetTopologySingleVirtualNUMA(numas, false)
 			case amountOfCpus > cpusOnNuma && amountOfMemoryMb <= n.TotalRAM:
 				c.OptimizationFailureCPU = true
-				c.OptimizationFailureMsg = fmt.Sprintf("Not enough CPUs on NUMA %d (requested %d , installed %d).", n.CellID, amountOfCpus, cpusOnNuma)
+				c.OptimizationFailureMsg = fmt.Sprintf("%d CPUs are required on NUMA %d, but just %d CPUs are available.", amountOfCpus, n.CellID, cpusOnNuma)
 				return c.SetTopologySingleVirtualNUMA(numas, false)
 			case amountOfMemoryMb > n.TotalRAM && amountOfCpus <= cpusOnNuma:
 				c.OptimizationFailureMemory = true
@@ -188,10 +217,48 @@ func (c *Config) SetTopologyMultipleVirtualNUMAs(numas host.NUMANodes) error {
 			cellID++
 		}
 	}
+
 	if allocatedCpus != c.CPUs {
+		// file.WriteString("allocatedCpus != c.CPUs\n")
 		c.OptimizationFailureCPU = true
 		c.OptimizationFailureMsg = "Cannot distribute vCPUs among the vNUMAS."
 		return c.SetTopologySingleVirtualNUMA(numas, false)
+	}
+	// file.WriteString("return nil\n")
+	return nil
+}
+
+func (c *Config) ReconfigureMultipleVirtualNUMAs(numas host.NUMANodes) error {
+	isZeroCPUPin := false
+
+	if c.OptimizationFailureCPU != true && c.OptimizationFailureMemory != true {
+
+		CellIDZeroCPUPin := 0
+		for i, n := range c.NUMAs {
+			if i > 2 {
+				c.OptimizationFailureCPU = true
+				c.OptimizationFailureMemory = true
+				return c.SetTopologySingleVirtualNUMA(numas, false)
+			} else if len(n.CPUPin) == 0 {
+				// file.WriteString("SetTopologySingleVirtualNUMA n.CPUPin\n")
+				isZeroCPUPin = true
+				CellIDZeroCPUPin = n.CellID
+
+			}
+			// implement the memory reconfigure
+		}
+
+		if isZeroCPUPin {
+			c.NUMAs[1].MemoryMb += c.NUMAs[0].MemoryMb
+			c.NUMAs[0].MemoryMb = c.NUMAs[1].MemoryMb
+			temp := c.NUMAs
+			temp = append(temp[:CellIDZeroCPUPin], temp[CellIDZeroCPUPin+1:]...)
+			c.NUMAs = temp
+			c.NUMAs[0].CellID = 0
+			c.HostNUMAIds = []int{0}
+
+		}
+
 	}
 	return nil
 }
